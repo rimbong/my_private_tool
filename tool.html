@@ -1,0 +1,456 @@
+<html>
+<head>
+  <title>설정툴</title>
+</head>
+<body>
+  <div id="selectViewPage" style="border: 1px solid black;margin-bottom: 20px;">
+    <input type="radio" name="selectView" id="selectInputClasspath" value="inputClasspath" checked><label for="selectInputClasspath">Classpath 설정</label>
+    <input type="radio" name="selectView" id="selectInitConfig" value="initConfig" ><label for="selectInitConfig">Config 설정</label>
+    <input type="radio" name="selectView" id="selectQueryPage" value="queryPage" ><label for="selectQueryPage">SQL문 변환</label>
+  </div>
+  <div id="inputClasspath" class="page">
+    <form method="POST" onsubmit="return false;" enctype="multipart/form-data">
+      <span>tomcat version :</span>
+      <input type="radio" name="tomcatVersion" id="version7" value="7" checked /><label for="version7">tomcat7</label>
+      <input type="radio" name="tomcatVersion" id="version8" value="8" /><label for="version8">tomcat8</label> <input
+        type="radio" name="tomcatVersion" id="version9" value="9" /><label for="version9">tomcat9</label>
+      <br /><br />
+      <span>WEB-INF :</span>
+      <input type="file" class="addFile" value="jar 등록" multiple /><br />
+      <span class="fileCnt">0개</span><br /><br />
+      <input type="checkbox" name="enablePrefix" id="enablePrefix"> 지정할 prefix 명 : <input type="text" id="prefix" class="prefix" size="50" disabled/><br>
+      ( 예 :KOIHAGW38/SmartFlowOSE3.8 )<br />
+      <span> 지정한 prefix : </span><span class="prefixTxt"></span><br /><br />
+      <input type="button" class="fileConfirm" value="생성" />
+      <input type="button" class="fileinit" value="초기화" />
+      <pre class="fileList"></pre>
+    </form>
+    <span>classpath 등록 및 다운로드 : </span><input type="file" name="inputFile" id="classpath" />
+    <br />
+    <pre id="output"></pre>
+  </div>
+  <div id="initConfig" style="display: none" class="page">
+    <form method="POST" onsubmit="return false;" enctype="multipart/form-data">
+      <span>tomcat ver 7 lib 디렉토리를 선택 : </span>
+      <input type="file" class="tomcatFile" data-value="7" name="tomcatFileVer7" id="tomcatFileVer7" webkitdirectory
+        directory /><br />
+      Tomcat 7 HOME : <input type="text" class="tomcatHome" size="50" id="tomcatHomeVer7" data-value="7" /><br>
+      ( lib의 전 디렉토리 예 : <span style="text-decoration-color: red; text-decoration-line: underline"><mark>D:\HOME\WAS\apache-tomcat-7.0.91</mark></span>\lib)<br /><br /><br />
+
+      <span>tomcat ver 8 lib 디렉토리를 선택 : </span>
+      <input type="file" class="tomcatFile" data-value="8" name="tomcatFileVer8" id="tomcatFileVer8" webkitdirectory
+        directory /><br />
+      Tomcat 8 HOME : <input type="text" class="tomcatHome" size="50" id="tomcatHomeVer8" data-value="8" /><br>
+      ( lib의 전 디렉토리 예 : <span style="text-decoration-color: red; text-decoration-line: underline"><mark>D:\HOME\WAS\apache-tomcat-8.0.53</mark></span>\lib)<br /><br /><br />
+
+      <span>tomcat ver 9 lib 디렉토리를 선택 : </span>
+      <input type="file" class="tomcatFile" data-value="9" name="tomcatFileVer9" id="tomcatFileVer9" webkitdirectory directory /><br />
+      Tomcat 9 HOME : <input type="text" class="tomcatHome" size="50" id="tomcatHomeVer9" data-value="9" /><br>
+      ( lib의 전 디렉토리 예 : <span style="text-decoration-color: red; text-decoration-line: underline"><mark>D:\HOME\WAS\apache-tomcat-9.0.63</mark></span>\lib)<br /><br /><br />
+
+      지정할 workspaces (workspace의 Home) : <input type="text" id="copyWorkspaces" class="copyWorkspaces" size="50"><br>
+      ( 예 : <span style="text-decoration-color: red; text-decoration-line: underline"><mark>D:/HOME/workspaces</mark></span>/projectWorkspace/projectName )<br><br>
+      지정할 워크스페이스/프로젝트 : <input type="text" id="copyWorkAndProjName" class="copyWorkAndProjName" size="50"><br>
+      ( 예 : D:/HOME/workspaces/<span style="text-decoration-color: red; text-decoration-line: underline"><mark>projectWorkspace/projectName</mark></span>)<br><br>
+      
+      <span>JVM 설정 변수 개행(줄 단위)로 구분하여 작성 [ ! => workspaces 절대경로, # => workspace/project name ]</span>
+      <textarea name="jvmConfig" id="jvmConfig" style="width: 100%;height: 30% ;text-align: left;font-size: 15px;"></textarea><br><br>      
+      <textarea name="completedjvmConfig" id="completedjvmConfig" style="width: 100%;height: 30% ;text-align: left;font-size: 15px;" readonly></textarea><br><br>      
+      <input type="button" class="createConfigFile" value="생성" />
+    </form>
+  </div>
+  <div id="queryPage" style="display: none;" class="page">    
+    <form method="post" onsubmit="return false;" enctype="multipart/form-data">
+      
+      <div style="width: 50%;height: 50%;">
+        <span> 배열을 입력하세요 ([a,b,c,d]) : </span><input type="text" name="inputSqlValue" id="inputSqlValue" size="30" > <span id="cntInputSqlValue"></span><br><br>
+        <span id="cntInputSql"></span> 
+        <textarea name="inputSql" id="inputSql" style="width: 100%;height: 100%;text-align: left;font-size: 20px;"></textarea><br><br>
+        <div style="width: 100%;text-align: center;"><input type="button" id="conversionSql" class="conversionSql" value="변환" /><br><br></div>
+        <textarea name="completedSql" id="completedSql" style="width: 100%;height: 100%;text-align: left;font-size: 20px;"></textarea><br><br>
+      </div>
+    </form>
+  </div>
+</body>
+<!-- 
+  To do   
+ -->
+<script type="text/javascript" src="./config.js" ></script>
+<script type="text/javascript">  
+  
+  // 첫 초기화 시켜야하는 변수 및 메서드 init
+  const DOM_FORM_START = '<classpathentry kind="lib" path="';
+  const DOM_FORM_END = '"/>\n';  
+  // config.js가 없거나 해당 변수가 정의 되지 않은 경우
+  window['configObj'] = {};
+  let tomcatObj = configObj && configObj['tomcatObj'] || {};    
+  let workspaces;
+  let workAndProjectName
+  let tomcatJson = {};
+  let vmJson = {};
+  let fileCount = 0;
+
+  window.onload = function () {    
+    // 첫 config 초기화 메서드
+    initConfig();    
+    // 이벤트 초기화
+    initEventFunction();
+  };
+  // config.js 파일의 유무를 확인한다.
+  function initConfig() {        
+    if(Object.keys(configObj).length === 0){
+      showCopnfigPage()      
+    }else{
+      // 수정 필요함      
+      // config 파일 존재의 경우 각 html input에 데이터를 넣어준다.
+      document.querySelector('#tomcatHomeVer7').value = tomcatObj['7']['wasHome'] || '';
+      document.querySelector('#tomcatHomeVer8').value = tomcatObj['8']['wasHome'] || '';
+      document.querySelector('#tomcatHomeVer9').value = tomcatObj['9']['wasHome'] || '';
+      document.querySelector('#prefix').value = configObj['workAndProjectName']|| '';
+      document.querySelector('#copyWorkspaces').value = configObj['workSpaces']|| '';
+      document.querySelector('#copyWorkAndProjName').value = configObj['workAndProjectName']|| '';      
+      document.querySelector('#jvmConfig').value = configObj['vmConfig'].join('\n') || '';
+      
+
+      // config 파일 존재의 경우 json 객체들을 세팅 해준다.
+      tomcatJson['home7'] = {wasHome : tomcatObj['7']['wasHome']};
+      tomcatJson['home8'] = {wasHome : tomcatObj['8']['wasHome']};
+      tomcatJson['home9'] = {wasHome : tomcatObj['9']['wasHome']};
+      tomcatJson['lib7'] = {lib : tomcatObj['7']['lib']};
+      tomcatJson['lib8'] = {lib : tomcatObj['8']['lib']};
+      tomcatJson['lib9'] = {lib : tomcatObj['9']['lib']};
+      vmJson['workSpaces'] = configObj['workSpaces'];
+      vmJson['workAndProjectName'] =  configObj['workAndProjectName'];
+      vmJson['vmConfig'] =  configObj['vmConfig'];
+      viewWasVm(configObj['vmConfig'] || []);
+      showPage('inputClasspath');
+    }
+  }
+  // 변환 버튼을 누를시 
+  const convertSql = (event) => {
+    // ?에 매칭시킬 값 배열 만들기
+    let valueArr = (document.querySelector('#inputSqlValue').value).trim().replace(/\[|\]| /gi,'').split(',');     
+    document.querySelector('#cntInputSqlValue').textContent = `배열의 개수 : ${valueArr.length} 개`;
+    // sql문 배열 만들기
+    let sqlArr = (document.querySelector('#inputSql').value).split('');    
+    let sqlConvertIdx = [] ;
+    // ? 위치 인덱스 값찾기    
+    let position = 0;    
+    for (let index = 0; index < sqlArr.length; index++) {      
+      position = sqlArr.indexOf('?',position);      
+    if(position === -1){      
+      break;
+    }
+      sqlConvertIdx.push(position);
+      position++;
+    }
+    document.querySelector('#cntInputSql').textContent = `?의 개수 ${sqlConvertIdx.length} 개`
+    // ? -> value로 바꿔주기
+    sqlConvertIdx.forEach((position,idx) => {
+      sqlArr[position] = `'${valueArr[idx]}'`;
+    });
+
+    document.querySelector('#completedSql').value = sqlArr.join('') + ';';
+  }
+  // workspaces 등록 
+  const inputWorkspaces = (event) => {    
+    Object.assign(vmJson,{ 'workSpaces' : event.target.value || ''})  ;
+  }
+  // workspace/projectName 등록
+  const inputWrkAndPjName = (event) => {
+    event.target.value = modifyPrefix(event);
+    Object.assign(vmJson,{ 'workAndProjectName' : event.target.value || '' })  ;
+ }
+  // Tomcat,resin의 설정값에 값을 대입 해준다.
+  const setWasVm = (event)=> {
+    return new Promise((resolve, reject) => {
+      let setArr= (event.target.value).split('\n');       
+      Object.assign(vmJson,{ 'vmConfig' : setArr || [] });      
+      resolve(setArr);
+    }).then((result) => viewWasVm(result))
+      .catch((err) => {
+        alert(err);
+    });
+  }
+  // 설정된 값들로 vm을 완성해준다.
+  const viewWasVm = (result) => {    
+    let modifyArr = result.map((set) => {   
+        let modifySet = set.trim();        
+        modifySet = modifySet.replace(/!/gi,vmJson['workSpaces']);
+        modifySet = modifySet.replace(/#/gi,vmJson['workAndProjectName']);
+        modifySet = modifySet.replace(/\//gi,'\\');      
+        return modifySet;
+      });
+      document.querySelector('#completedjvmConfig').value = modifyArr.join('\n');
+  }
+  // page의 id 대응하는 페이지를 보여준다.
+  const showPage = (page) => {
+    document.querySelectorAll('.page').forEach((page) => {
+      page.style.display = "none";
+    })
+    document.querySelector( `#${page}` ).style.display = "block"         
+  };
+  // Config 파일의 유무에 따라 config page를 보여준다.
+  const showCopnfigPage = () => {
+    document.getElementById('selectInputClasspath').disabled = true;
+    document.getElementById( 'selectInitConfig' ).checked =true;
+    showPage('initConfig')
+  }
+  //
+  const setVmJson = (configJson) => {
+    Object.assign(configJson,  {'vmConfig' : vmJson['vmConfig'] || {}});        
+  }
+  
+  // config 파일을 생선한다.
+  const createConfigFile = () => {
+    return new Promise((resolve, reject) => {      
+      let configJson = {};
+      setTomcatConfig(configJson);
+      setWorkspacesHome(configJson);
+      setWorkspaceAndProjecName(configJson);
+      setVmJson(configJson);
+      
+      resolve(configJson);
+    })
+    .then((result) => {    
+      let text = `const configObj = ${JSON.stringify(result)};`
+      download("config.js",text);
+      alert('다운로드된 config.js 파일을 본 파일과 동일한 디렉토리로 옮기세요')
+    })
+    .catch((err) => {
+      alert(err);
+    });
+  };
+  // workspace/projectName 세팅
+  const setWorkspaceAndProjecName = (configJson) => {    
+    Object.assign(configJson,  {'workSpaces' : vmJson['workSpaces'] || {}});
+  }
+  // workspaces 세팅
+  const setWorkspacesHome = (configJson) => {
+    Object.assign(configJson,  {'workAndProjectName' : vmJson['workAndProjectName'] || {}});    
+  }
+  // tomcat config 세팅
+  const setTomcatConfig = (configJson) => {
+    Object.assign(tomcatJson["home7"] || {},  tomcatJson["lib7"] );
+    Object.assign(tomcatJson["home8"] || {},  tomcatJson["lib8"] );
+    Object.assign(tomcatJson["home9"] || {},  tomcatJson["lib9"] );      
+    Object.assign(tomcatObj,{7: tomcatJson["home7"] || {} });
+    Object.assign(tomcatObj,{8: tomcatJson["home8"] || {} });
+    Object.assign(tomcatObj,{9: tomcatJson["home9"] || {} });    
+    Object.assign(configJson,{tomcatObj : tomcatObj});
+  }
+  // json 데이터를 만들기 위해 tomcat의 경로를 입력 받는다.
+  async function inputTomcatHomeDir(event) {
+    // 입력받은 데이터를 읽는다
+    let tomcatHomePath = await readTomcatHomeDir(event);
+    // 읽은 데이터를 json 형태로 쓴다.
+    await writeTomcatHomeDir(event, tomcatHomePath);
+  }
+  // 입력 받은 데이터를 정제하여 리턴한다.
+  const readTomcatHomeDir = (event) => {
+    return new Promise((resolve, reject) => {
+      resolve(modifyDelimiter(event.target.value));
+    });
+  };
+  // tomcatHome을 json 형태로 써준다.
+  const writeTomcatHomeDir = (event, tomcatHomePath) => {
+    return new Promise((resolve, reject) => {
+      let key = event.target.dataset["value"];
+      Object.assign(tomcatJson, { ["home" + key]: { wasHome: tomcatHomePath } });
+      resolve();
+    });
+  };
+  const enablePrefix = (event) => {
+    let dom = event.target;
+
+    if(!dom.checked){
+      document.querySelector(".prefix").disabled = true;
+    }else{
+      document.querySelector(".prefix").disabled = false;
+    }
+  }
+  //  \ -> / 로 변경
+  const modifyDelimiter = (param) => {    
+    return param.replace(/\\/gi, "/");
+  };
+  // 톰캣 lib를 등록해준다.
+  async function inputTomcatLibDir(event) {
+    let tomcatArray = await readTomcatLibDir(event);
+    await writeTocatLibDir(event, tomcatArray);
+  }
+  // 톰캣 디렉토리에서 jar파일을 읽는다.
+  const readTomcatLibDir = (event) => {
+    return new Promise((resolve, reject) => {
+      const input = event.target;
+      let tomcatArray = [];
+      for (const file of input.files) {
+        tomcatArray.push(file.webkitRelativePath);
+      }
+      resolve(tomcatArray);
+    });
+  };
+  // 톰캣의 lib 디렉토리 파일들을 json 형태의 데이터로 쓴다.
+  const writeTocatLibDir = (event, tomcatArray) => {
+    return new Promise((resolve, reject) => {
+      let key = event.target.dataset["value"];
+      Object.assign(tomcatJson, { ["lib" + key]: { lib: tomcatArray } });
+      resolve();
+    });
+  };
+  // file을 읽어서 file의 name 갑슬 return 한다.
+  function fileRead(file) {
+    return new Promise((resolve, reject) => {
+      let fr = new FileReader();
+      fr.onload = (e) => {
+        resolve(file["name"]);
+      };
+      fr.readAsDataURL(file);
+    });
+  }
+  // 읽은 파일의 name값을 받아 한줄씩 써내려간다.
+  function jarWriteString(fileString) {
+    let prefix = document.querySelector(".prefixTxt").innerHTML;
+    let docMake = DOM_FORM_START + prefix + fileString + DOM_FORM_END;
+    fileCount++;
+    document.querySelector(".fileCnt").innerHTML = fileCount + "개";
+    document.querySelector(".fileList").textContent += docMake;
+  }
+  // 파일을 다운로드 한다.
+  function download(filename, text) {
+    const element = document.createElement("a");
+    element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(text));
+    element.setAttribute("download", filename);
+    element.style.display = "none";
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  }
+  // 수정할 .classpath 파일을 읽는다.
+  function classpathRead() {
+    return new Promise((resolve, reject) => {
+      let file = document.getElementById("classpath").files[0];
+      if(file !== undefined && file !== null){
+        let reader = new FileReader();      
+        reader.readAsText(file);
+        reader.onload = () => {
+          resolve(reader.result);
+        };
+      }
+    });
+  }
+  // 수정할 .classpath 파일에 내용을 추가한다.
+  const classpathWrite = (result) => {
+    let classpathTxt = result;
+    let insertIndex = classpathTxt.lastIndexOf("</classpath>");
+    let insertDoc = document.querySelector(".fileList").innerHTML;
+    insertDoc = insertDoc.replace(/&lt;/g, "<");
+    insertDoc = insertDoc.replace(/&gt;/g, ">");
+    let classpathTxtModi = insertTxt(classpathTxt,insertDoc,insertIndex)    
+    return classpathTxtModi;
+  };
+  // 문자열 중간에 삽입
+  const insertTxt = (OriginText,insertTxt,insertIndex) => {
+   return OriginText.slice(0, insertIndex) + "\n\n" + insertTxt + "\n\n" + OriginText.slice(insertIndex);
+  }
+  // classpathfile을 다운로드하기위한 함수
+  const classpathFileDownload = (event) => {
+    return new Promise((resolve, reject) => {
+      let classpathTxt = classpathRead();
+      resolve(classpathTxt);
+    })
+      .then((result) => classpathWrite(result))
+      .then((result) => download(".classpath", result));
+  };
+  // file을 초기화 시켜준다.
+  const fileInit = (event) => {
+    fileCount = 0;
+    document.querySelector(".addFile").value = "";
+    document.querySelector("#classpath").value = "";
+    document.querySelector(".prefix").value = "";
+    document.querySelector(".fileList").innerHTML = "";
+    document.getElementById("output").textContent = "";
+    document.querySelector(".fileCnt").innerHTML = "0개";
+    document.querySelector(".prefixTxt").innerHTML = "";
+  };
+  // config에서 입력한 워크스페이스/프로젝트 명을 정제한다.
+  const modifyPrefix = (event) => {
+    // workspaces 의 이름명을 찾는다    
+    let workspacesArr = ( configObj['workSpaces'] || vmJson['workSpaces'] ).split(/\\|\//);
+    let workspaces = workspacesArr[workspacesArr.length - 1] || '';
+    
+    let prefixArray = ((event.target.value).trim()).split(/\\|\//);    
+    let modifyTxt =  prefixArray.slice(prefixArray.indexOf(workspaces)+1,prefixArray.indexOf(workspaces)+3).join('\\');
+    return modifyTxt;    
+  } 
+  // jar 리스트를 보여준다.
+  const showJarList = (event) => {
+    // WEB-INF/lib에 있는 jar파일
+    let workspaceName =  document.querySelector("#enablePrefix").checked && document.querySelector(".prefix").value;    
+    let fullPath = workspaceName ? `D:/NANUM/${workspaces}/${workspaceName}/webapp/WEB-INF/lib/` :`webapp/WEB-INF/lib/`;
+    document.querySelector(".prefixTxt").innerHTML = fullPath;
+
+    // file 객체만을 담은 배열을 return
+    let files = document.querySelector(".addFile").files;
+    let fileArray = Object.entries(files).map((element, index) => element[1]);
+    // Jar file 객체를 담은 배열을 읽고 써준다.
+    Promise.all(Array.prototype.map.call(fileArray, fileRead))
+      .then((result) => {
+        result.map((fileName) => {
+          jarWriteString(fileName);
+        });
+      })
+      .then(() => showTomcatJarList());
+    document.querySelector(".addFile").value = "";
+  };
+  // TomcatFileList를 써준다.
+  const showTomcatJarList = () => {
+    let docMake = "";
+    let tomcatVersion = document.querySelector('input[type=radio][name="tomcatVersion"]:checked').value;
+    let tomcatWasPath = tomcatObj[tomcatVersion].wasHome;
+    let tomcatPath = tomcatObj[tomcatVersion].lib;
+
+    tomcatPath.forEach((jar) => {
+      let tomcatfullPath = `${tomcatWasPath}/${jar}`;
+      docMake = DOM_FORM_START + tomcatfullPath + DOM_FORM_END;
+      document.querySelector(".fileList").textContent += docMake;
+    });
+  }
+  // Event를 등록한다.
+  function initEventFunction() {
+
+    // viewPage를 설정할 라디오박스에 이벤트를 단다.
+    document.querySelectorAll('input[type=radio][name=selectView]').forEach((page) => {
+      page.addEventListener('change',(event) => showPage(event && event.target.value || "inputClasspath"));
+    })
+    // classpath 파일을 등록하면 다운로드를 바로 진행한다.
+    document.getElementById("classpath").addEventListener("change", (event) => classpathFileDownload(event));
+    // 초기화 버튼을 누르면 동작한다.
+    document.querySelector(".fileinit").addEventListener("click", (event) => fileInit(event));
+    // 프로젝트명 사용여부
+    document.querySelector('#enablePrefix').addEventListener("change",(event) => enablePrefix(event))
+    // 워크스페이스/프로젝트 명을 변경시킨다.
+    document.querySelector('.prefix').addEventListener("change", (event) => event.target.value = modifyDelimiter(event.target.value));    
+    // 확인 버튼을 누를시 해당 등록하 파일명리스트를 보여준다.
+    document.querySelector(".fileConfirm").addEventListener("click", (event) => showJarList(event));
+    // 생성 버튼 누를시 다운로드가 진행된다.
+    document.querySelector(".createConfigFile").addEventListener("click", () => createConfigFile());
+    // Tomcat의 Jar파일을 등록할 때 발생
+    document.querySelectorAll(".tomcatFile").forEach((element) => {
+      element.addEventListener("change", (event) => inputTomcatLibDir(event));
+    });
+    // Tomcat의 HOME 파일을 등록할 때 발생
+    document.querySelectorAll(".tomcatHome").forEach((element) => {
+      element.addEventListener("change", (event) => inputTomcatHomeDir(event));
+    });
+    // workspaces의 값을 변경시 값등록
+    document.querySelector('#copyWorkspaces').addEventListener('change',(event) => inputWorkspaces(event));
+    // 프로젝트 등록시 값 등록
+    document.querySelector('#copyWorkAndProjName').addEventListener('change',(event) => inputWrkAndPjName(event));
+    // Tomcat의 vm 세팅 값 설정시 이벤트
+    document.querySelector('#jvmConfig').addEventListener('change',(event) => setWasVm(event));    
+    document.querySelector('#jvmConfig').addEventListener('click',(event) => setWasVm(event));    
+    // SQL문을 입력받은 후 변수를 세팅해준다.
+    document.querySelector('#conversionSql').addEventListener('click',() => convertSql());
+  }
+</script>
+</html>
