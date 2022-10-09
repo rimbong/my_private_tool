@@ -449,7 +449,8 @@
     // 프로젝트 등록시 값 등록
     document.querySelector('#copyWorkAndProjName').addEventListener('change',(event) => inputWrkAndPjName(event));
     // Tomcat의 vm 세팅 값 설정시 이벤트
-    document.querySelector('#jvmConfig').addEventListener('change',(event) => setWasVm(event));
+    document.querySelector('#jvmConfig').addEventListener('change',(event) => setWasVm(event));    
+    document.querySelector('#jvmConfig').addEventListener('click',(event) => setWasVm(event));    
     // SQL문을 입력받은 후 변수를 세팅해준다.
     document.querySelector('#conversionSql').addEventListener('click',() => convertSql());
   }
