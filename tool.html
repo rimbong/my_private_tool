@@ -15,7 +15,7 @@
       <input type="radio" name="tomcatVersion" id="version8" value="8" /><label for="version8">tomcat8</label> <input
         type="radio" name="tomcatVersion" id="version9" value="9" /><label for="version9">tomcat9</label>
       <br /><br />
-      <span>WEB-INF :</span>
+      <span>WEB-INF/lib 모든 jar파일 선택 :</span>
       <input type="file" class="addFile" value="jar 등록" multiple /><br />
       <span class="fileCnt">0개</span><br /><br />
       <input type="checkbox" name="enablePrefix" id="enablePrefix"> 지정할 prefix 명 : <input type="text" id="prefix" class="prefix" size="50" disabled/><br>
@@ -55,7 +55,10 @@
       
       <span>JVM 설정 변수 개행(줄 단위)로 구분하여 작성 [ ! => workspaces 절대경로, # => workspace/project name ]</span>
       <textarea name="jvmConfig" id="jvmConfig" style="width: 100%;height: 30% ;text-align: left;font-size: 15px;"></textarea><br><br>      
+      <span>변환 결과</span>
       <textarea name="completedjvmConfig" id="completedjvmConfig" style="width: 100%;height: 30% ;text-align: left;font-size: 15px;" readonly></textarea><br><br>      
+      <span>licenseKey</span>
+      <textarea name="licenseKey" id="licenseKey" style="width: 100%;height: 30% ;text-align: left;font-size: 15px;" ></textarea><br><br>      
       <input type="button" class="createConfigFile" value="생성" />
     </form>
   </div>
@@ -110,7 +113,7 @@
       document.querySelector('#copyWorkspaces').value = configObj['workSpaces']|| '';
       document.querySelector('#copyWorkAndProjName').value = configObj['workAndProjectName']|| '';      
       document.querySelector('#jvmConfig').value = configObj['vmConfig'].join('\n') || '';
-      
+      document.querySelector('#licenseKey').value = configObj['vmLicenseKey'].join('\n') || '';
 
       // config 파일 존재의 경우 json 객체들을 세팅 해준다.
       tomcatJson['home7'] = {wasHome : tomcatObj['7']['wasHome']};
@@ -122,6 +125,7 @@
       vmJson['workSpaces'] = configObj['workSpaces'];
       vmJson['workAndProjectName'] =  configObj['workAndProjectName'];
       vmJson['vmConfig'] =  configObj['vmConfig'];
+      vmJson['vmLicenseKey'] =  configObj['vmLicenseKey'];
       viewWasVm(configObj['vmConfig'] || []);
       showPage('inputClasspath');
     }
@@ -172,6 +176,11 @@
         alert(err);
     });
   }
+  // Tomcat,resin의 설정값에 값을 대입 해준다.
+  const setLicenseKey = (event)=> {    
+      let licenseKey= (event.target.value).split('\n');       
+      Object.assign(vmJson,{ 'vmLicenseKey' : licenseKey || "" });
+  }
   // 설정된 값들로 vm을 완성해준다.
   const viewWasVm = (result) => {    
     let modifyArr = result.map((set) => {   
@@ -196,11 +205,16 @@
     document.getElementById( 'selectInitConfig' ).checked =true;
     showPage('initConfig')
   }
-  //
-  const setVmJson = (configJson) => {
+  // config 파일 세팅
+  const setVmConfig = (configJson) => {
     Object.assign(configJson,  {'vmConfig' : vmJson['vmConfig'] || {}});        
   }
   
+  // license 파일 세팅
+  const setLicense = (configJson) => {
+    Object.assign(configJson,  {'vmLicenseKey' : vmJson['vmLicenseKey'] || {}});        
+  }
+
   // config 파일을 생선한다.
   const createConfigFile = () => {
     return new Promise((resolve, reject) => {      
@@ -208,7 +222,8 @@
       setTomcatConfig(configJson);
       setWorkspacesHome(configJson);
       setWorkspaceAndProjecName(configJson);
-      setVmJson(configJson);
+      setVmConfig(configJson);
+      setLicense(configJson);
       
       resolve(configJson);
     })
@@ -449,6 +464,8 @@
     // Tomcat의 vm 세팅 값 설정시 이벤트
     document.querySelector('#jvmConfig').addEventListener('change',(event) => setWasVm(event));    
     document.querySelector('#jvmConfig').addEventListener('click',(event) => setWasVm(event));    
+    // license Key
+    document.querySelector('#licenseKey').addEventListener('change',(event) => setLicenseKey(event));    
     // SQL문을 입력받은 후 변수를 세팅해준다.
     document.querySelector('#conversionSql').addEventListener('click',() => convertSql());
   }
