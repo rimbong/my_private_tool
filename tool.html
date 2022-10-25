@@ -53,7 +53,8 @@
       지정할 워크스페이스/프로젝트 : <input type="text" id="copyWorkAndProjName" class="copyWorkAndProjName" size="50"><br>
       ( 예 : D:/HOME/workspaces/<span style="text-decoration-color: red; text-decoration-line: underline"><mark>projectWorkspace/projectName</mark></span>)<br><br>
       
-      <span>JVM 설정 변수 개행(줄 단위)로 구분하여 작성 [ ! => workspaces 절대경로, # => workspace/project name ]</span>
+      <span>JVM 설정 변수 개행(줄 단위)로 구분하여 작성 <span style="text-decoration-color: red; text-decoration-line: underline"><mark>[ ! => workspaces 절대경로, # => workspace/project name ]</mark></span></span><br>
+      <input style="width: 100px;" type="button" class="convertJVMConfig" id="convertJVMConfig" value="변환"><br>
       <textarea name="jvmConfig" id="jvmConfig" style="width: 100%;height: 30% ;text-align: left;font-size: 15px;"></textarea><br><br>      
       <span>변환 결과</span>
       <textarea name="completedjvmConfig" id="completedjvmConfig" style="width: 100%;height: 30% ;text-align: left;font-size: 15px;" readonly></textarea><br><br>      
@@ -169,6 +170,16 @@
   const setWasVm = (event)=> {
     return new Promise((resolve, reject) => {
       let setArr= (event.target.value).split('\n');       
+      Object.assign(vmJson,{ 'vmConfig' : setArr || [] });      
+      resolve(setArr);
+    }).then((result) => viewWasVm(result))
+      .catch((err) => {
+        alert(err);
+    });
+  }
+  const convertJVMConfig = ()=> {
+    return new Promise((resolve, reject) => {
+      let setArr= (document.querySelector('#jvmConfig').value).split('\n');       
       Object.assign(vmJson,{ 'vmConfig' : setArr || [] });      
       resolve(setArr);
     }).then((result) => viewWasVm(result))
@@ -463,7 +474,8 @@
     document.querySelector('#copyWorkAndProjName').addEventListener('change',(event) => inputWrkAndPjName(event));
     // Tomcat의 vm 세팅 값 설정시 이벤트
     document.querySelector('#jvmConfig').addEventListener('change',(event) => setWasVm(event));    
-    document.querySelector('#jvmConfig').addEventListener('click',(event) => setWasVm(event));    
+    // 변환 버튼 클릭
+    document.querySelector('#convertJVMConfig').addEventListener('click',() => convertJVMConfig());    
     // license Key
     document.querySelector('#licenseKey').addEventListener('change',(event) => setLicenseKey(event));    
     // SQL문을 입력받은 후 변수를 세팅해준다.
