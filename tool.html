@@ -164,7 +164,7 @@
   }
   // workspace/projectName 등록
   const inputWrkAndPjName = (event) => {
-    event.target.value = modifyPrefix(event);
+    event.target.value = modifyWrkPrefixAndSuffix(event);
     Object.assign(vmJson,{ 'workAndProjectName' : event.target.value || '' })  ;
  }
   // Tomcat,resin의 설정값에 값을 대입 해준다.
@@ -261,6 +261,7 @@
     Object.assign(tomcatJson["home7"] || {},  tomcatJson["lib7"] );
     Object.assign(tomcatJson["home8"] || {},  tomcatJson["lib8"] );
     Object.assign(tomcatJson["home9"] || {},  tomcatJson["lib9"] );      
+    
     Object.assign(tomcatObj,{7: tomcatJson["home7"] || {} });
     Object.assign(tomcatObj,{8: tomcatJson["home8"] || {} });
     Object.assign(tomcatObj,{9: tomcatJson["home9"] || {} });    
@@ -400,12 +401,26 @@
     document.querySelector(".prefixTxt").innerHTML = "";
   };
   // config에서 입력한 워크스페이스/프로젝트 명을 정제한다.
-  const modifyPrefix = (event) => {
+  const modifyWrkPrefixAndSuffix = (event) => {
     // workspaces 의 이름명을 찾는다    
     let workspacesArr = ( configObj['workSpaces'] || vmJson['workSpaces'] ).split(/\\|\//);
     let workspaces = workspacesArr[workspacesArr.length - 1] || '';
-    
-    let prefixArray = ((event.target.value).trim()).split(/\\|\//);    
+    // prefix,suffix 체크    
+    let refinedVariable = event.target.value;
+    let keepChecking = true;
+    while (keepChecking) {
+      keepChecking = false;
+      if(/^[\/\\].*/.test(refinedVariable)){
+        refinedVariable = refinedVariable.slice(1)        
+        keepChecking = true;
+      }
+      if(/.*[\/\\]$/.test(refinedVariable)){
+        refinedVariable = refinedVariable.slice(0,refinedVariable.length-1)
+        keepChecking = true;
+      }
+    }
+
+    let prefixArray = (refinedVariable.trim()).split(/\\|\//);    
     let modifyTxt =  prefixArray.slice(prefixArray.indexOf(workspaces)+1,prefixArray.indexOf(workspaces)+3).join('\\');
     return modifyTxt;    
   } 
