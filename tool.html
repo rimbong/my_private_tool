@@ -16,6 +16,8 @@
         type="radio" name="tomcatVersion" id="version9" value="9" /><label for="version9">tomcat9</label>
       <br /><br />
       <span>WEB-INF/lib 모든 jar파일 선택 :</span>
+      <input type="text" id="plusWebappPath" class="plusWebappPath" size="50" />
+
       <input type="file" class="addFile" value="jar 등록" multiple /><br />
       <span class="fileCnt">0개</span><br /><br />
       <input type="checkbox" name="enablePrefix" id="enablePrefix"> 지정할 prefix 명 : <input type="text" id="prefix" class="prefix" size="50" disabled/><br>
@@ -135,8 +137,23 @@
   // 변환 버튼을 누를시 
   const convertSql = (event) => {
     // ?에 매칭시킬 값 배열 만들기
-    let valueArr = (document.querySelector('#inputSqlValue').value).trim().replace(/\[|\]| /gi,'').split(',');     
+    let valueArr = (document.querySelector('#inputSqlValue').value).trim().replace(/\[|\]| /gi,'');    
+    valueArr = valueArr && valueArr.split(',');
     document.querySelector('#cntInputSqlValue').textContent = `배열의 개수 : ${valueArr.length} 개`;
+    
+    // sql문 중 정제되지 않은 String 형태의 + 로 연결된 문자열이 들어온 경우를 위해 필터링을 거쳐준다.
+    let tmpSql = document.querySelector('#inputSql').value;    
+    let tmpSqlArr = tmpSql.split('\n');    
+    tmpSqlArr.forEach(element => {      
+      let replaceStr = element.match(/(["'])(?:(?=(\\?))\2.)*?\1/i); 
+      if(replaceStr){
+        replaceStr = replaceStr[0];
+        replaceStr = replaceStr.replace(/\"/gi,"");
+        tmpSql = tmpSql.replace(element,replaceStr);
+      }
+    });    
+        
+    document.querySelector('#inputSql').value = tmpSql;
     // sql문 배열 만들기
     let sqlArr = (document.querySelector('#inputSql').value).split('');    
     let sqlConvertIdx = [] ;
@@ -457,6 +474,10 @@
       document.querySelector(".fileList").value += docMake;
     });
   }
+  const plusWebappPath = (event) => {
+    let value = event.target.value;    
+    event.target.value = value + "\\webapp\\WEB-INF\\lib";
+  }
   // Event를 등록한다.
   function initEventFunction() {
 
@@ -466,6 +487,8 @@
     })
     // classpath 파일을 등록하면 다운로드를 바로 진행한다.
     document.getElementById("classpath").addEventListener("change", (event) => classpathFileDownload(event));
+    // webapp 경로추가
+    document.getElementById("plusWebappPath").addEventListener("change", (event) => plusWebappPath(event));
     // 초기화 버튼을 누르면 동작한다.
     document.querySelector(".fileinit").addEventListener("click", (event) => fileInit(event));
     // 프로젝트명 사용여부
