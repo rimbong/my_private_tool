@@ -143,19 +143,18 @@
     
     // sql문 중 정제되지 않은 String 형태의 + 로 연결된 문자열이 들어온 경우를 위해 필터링을 거쳐준다.
     let tmpSql = document.querySelector('#inputSql').value;    
-    let tmpSqlArr = tmpSql.split('\n');    
+    let tmpSqlArr = tmpSql.split('\n');        
     tmpSqlArr.forEach(element => {      
-      let replaceStr = element.match(/(["'])(?:(?=(\\?))\2.)*?\1/i); 
+      let replaceStr = element.match(/(["])(?:(?=(\\?))\2.)*?\1/i);       
       if(replaceStr){
         replaceStr = replaceStr[0];
         replaceStr = replaceStr.replace(/\"/gi,"");
         tmpSql = tmpSql.replace(element,replaceStr);
       }
-    });    
-        
-    document.querySelector('#inputSql').value = tmpSql;
+    });           
+    
     // sql문 배열 만들기
-    let sqlArr = (document.querySelector('#inputSql').value).split('');    
+    let sqlArr = (tmpSql).split('');    
     let sqlConvertIdx = [] ;
     // ? 위치 인덱스 값찾기    
     let position = 0;    
