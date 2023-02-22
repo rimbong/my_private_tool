@@ -12,6 +12,7 @@
       설정</label>
     <input type="radio" name="selectView" id="selectQueryPage" value="queryPage"><label for="selectQueryPage">SQL문
       변환</label>
+    <input type="radio" name="selectView" id="selectCustomerManagement" value="customerManagement"><label for="selectCustomerManagement">고객관리 변환</label>
   </div>
   <div id="inputClasspath" class="page">
     <form method="POST" onsubmit="return false;" enctype="multipart/form-data">
@@ -100,10 +101,16 @@
           <span id="completedSqlAlert"></span>
           <textarea name="completedSql" id="completedSql"
             style="width: 100%;height: 100%;text-align: left;font-size: 20px;"></textarea><br><br>
-        </div>
-        
+        </div>        
       </div>
     </form>
+  </div>
+  <div id="customerManagement" class="page">
+   <div style="width: 50%; height: 100%; position: relative;">
+      <textarea name="inputCmDom" id="inputCmDom" style="width: 100%;height: 50%;text-align: left;font-size: 20px;"></textarea>
+      <input type="button" value="변환" id="inputCmDomChange" style="display: block;width: 100px;margin: 30px auto; ">
+      <textarea name="changedCmDom" id="changedCmDom" style="width: 100%;height: 50%;text-align: left;font-size: 20px;"></textarea>
+   </div>
   </div>
 </body>
 <!-- 
@@ -518,7 +525,7 @@
       document.querySelector(".fileList").value += docMake;
     });
   }
-  const plusWebappPath = (event) => {
+  const plusWebappPath = (event) => {    
     let value = event.target.value;
     event.target.value = value + "\\webapp\\WEB-INF\\lib";
     copyText(event.target.value,document.getElementById('webappPathAlert')).then((result) => {
@@ -537,7 +544,6 @@
   async function copyText(text,spanEl) {
     // 임시의 textarea 생성
     const copyValue = document.createElement("textarea");
-
     // body 요소에 존재해야 복사가 진행됨
     document.body.appendChild(copyValue);
 
@@ -554,6 +560,28 @@
       return false
     }    
   }
+  function convertStringToCM() { 
+    const inputCmDom = document.getElementById('inputCmDom').value;    
+    // 문자열을 dom객체로 만들어준다 
+    const CmDom = domParser(inputCmDom);
+    // dom 객체중 필요한 부분을 뽑아서 저장한다.    
+    getManageList(CmDom);
+    // 따로 뽑은 부분을 알맞는 형태로 만들어준다.
+  }
+
+  // dom 객체로부터 필요한 부분을 가져온다.
+  function getManageList(dom) {  
+    const manageList = dom.getElementById('supportTotalList').querySelectorAll('tbody > tr');
+    let manageArr = Array.prototype.slice.call(manageList);
+    manageArr.splice(manageArr.length-1);    
+  }
+  // String을 Dom 객체로 변환시켜준다.
+  function domParser(param) {  
+    let parser = new DOMParser();
+    let doc = parser.parseFromString(param,'text/html');
+    return doc;
+  }
+
   // Event를 등록한다.
   function initEventFunction() {
 
@@ -595,6 +623,8 @@
     document.querySelector('#licenseKey').addEventListener('change', (event) => setLicenseKey(event));
     // SQL문을 입력받은 후 변수를 세팅해준다.
     document.querySelector('#conversionSql').addEventListener('click', () => convertSql());
+    // 입력받은 dom 객체 형태의 문자열을 dom으로 만들어준 후에 알맞는 형태의 문자열로 변경한다.
+    document.querySelector('#inputCmDomChange').addEventListener('click',() => { convertStringToCM() })
   }
 </script>
 
