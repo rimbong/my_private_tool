@@ -207,6 +207,8 @@
     });
 
     document.querySelector('#completedSql').value = sqlArr.join('') + ';';
+
+    // 완성본 자동 복사
     copyText(document.querySelector('#completedSql').value,document.getElementById('completedSqlAlert') ).then((result) => {
         if(result) {
           let alertTxt = result;
@@ -565,15 +567,30 @@
     // 문자열을 dom객체로 만들어준다 
     const CmDom = domParser(inputCmDom);
     // dom 객체중 필요한 부분을 뽑아서 저장한다.    
-    getManageList(CmDom);
-    // 따로 뽑은 부분을 알맞는 형태로 만들어준다.
+    const refinedManageArr = getManageList(CmDom);    
+    // 해당 내용을 적용한다.
+    document.getElementById('changedCmDom').value = refinedManageArr.join('\n');        
   }
 
   // dom 객체로부터 필요한 부분을 가져온다.
   function getManageList(dom) {  
+    let refinedManageArr = [];
     const manageList = dom.getElementById('supportTotalList').querySelectorAll('tbody > tr');
     let manageArr = Array.prototype.slice.call(manageList);
-    manageArr.splice(manageArr.length-1);    
+    manageArr.splice(manageArr.length-1);  
+    
+    refinedManageArr = manageArr.map((tr,index)=>{      
+      let tdList = tr.querySelectorAll('td');
+      tdArr = Array.prototype.slice.call(tdList);
+      tdArr = tdArr.filter((td,index)=>{      
+        if(td.style && td.style.display != 'none'){
+          return td;
+        }
+      })
+     
+      return `□ ${tdArr[2].innerHTML} (진행중)\n- [${tdArr[0].innerHTML}] ${tdArr[3].innerHTML}`;
+    })
+    return refinedManageArr;
   }
   // String을 Dom 객체로 변환시켜준다.
   function domParser(param) {  
