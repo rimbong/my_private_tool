@@ -577,7 +577,7 @@
     let refinedManageArr = [];
     const manageList = dom.getElementById('supportTotalList').querySelectorAll('tbody > tr');
     let manageArr = Array.prototype.slice.call(manageList);
-    manageArr.splice(manageArr.length-1);  
+    // manageArr.splice(manageArr.length-1);  
     
     refinedManageArr = manageArr.map((tr,index)=>{      
       let tdList = tr.querySelectorAll('td');
