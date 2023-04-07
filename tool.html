@@ -576,9 +576,11 @@
   function getManageList(dom) {  
     let refinedManageArr = [];
     const manageList = dom.getElementById('supportTotalList').querySelectorAll('tbody > tr');
-    let manageArr = Array.prototype.slice.call(manageList);
-    // manageArr.splice(manageArr.length-1);  
-    
+    let manageArr = Array.prototype.slice.call(manageList);    
+    manageArr = manageArr.filter((item,index)=>{      
+          return item.hasAttribute('data-uid');
+    })
+
     refinedManageArr = manageArr.map((tr,index)=>{      
       let tdList = tr.querySelectorAll('td');
       tdArr = Array.prototype.slice.call(tdList);
