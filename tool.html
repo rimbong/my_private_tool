@@ -178,12 +178,21 @@
     // sql문 중 정제되지 않은 String 형태의 + 로 연결된 문자열이 들어온 경우를 위해 필터링을 거쳐준다.
     let tmpSql = document.querySelector('#inputSql').value;
     let tmpSqlArr = tmpSql.split('\n');
+    
     tmpSqlArr.forEach(element => {
-      let replaceStr = element.match(/(["])(?:(?=(\\?))\2.)*?\1/i);
+      let replaceStr = element.match(/(["])(?:(?=(\\?))\2.)*?\1/gi);
       if (replaceStr) {
-        replaceStr = replaceStr[0];
-        replaceStr = replaceStr.replace(/\"/gi, "");
-        tmpSql = tmpSql.replace(element, replaceStr);
+        if (Array.isArray(replaceStr)){
+          let tmpStr = "";
+          replaceStr.forEach((item,index)=>{      
+            tmpStr += item.replace(/\"/gi, "");            
+          })
+
+          tmpSql.replace(element,tmpStr);
+        }else{
+          replaceStr = replaceStr[0];
+          replaceStr = replaceStr.replace(/\"/gi, "");
+          tmpSql = tmpSql.replace(element, replaceStr);}        
       }
     });
 
@@ -648,3 +657,25 @@
 </script>
 
 </html>
+
+
+<!-- 
+아래 예시 테스트해봐야함
+ " SELECT GROUP_ID							"  +"   FROM kms_group_member                                              "  +"  WHERE member_id = ? AND member_type = '1'                       	" 
+ +" UNION                                                                " 
+ +" SELECT GROUP_ID                                                      " 
+ +"   FROM kms_group_member                                              " 
+ +"  WHERE member_id IN (                                                " 
+ +"                   SELECT DISTINCT nfuid                              " 
+ +"                              FROM xforg_dept                         " 
+ +"                             WHERE is_valid = '1'                     " 
+ +"                        START WITH nfuid IN (                         " 
+ +"                                         SELECT parent_ou             " 
+ +"                                           FROM xforg_person          " 
+ +"                                          WHERE nfuid = ?		        " 
+ +"                                                AND is_valid = '1')	" 
+ +"                        CONNECT BY PRIOR parent_ou = nfuid)           " 
+ +"    AND member_type = '2'                                             " 
+
+
+ -->
