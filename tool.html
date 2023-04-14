@@ -187,8 +187,7 @@
           replaceStr.forEach((item,index)=>{      
             tmpStr += item.replace(/\"/gi, "");            
           })
-
-          tmpSql.replace(element,tmpStr);
+          tmpSql = tmpSql.replace(element,tmpStr);
         }else{
           replaceStr = replaceStr[0];
           replaceStr = replaceStr.replace(/\"/gi, "");
@@ -215,7 +214,7 @@
       sqlArr[position] = `'${valueArr[idx]}'`;
     });
 
-    document.querySelector('#completedSql').value = sqlArr.join('') + ';';
+    document.querySelector('#completedSql').value = (sqlArr.join('')).trim() + ';';
 
     // 완성본 자동 복사
     copyText(document.querySelector('#completedSql').value,document.getElementById('completedSqlAlert') ).then((result) => {
