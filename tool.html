@@ -168,6 +168,30 @@
       showPage('inputClasspath');
     }
   }
+
+  const changeCharArr = (changeChar,insertArr,changeArr) => {
+    
+    let changeIdxArr = [];
+    let position = 0;
+    // 변경될 문자 위치 인덱스 값찾기        
+    for (let index = 0; index < changeArr.length; index++) {      
+      position = changeArr.indexOf(changeChar, index);
+      if ( position === -1) {
+        break;
+      }else{
+        changeIdxArr.push(position);
+        index = position;
+      }      
+    }
+    
+    // changeChar -> inertValue로 바꿔주기
+    changeIdxArr.forEach((position, idx) => {
+      changeArr[position] = `'${insertArr[idx]}'`;
+    });
+
+    return changeIdxArr;
+  }
+
   // 변환 버튼을 누를시 
   const convertSql = (event) => {
     // ?에 매칭시킬 값 배열 만들기
@@ -177,8 +201,7 @@
 
     // sql문 중 정제되지 않은 String 형태의 + 로 연결된 문자열이 들어온 경우를 위해 필터링을 거쳐준다.
     let tmpSql = document.querySelector('#inputSql').value;
-    let tmpSqlArr = tmpSql.split('\n');
-    
+    let tmpSqlArr = tmpSql.split('\n');    
     tmpSqlArr.forEach(element => {
       let replaceStr = element.match(/(["])(?:(?=(\\?))\2.)*?\1/gi);
       if (replaceStr) {
@@ -188,53 +211,23 @@
             tmpStr += item.replace(/\"/gi, "");            
           })
           tmpSql = tmpSql.replace(element,tmpStr);
-        }else{
-          replaceStr = replaceStr[0];
-          replaceStr = replaceStr.replace(/\"/gi, "");
-          tmpSql = tmpSql.replace(element, replaceStr);}        
-      }
-    });
-
-    // sql문 배열 만들기
-    let sqlArr = (tmpSql).split('');
-    let sqlConvertIdx = [];
-    // ? 위치 인덱스 값찾기    
-    let position = 0;
-    for (let index = 0; index < sqlArr.length; index++) {
-      position = sqlArr.indexOf('?', position);
-      if (position === -1) {
-        break;
-      }
-      sqlConvertIdx.push(position);
-      position++;
-    }
-    document.querySelector('#cntInputSql').textContent = `?의 개수 ${sqlConvertIdx.length} 개`
-    // ? -> value로 바꿔주기
-    sqlConvertIdx.forEach((position, idx) => {
-      sqlArr[position] = `'${valueArr[idx]}'`;
-    });
-
-    document.querySelector('#completedSql').value = (sqlArr.join('')).trim() + ';';
-
-    // 완성본 자동 복사
-    copyText(document.querySelector('#completedSql').value,document.getElementById('completedSqlAlert') ).then((result) => {
-        if(result) {
-          let alertTxt = result;
-          tmp = {txt : alertTxt.innerHTML, css : alertTxt.style.cssText}
-          alertTxt.innerHTML = '복사 되었습니다.'
-          alertTxt.style.cssText = `    
-            font-size: 33px;
-            color:red;            
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);`        
-          setTimeout(() => {
-            alertTxt.innerHTML = tmp.txt
-            alertTxt.style.cssText = tmp.css
-          }, 3000);
         }
-      })
+      }      
+    });
+
+    // ? -> value 로 치환 하기
+    let sqlArr = tmpSql.trim().split('');
+    let changeArr = changeCharArr('?',valueArr,sqlArr);
+
+    document.querySelector('#cntInputSql').textContent = `?의 개수 ${changeArr.length} 개`
+    if(sqlArr[sqlArr.length-1] !== ';' ){
+      document.querySelector('#completedSql').value = sqlArr.join('') + ';';
+    }else{
+      document.querySelector('#completedSql').value = sqlArr.join('') ;
+    }
+
+    // 완성본 자동 복사 및 Alert
+    copyAndAlert(document.querySelector('#completedSql').value,document.getElementById('completedSqlAlert') )
   }
   // workspaces 등록 
   const inputWorkspaces = (event) => {
@@ -537,21 +530,11 @@
   }
   const plusWebappPath = (event) => {    
     let value = event.target.value;
-    event.target.value = value + "\\webapp\\WEB-INF\\lib";
-    copyText(event.target.value,document.getElementById('webappPathAlert')).then((result) => {
-      if(result){
-        let alertTxt = result;
-        tmp = {txt : alertTxt.innerHTML, css : alertTxt.style.cssText}
-        alertTxt.innerHTML = '복사 되었습니다.'
-        alertTxt.style.cssText = 'color : red;'        
-        setTimeout(() => {
-          alertTxt.innerHTML = tmp.txt
-          alertTxt.style.cssText = tmp.css
-        }, 3000);
-      }
-    });    
+    event.target.value = value + "\\webapp\\WEB-INF\\lib";   
+    copyAndAlert(event.target.value,document.getElementById('webappPathAlert'));
   }
-  async function copyText(text,spanEl) {
+  
+  async function copyText(text) {
     // 임시의 textarea 생성
     const copyValue = document.createElement("textarea");
     // body 요소에 존재해야 복사가 진행됨
@@ -564,12 +547,36 @@
     // 복사 후 textarea 지우기
     document.execCommand('copy');
     document.body.removeChild(copyValue);
-    if (!!copyValue.value) {
-      return spanEl || true;
-    } else {
-      return false
-    }    
+    return !!copyValue.value    
   }
+
+  async function onAlert(spanEl) {
+    if(spanEl) {      
+      tmp = {txt : spanEl.innerHTML, css : spanEl.style.cssText}
+      spanEl.innerHTML = '복사 되었습니다.'
+      spanEl.style.cssText = `    
+        font-size: 33px;
+        color:red;            
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);`        
+      setTimeout(() => {
+        spanEl.innerHTML = tmp.txt
+        spanEl.style.cssText = tmp.css
+      }, 3000);
+    }
+  }
+
+  async function copyAndAlert(text,spanEl) {
+    const copyResult = await copyText(text);
+    if(copyResult) {
+      const alertResult = await onAlert(spanEl);
+    } else {
+      alert('복사 실패');
+    }
+  }
+
   function convertStringToCM() { 
     const inputCmDom = document.getElementById('inputCmDom').value;    
     // 문자열을 dom객체로 만들어준다 
