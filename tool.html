@@ -250,6 +250,7 @@ const convertSql = (event) => {
 }
 // workspaces 등록 
 const inputWorkspaces = (event) => {
+    event.target.value = modifyWrkspaces(event);
     Object.assign(vmJson, { 'workSpaces': event.target.value || '' });
 }
 // workspace/projectName 등록
@@ -513,6 +514,30 @@ const modifyWrkPrefixAndSuffix = (event) => {
 
     let prefixArray = (refinedVariable.trim()).split(/\\|\//);
     let modifyTxt = prefixArray.slice(prefixArray.indexOf(workspaces) + 1, prefixArray.indexOf(workspaces) + 3).join('\\');
+    return modifyTxt;
+}
+// config에서 입력한 워크스페이스/프로젝트 명을 정제한다.
+const modifyWrkspaces = (event) => {
+    // workspaces 의 이름명을 찾는다    
+    let workspacesArr = (configObj['workSpaces'] || vmJson['workSpaces']).split(/\\|\//);
+    let workspaces = workspacesArr[workspacesArr.length - 1] || '';
+    // prefix,suffix 체크    
+    let refinedVariable = event.target.value;
+    let keepChecking = true;
+    while (keepChecking) {
+        keepChecking = false;
+        if (/^[\/\\].*/.test(refinedVariable)) {
+            refinedVariable = refinedVariable.slice(1)
+            keepChecking = true;
+        }
+        if (/.*[\/\\]$/.test(refinedVariable)) {
+            refinedVariable = refinedVariable.slice(0, refinedVariable.length - 1)
+            keepChecking = true;
+        }
+    }
+
+    let prefixArray = (refinedVariable.trim()).split(/\\|\//);
+    let modifyTxt = prefixArray.slice(0, prefixArray.indexOf(workspaces) + 1).join('\\');
     return modifyTxt;
 }
 // jar 리스트를 보여준다.
