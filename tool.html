@@ -122,8 +122,8 @@
 // 첫 초기화 시켜야하는 변수 및 메서드 init
 const DOM_FORM_START = '<classpathentry kind="lib" path="';
 const DOM_FORM_END = '"/>\n';
-const ACCEPT_FILE_ARRAY = ["jackson", "ojdbc", "ora", "jsoup", "httpclient", "juniversal", "servlet-api"];
-const ACCEPT_TOMCAT_FILE_ARRAY = ["servlet"];
+const EXCEPT_FILE_ARRAY = [];
+const ACCEPT_TOMCAT_FILE_ARRAY = ["servlet", "jsp-api"];
 
 // config.js가 없거나 해당 변수가 정의 되지 않은 경우
 window['configObj'] = {};
@@ -553,20 +553,17 @@ const showJarList = (event) => {
     // Jar file 객체를 담은 배열을 읽고 써준다.
     Promise.all(Array.prototype.map.call(fileArray, fileRead))
         .then((result) => {
-            let acceptArr = result.filter((fileName) => {
-                let acc = ACCEPT_FILE_ARRAY.filter((acceptFileName) => {
+            let exceptArr = result.filter((fileName) => {
+                let acc = EXCEPT_FILE_ARRAY.filter((acceptFileName) => {
                     return fileName.indexOf(acceptFileName) > -1;
                 })
                 return acc.length > 0
             })
 
-            let exceptArr = result.filter((fileName) => {
-                return acceptArr.indexOf(fileName) < 0;
+            let acceptArr = result.filter((fileName) => {
+                return exceptArr.indexOf(fileName) < 0;
             })
 
-            acceptArr.map((fileName) => {
-                jarWriteString(fileName);
-            });
             if (exceptArr.length > 0) {
                 document.querySelector(".fileList").value += "<!--\n";
                 exceptArr.map((fileName) => {
@@ -574,6 +571,10 @@ const showJarList = (event) => {
                 });
                 document.querySelector(".fileList").value += "-->\n";
             }
+            acceptArr.map((fileName) => {
+                jarWriteString(fileName);
+            });
+            
         })
         .then(() => showTomcatJarList())
         .then(() => {
