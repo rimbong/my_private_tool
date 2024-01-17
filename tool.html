@@ -561,10 +561,7 @@ const showJarList = (event) => {
             })
 
             let exceptArr = result.filter((fileName) => {
-                let acc = ACCEPT_FILE_ARRAY.filter((acceptFileName) => {
-                    return fileName.indexOf(acceptFileName) < 0;
-                })
-                return acc.length > 0
+                return acceptArr.indexOf(fileName) < 0;
             })
 
             acceptArr.map((fileName) => {
