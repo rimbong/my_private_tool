@@ -21,7 +21,8 @@
       <input type="radio" name="tomcatVersion" id="version8" value="8" /><label for="version8">tomcat8</label> <input
         type="radio" name="tomcatVersion" id="version9" value="9" /><label for="version9">tomcat9</label>
       <br /><br />
-      <span id="webappPathAlert">WEB-INF/lib 모든 jar파일 선택 :</span>
+      <span id="webappPathGuid">WEB-INF/lib 모든 jar파일 선택 :</span>
+      <span id="webappPathAlert"></span>
       <input type="text" id="plusWebappPath" class="plusWebappPath" size="50" />
       <input type="file" class="addFile" value="jar 등록" multiple /><br />
       <span class="fileCnt">0개</span><br /><br />
@@ -195,6 +196,7 @@ const changeCharArr = (changeChar, insertArr, changeArr) => {
     return changeIdxArr;
 }
 
+// sql 쿼리문 정리
 const cleaningData = (tmpSql) => {
     let tmpSqlArr = tmpSql.split('\n');
     let complSql = "";
@@ -544,7 +546,10 @@ const modifyWrkspaces = (event) => {
 const showJarList = (event) => {
     // WEB-INF/lib에 있는 jar파일
     let workspaceName = document.querySelector("#enablePrefix").checked && document.querySelector(".prefix").value;
-    let fullPath = workspaceName ? `D:/NANUM/${workspaces}/${workspaceName}/webapp/WEB-INF/lib/` : `webapp/WEB-INF/lib/`;
+    let workspaces = (configObj['workSpaces'] || vmJson['workSpaces'])
+
+    let fullPath = workspaceName ? `${workspaces}/${workspaceName}/webapp/WEB-INF/lib/` : `webapp/WEB-INF/lib/`;
+    fullPath = fullPath.replace(/\\/gi, '\/');
     document.querySelector(".prefixTxt").innerHTML = fullPath;
 
     // file 객체만을 담은 배열을 return
@@ -602,10 +607,15 @@ const showTomcatJarList = () => {
     document.querySelector(".fileList").value += "<!--\n";
     tomcatPath.forEach((jar) => {
         let tomcatfullPath = `${tomcatWasPath}/${jar}`;
-        let acc = ACCEPT_TOMCAT_FILE_ARRAY.filter((fileName) => {
-            return tomcatfullPath.indexOf(fileName) < 0;
-        })
-        if (acc.length > 0) {
+        
+        let bTF = true;
+        ACCEPT_TOMCAT_FILE_ARRAY.forEach((fileName) => {
+            if( tomcatfullPath.indexOf(fileName) > -1 ){
+                bTF = false;
+            }
+        });
+
+        if ( bTF ) {
             docMake = DOM_FORM_START + tomcatfullPath + DOM_FORM_END;
             document.querySelector(".fileList").value += docMake;
         }
