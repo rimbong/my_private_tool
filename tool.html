@@ -747,6 +747,9 @@ function getManageList(dom) {
 
     refinedManageArr = manageArr.map((tr, index) => {
         let tdList = tr.querySelectorAll('td');
+       /*  배열형 객체
+        slice() 메서드를 호출하여 배열형 객체와 콜렉션을 새로운 Array로 변환할 수 있습니다.
+        단순히 Function.prototype.bind()를 사용해 객체에 slice()를 바인딩 하면 됩니다.  */
         tdArr = Array.prototype.slice.call(tdList);
         tdArr = tdArr.filter((td, index) => {
             if (td.style && td.style.display != 'none') {
