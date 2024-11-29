@@ -219,17 +219,17 @@ const cleaningData = (tmpSql) => {
         if ( sql.indexOf('//') > -1 ) {
             replaceStr = [""];
         }else{
-            replaceStr = sql.match(/(["])(?:(?=(\\?))\2.)*?\1/gi);
+            // replaceStr = sql.match(/(["])(?:(?=(\\?))\2.)*?\1/gi);
         }
-        if (replaceStr) {
-            if (Array.isArray(replaceStr)) {
-                let tmpStr = "";
-                replaceStr.forEach((item, index) => {
-                    tmpStr += item.replace(/\"/gi, "");
-                })
-                tmpSql = tmpSql.replace(sql, tmpStr);
-            }
-        }
+        // if (replaceStr) {
+        //     if (Array.isArray(replaceStr)) {
+        //         let tmpStr = "";
+        //         replaceStr.forEach((item, index) => {
+        //             tmpStr += item.replace(/\"/gi, "");
+        //         })
+        //         tmpSql = tmpSql.replace(sql, tmpStr);
+        //     }
+        // }
     });
     tmpSqlArr = tmpSql.split('\n');
     tmpSqlArr.forEach((sql) => {
