@@ -47,21 +47,21 @@
         directory /><br />
       Tomcat 7 HOME : <input type="text" class="tomcatHome" size="50" id="tomcatHomeVer7" data-value="7" /><br>
       ( lib의 전 디렉토리 예 : <span
-        style="text-decoration-color: red; text-decoration-line: underline"><mark>D:\HOME\WAS\apache-tomcat-7.0.91</mark></span>\lib)<br /><br /><br />
+        style="text-decoration-color: red; text-decoration-line: underline"><mark>D:\HOME\tomcat\apache-tomcat-7.0.91</mark></span>\lib)<br /><br /><br />
 
       <span>tomcat ver 8 lib 디렉토리를 선택 : </span>
       <input type="file" class="tomcatFile" data-value="8" name="tomcatFileVer8" id="tomcatFileVer8" webkitdirectory
         directory /><br />
       Tomcat 8 HOME : <input type="text" class="tomcatHome" size="50" id="tomcatHomeVer8" data-value="8" /><br>
       ( lib의 전 디렉토리 예 : <span
-        style="text-decoration-color: red; text-decoration-line: underline"><mark>D:\HOME\WAS\apache-tomcat-8.0.53</mark></span>\lib)<br /><br /><br />
+        style="text-decoration-color: red; text-decoration-line: underline"><mark>D:\HOME\tomcat\apache-tomcat-8.0.53</mark></span>\lib)<br /><br /><br />
 
       <span>tomcat ver 9 lib 디렉토리를 선택 : </span>
       <input type="file" class="tomcatFile" data-value="9" name="tomcatFileVer9" id="tomcatFileVer9" webkitdirectory
         directory /><br />
       Tomcat 9 HOME : <input type="text" class="tomcatHome" size="50" id="tomcatHomeVer9" data-value="9" /><br>
       ( lib의 전 디렉토리 예 : <span
-        style="text-decoration-color: red; text-decoration-line: underline"><mark>D:\HOME\WAS\apache-tomcat-9.0.63</mark></span>\lib)<br /><br /><br />
+        style="text-decoration-color: red; text-decoration-line: underline"><mark>D:\HOME\tomcat\apache-tomcat-9.0.63</mark></span>\lib)<br /><br /><br />
 
       지정할 workspaces (workspace의 Home) : <input type="text" id="copyWorkspaces" class="copyWorkspaces" size="50"><br>
       ( 예 : <span
@@ -281,9 +281,9 @@ const setWasVm = (event) => {
         Object.assign(vmJson, { 'vmConfig': setArr || [] });
         resolve(setArr);
     }).then((result) => viewWasVm(result))
-        .catch((err) => {
-            alert(err);
-        });
+    .catch((err) => {
+        alert(err);
+    });
 }
 const convertJVMConfig = () => {
     return new Promise((resolve, reject) => {
