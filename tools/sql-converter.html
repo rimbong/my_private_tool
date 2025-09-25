@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SQL Converter</title>
+  <style>
+    :root {
+      --background-color: #ffffff;
+      --text-color: #111827;
+      --muted-text-color: #6b7280;
+      --card-background-color: #f9fafb;
+      --border-color: #e5e7eb;
+      --button-background-color: #111827;
+      --button-text-color: #ffffff;
+      --button-hover-background-color: #374151;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+    .card {
+      background-color: var(--card-background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+    textarea, input[type="text"] {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+    button {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      margin-top: 1rem;
+      border-radius: 0.375rem;
+      border: 1px solid transparent;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      background-color: var(--button-background-color);
+      color: var(--button-text-color);
+    }
+    button:hover {
+      background-color: var(--button-hover-background-color);
+    }
+    .field-group {
+        margin-bottom: 1rem;
+    }
+    .stats {
+        font-size: 0.9rem;
+        color: var(--muted-text-color);
+        margin-top: 0.5rem;
+    }
+    .output-container {
+        position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="field-group">
+        <label for="inputSqlValue">배열을 입력하세요 (예: [a,b,c,d])</label>
+        <input type="text" name="inputSqlValue" id="inputSqlValue">
+        <div id="cntInputSqlValue" class="stats"></div>
+    </div>
+    <div class="field-group">
+        <label for="inputSql">SQL문을 입력하세요</label>
+        <textarea name="inputSql" id="inputSql"></textarea>
+        <div id="cntInputSql" class="stats"></div>
+    </div>
+    <button id="conversionSql">변환</button>
+    <div class="field-group output-container" style="margin-top: 1rem;">
+        <label for="completedSql">변환된 SQL</label>
+        <span id="completedSqlAlert"></span>
+        <textarea name="completedSql" id="completedSql" readonly></textarea>
+    </div>
+  </div>
+
+  <script src="./shared-utils.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const changeCharArr = (changeChar, insertArr, changeArr) => {
+        let changeIdxArr = [];
+        let position = 0;
+        for (let index = 0; index < changeArr.length; index++) {
+            position = changeArr.indexOf(changeChar, index);
+            if (position === -1) {
+                break;
+            } else {
+                changeIdxArr.push(position);
+                index = position;
+            }
+        }
+
+        changeIdxArr.forEach((position, idx) => {
+            if(idx < insertArr.length) {
+              changeArr[position] = `'${insertArr[idx]}'`;
+            }
+        });
+        return changeIdxArr;
+      }
+
+      const cleaningData = (tmpSql) => {
+        let tmpSqlArr = tmpSql.split('\n');
+        let complSql = "";
+        tmpSqlArr.forEach(sql => {
+            let trimmedSql = sql.trim();
+            if (trimmedSql.startsWith('//')) return;
+            // Remove trailing comments
+            let commentIndex = trimmedSql.indexOf('//');
+            if (commentIndex > -1) {
+                trimmedSql = trimmedSql.substring(0, commentIndex).trim();
+            }
+            // Remove Java-style string concatenation
+            trimmedSql = trimmedSql.replace(/"\s*\+\s*"/g, '');
+            trimmedSql = trimmedSql.replace(/^"|"$/g, '');
+            complSql += trimmedSql + '\n';
+        });
+        return complSql.trim();
+      }
+
+      const convertSql = () => {
+        let valueArr = (document.getElementById('inputSqlValue').value).trim().replace(/[\[\]\s]/g, '').split(',');
+        if(valueArr.length === 1 && valueArr[0] === '') valueArr = [];
+        document.getElementById('cntInputSqlValue').textContent = `배열의 개수 : ${valueArr.length} 개`;
+
+        let tmpSql = cleaningData(document.getElementById('inputSql').value);
+        let sqlArr = tmpSql.split('');
+        let changeArr = changeCharArr('?', valueArr, sqlArr);
+
+        document.getElementById('cntInputSql').textContent = `?의 개수 ${changeArr.length} 개`;
+        
+        let resultSql = sqlArr.join('');
+        if (resultSql && !resultSql.endsWith(';')) {
+            resultSql += ';';
+        }
+        document.getElementById('completedSql').value = resultSql;
+
+        if(resultSql) {
+            copyAndAlert(resultSql, document.getElementById('completedSqlAlert'));
+        }
+      }
+
+      document.getElementById('conversionSql').addEventListener('click', convertSql);
+    });
+  </script>
+</body>
+</html>
