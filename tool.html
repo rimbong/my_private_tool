@@ -12,6 +12,7 @@
     <input type="radio" name="selectView" id="selectCustomerManagement" value="customerManagement"><label for="selectCustomerManagement">고객관리 변환</label>
     <input type="radio" name="selectView" id="selectUriEnc" value="uriEnc"><label for="selectUriEnc">URI디코딩</label>
     <input type="radio" name="selectView" id="selectXmlConvert" value="xmlConvert"><label for="selectXmlConvert">xml 변환</label>
+    <input type="radio" name="selectView" id="selectMarkdownCleaner" value="markdownCleanerPage"><label for="selectMarkdownCleaner">마크다운 변환</label>
   </div>
   <div id="inputClasspath" class="page">
     <form method="POST" onsubmit="return false;" enctype="multipart/form-data">
@@ -126,6 +127,9 @@
       <input type="button" value="변환" id="inputXmlConvert" style="display: block;width: 100px;margin: 30px auto; ">
       <textarea name="convertedXml" id="convertedXml" style="width: 100%;height: 50%;text-align: left;font-size: 20px;"></textarea>
    </div>
+  </div>
+  <div id="markdownCleanerPage" class="page" style="display: none;">
+    <iframe src="./markdown-cleaner.html" style="width: 100%; height: 90vh; border: none;"></iframe>
   </div>
 </body>
 <!-- 
