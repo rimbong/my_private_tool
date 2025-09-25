@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Cleaner</title>
+  <style>
+    :root {
+      --background-color: #ffffff;
+      --text-color: #111827;
+      --muted-text-color: #6b7280;
+      --card-background-color: #f9fafb;
+      --border-color: #e5e7eb;
+      --button-background-color: #111827;
+      --button-text-color: #ffffff;
+      --button-hover-background-color: #374151;
+      --outline-button-border-color: #d1d5db;
+      --outline-button-text-color: #111827;
+      --outline-button-hover-background-color: #f3f4f6;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    header, footer {
+      text-align: center;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    footer {
+      border-top: 1px solid var(--border-color);
+      border-bottom: none;
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: var(--muted-text-color);
+    }
+    h1 {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    .subtitle {
+      font-size: 1.2rem;
+      color: var(--muted-text-color);
+      margin-bottom: 2rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    @media (min-width: 1024px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    .card {
+      background-color: var(--card-background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    .card-description {
+      color: var(--muted-text-color);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    textarea {
+      width: 100%;
+      min-height: 400px;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+    textarea:read-only {
+      background-color: #f3f4f6;
+    }
+    .button-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    button {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border-radius: 0.375rem;
+      border: 1px solid transparent;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .primary-button {
+      background-color: var(--button-background-color);
+      color: var(--button-text-color);
+    }
+    .primary-button:not(:disabled):hover {
+      background-color: var(--button-hover-background-color);
+    }
+    .outline-button {
+      background-color: transparent;
+      border-color: var(--outline-button-border-color);
+      color: var(--outline-button-text-color);
+    }
+    .outline-button:not(:disabled):hover {
+      background-color: var(--outline-button-hover-background-color);
+    }
+    .stats {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--muted-text-color);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: #333;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 5px;
+      opacity: 0;
+      transition: opacity 0.5s;
+      z-index: 100;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>Markdown Cleaner</h1>
+      <p class="subtitle">마크다운 문법을 제거하고 깨끗한 텍스트로 변환하세요.</p>
+    </header>
+
+    <main>
+      <div class="grid">
+        <div class="card">
+          <h2 class="card-title">마크다운 입력</h2>
+          <p class="card-description">마크다운 형식의 텍스트를 붙여넣으세요</p>
+          <textarea id="markdownInput" 
+          placeholder="# 제목
+
+**굵은 글씨**와 *기울임 글씨*
+
+- 리스트 항목 1
+- 리스트 항목 2
+
+[링크](https://example.com)"></textarea>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+            <span id="inputCharCount" class="stats" style="margin-top:0;">0 글자</span>
+            <button id="clearButton" class="outline-button" style="flex: 0.1;">지우기</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title">변환된 텍스트</h2>
+          <p class="card-description">마크다운이 제거된 깨끗한 텍스트</p>
+          <textarea id="plainTextOutput" readonly placeholder="변환된 텍스트가 여기에 표시됩니다..."></textarea>
+          <div class="stats">
+            <span id="wordCount">0 단어</span>
+            <span>•</span>
+            <span id="charCount">0 글자</span>
+            <span>•</span>
+            <span id="charCountNoSpaces">0 글자 (공백 제외)</span>
+          </div>
+          <div class="button-group">
+            <button id="copyButton" class="primary-button">복사하기</button>
+            <button id="downloadButton" class="outline-button">다운로드</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 1.5rem;">
+        <h2 class="card-title">사용 방법</h2>
+        <div style="font-size: 0.9rem; line-height: 1.6;">
+          <p>1. 왼쪽 입력창에 마크다운 형식의 텍스트를 붙여넣으세요.</p>
+          <p>2. 오른쪽에서 자동으로 변환된 결과를 확인하세요.</p>
+          <p>3. 복사 버튼을 클릭하여 클립보드에 저장하거나, 다운로드 버튼으로 텍스트 파일로 저장하세요.</p>
+          <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <h3 style="font-weight: 600; margin-bottom: 0.5rem;">지원하는 마크다운 문법:</h3>
+            <ul style="list-style-position: inside; padding-left: 0; list-style-type: none; color: var(--muted-text-color);">
+              <li>• 헤더 (#, ##, ###...)</li>
+              <li>• 굵은 글씨 (**텍스트**, __텍스트__)</li>
+              <li>• 기울임 글씨 (*텍스트*, _텍스트_)</li>
+              <li>• 링크 [텍스트](URL)</li>
+              <li>• 이미지 ![대체텍스트](URL)</li>
+              <li>• 코드 블록 (```, `)</li>
+              <li>• 리스트 (-, *, +, 1.)</li>
+              <li>• 인용구 (&gt;)</li>
+              <li>• 취소선 (~~텍스트~~)</li>
+              <li>• 테이블</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer>
+      <p>© 2025 MarkdownCleaner. All rights reserved.</p>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const markdownInput = document.getElementById('markdownInput');
+      const plainTextOutput = document.getElementById('plainTextOutput');
+      const copyButton = document.getElementById('copyButton');
+      const downloadButton = document.getElementById('downloadButton');
+      const clearButton = document.getElementById('clearButton');
+      
+      const inputCharCount = document.getElementById('inputCharCount');
+      const wordCount = document.getElementById('wordCount');
+      const charCount = document.getElementById('charCount');
+      const charCountNoSpaces = document.getElementById('charCountNoSpaces');
+      const toast = document.getElementById('toast');
+
+      // --- Core Logic from markdown-utils.ts ---
+      function removeMarkdown(markdown) {
+        if (!markdown) return '';
+        let text = markdown;
+        text = text.replace(/```[\s\S]*?```/g, '');
+        text = text.replace(/`([^`]+)`/g, '$1');
+        text = text.replace(/^#{1,6}\s+(.+)$/gm, '$1');
+        text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+        text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+        text = text.replace(/\*\*([^*]+)\*\*/g, '$1');
+        text = text.replace(/__([^_]+)__/g, '$1');
+        text = text.replace(/\*([^*]+)\*/g, '$1');
+        text = text.replace(/_([^_]+)_/g, '$1');
+        text = text.replace(/~~([^~]+)~~/g, '$1');
+        text = text.replace(/^>\s+(.+)$/gm, '$1');
+        text = text.replace(/^[-\*_]{3,}$/gm, '');
+        text = text.replace(/^\s*[-*+]\s+(.+)$/gm, '$1');
+        text = text.replace(/^\s*\d+\.\s+(.+)$/gm, '$1');
+        text = text.replace(/\|/g, '');
+        text = text.replace(/^[-\s]+$/gm, '');
+        text = text.replace(/<[^>]+>/g, '');
+        text = text.replace(/\n{3,}/g, '\n\n');
+        text = text.trim();
+        return text;
+      }
+
+      function countWords(text) {
+        if (!text) return 0;
+        return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+      }
+
+      function countCharacters(text) {
+        return text.length;
+      }
+
+      function countCharactersWithoutSpaces(text) {
+        return text.replace(/\s/g, '').length;
+      }
+
+      // --- UI Logic ---
+      function updateOutput() {
+        const input = markdownInput.value;
+        const cleaned = removeMarkdown(input);
+        plainTextOutput.value = cleaned;
+
+        // Update stats
+        inputCharCount.textContent = `${countCharacters(input)} 글자`;
+        wordCount.textContent = `${countWords(cleaned)} 단어`;
+        charCount.textContent = `${countCharacters(cleaned)} 글자`;
+        charCountNoSpaces.textContent = `${countCharactersWithoutSpaces(cleaned)} 글자 (공백 제외)`;
+        
+        // Disable buttons if no text
+        copyButton.disabled = !cleaned;
+        downloadButton.disabled = !cleaned;
+        clearButton.disabled = !input;
+      }
+
+      function showToast(message, isSuccess = true) {
+        toast.textContent = message;
+        toast.style.backgroundColor = isSuccess ? '#28a745' : '#dc3545';
+        toast.classList.add('show');
+        setTimeout(() => {
+          toast.classList.remove('show');
+        }, 2000);
+      }
+
+      markdownInput.addEventListener('input', updateOutput);
+
+      clearButton.addEventListener('click', () => {
+        markdownInput.value = '';
+        updateOutput();
+      });
+
+      copyButton.addEventListener('click', async () => {
+        if (!plainTextOutput.value) return;
+
+        copyButton.disabled = true;
+        copyButton.textContent = '복사 중...';
+
+        try {
+          await navigator.clipboard.writeText(plainTextOutput.value);
+          copyButton.textContent = '복사 완료!';
+          showToast('클립보드에 복사되었습니다.');
+        } catch (err) {
+          copyButton.textContent = '복사하기';
+          showToast('복사에 실패했습니다.', false);
+        } finally {
+          setTimeout(() => {
+            copyButton.disabled = false;
+            copyButton.textContent = '복사하기';
+          }, 2000);
+        }
+      });
+
+      downloadButton.addEventListener('click', () => {
+        if (!plainTextOutput.value) return;
+
+        const blob = new Blob([plainTextOutput.value], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cleaned-text.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('다운로드가 시작됩니다.');
+      });
+      
+      // Initial state
+      updateOutput();
+    });
+  </script>
+
+</body>
+</html>
