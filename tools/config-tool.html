@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Config Tool</title>
+  <style>
+    :root {
+        --background-color: #ffffff; --text-color: #111827; --muted-text-color: #6b7280;
+        --card-background-color: #f9fafb; --border-color: #e5e7eb; --button-background-color: #111827;
+        --button-text-color: #ffffff; --button-hover-background-color: #374151;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-color); line-height: 1.5; padding: 2rem; }
+    .card { background-color: var(--card-background-color); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .card-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1.25rem; }
+    label { display: block; font-weight: 500; margin-bottom: 0.5rem; }
+    input[type="text"], textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.375rem; font-size: 0.9rem; box-sizing: border-box; }
+    textarea { min-height: 120px; resize: vertical; font-family: monospace; }
+    input[type="file"] { margin-top: 0.5rem; }
+    .button { display: inline-block; padding: 0.75rem 1.5rem; border-radius: 0.375rem; border: 1px solid transparent; font-weight: 600; cursor: pointer; transition: background-color 0.2s; background-color: var(--button-background-color); color: var(--button-text-color); width: 100%; text-align: center; }
+    .button:hover { background-color: var(--button-hover-background-color); }
+    .note { font-size: 0.85rem; color: var(--muted-text-color); margin-top: 0.5rem; }
+    mark { background-color: #fef08a; padding: 0.2em; border-radius: 0.2em; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2 class="card-title">Tomcat 설정</h2>
+    <div class="form-group">
+      <label for="tomcatFileVer7">Tomcat 7 Lib 디렉토리</label>
+      <input type="file" class="tomcatFile" data-value="7" id="tomcatFileVer7" webkitdirectory directory />
+      <input type="text" class="tomcatHome" placeholder="Tomcat 7 HOME (예: D:/tomcat/apache-tomcat-7.0.91)" size="50" id="tomcatHomeVer7" data-value="7" />
+    </div>
+    <div class="form-group">
+      <label for="tomcatFileVer8">Tomcat 8 Lib 디렉토리</label>
+      <input type="file" class="tomcatFile" data-value="8" id="tomcatFileVer8" webkitdirectory directory />
+      <input type="text" class="tomcatHome" placeholder="Tomcat 8 HOME (예: D:/tomcat/apache-tomcat-8.0.53)" size="50" id="tomcatHomeVer8" data-value="8" />
+    </div>
+    <div class="form-group">
+      <label for="tomcatFileVer9">Tomcat 9 Lib 디렉토리</label>
+      <input type="file" class="tomcatFile" data-value="9" id="tomcatFileVer9" webkitdirectory directory />
+      <input type="text" class="tomcatHome" placeholder="Tomcat 9 HOME (예: D:/tomcat/apache-tomcat-9.0.63)" size="50" id="tomcatHomeVer9" data-value="9" />
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">Workspace 설정</h2>
+    <div class="form-group">
+      <label for="copyWorkspaces">Workspace Home</label>
+      <input type="text" id="copyWorkspaces" placeholder="예: D:/HOME/workspaces" size="50">
+      <p class="note">프로젝트를 포함하지 않는 최상위 워크스페이스 경로입니다.</p>
+    </div>
+    <div class="form-group">
+      <label for="copyWorkAndProjName">Workspace/Project</label>
+      <input type="text" id="copyWorkAndProjName" placeholder="예: projectWorkspace/projectName" size="50">
+      <p class="note">실제 프로젝트가 위치한 경로입니다.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">JVM 옵션 설정</h2>
+    <div class="form-group">
+      <label for="jvmConfig">JVM 설정 변수</label>
+      <textarea id="jvmConfig"></textarea>
+      <p class="note"><mark>!</mark> = Workspace 절대경로, <mark>#</mark> = Workspace/Project 이름으로 치환됩니다.</p>
+      <button class="button" id="convertJVMConfig" style="margin-top: 1rem; width: auto; padding: 0.5rem 1rem;">변환 미리보기</button>
+    </div>
+    <div class="form-group">
+      <label for="completedjvmConfig">변환 결과</label>
+      <textarea id="completedjvmConfig" readonly></textarea>
+    </div>
+    <div class="form-group">
+      <label for="licenseKey">License Key</label>
+      <textarea id="licenseKey"></textarea>
+    </div>
+  </div>
+
+  <button class="button" id="createConfigFile">config.js 생성 및 다운로드</button>
+
+  <script src="./shared-utils.js"></script>
+  <script>
+    window.addEventListener('message', (event) => {
+        if (event.data.type !== 'config-data') return;
+
+        const configObj = event.data.data || {};
+        let tomcatObj = configObj.tomcatObj || {};
+        let tomcatJson = {};
+        let vmJson = {};
+
+        function initConfig() {
+            document.querySelector('#tomcatHomeVer7').value = tomcatObj['7']?.wasHome || '';
+            document.querySelector('#tomcatHomeVer8').value = tomcatObj['8']?.wasHome || '';
+            document.querySelector('#tomcatHomeVer9').value = tomcatObj['9']?.wasHome || '';
+            document.querySelector('#copyWorkspaces').value = configObj.workSpaces || '';
+            document.querySelector('#copyWorkAndProjName').value = configObj.workAndProjectName || '';
+            document.querySelector('#jvmConfig').value = (configObj.vmConfig || []).join('\n');
+            document.querySelector('#licenseKey').value = (configObj.vmLicenseKey || []).join('\n');
+
+            tomcatJson['home7'] = { wasHome: tomcatObj['7']?.wasHome };
+            tomcatJson['home8'] = { wasHome: tomcatObj['8']?.wasHome };
+            tomcatJson['home9'] = { wasHome: tomcatObj['9']?.wasHome };
+            tomcatJson['lib7'] = { lib: tomcatObj['7']?.lib };
+            tomcatJson['lib8'] = { lib: tomcatObj['8']?.lib };
+            tomcatJson['lib9'] = { lib: tomcatObj['9']?.lib };
+            vmJson['workSpaces'] = configObj.workSpaces;
+            vmJson['workAndProjectName'] = configObj.workAndProjectName;
+            vmJson['vmConfig'] = configObj.vmConfig;
+            vmJson['vmLicenseKey'] = configObj.vmLicenseKey;
+            viewWasVm(configObj.vmConfig || []);
+        }
+
+        function handlePathChange(event) {
+            const fullPath = event.target.value;
+            if (!fullPath) return;
+
+            const pathParts = fullPath.replace(/\\/g, '/').split('/');
+            let wsIndex = -1;
+            for(let i = pathParts.length - 1; i >= 0; i--) {
+                if (pathParts[i].toLowerCase() === 'workspaces') {
+                    wsIndex = i;
+                    break;
+                }
+            }
+
+            if (wsIndex === -1) {
+                vmJson['workSpaces'] = document.querySelector('#copyWorkspaces').value;
+                vmJson['workAndProjectName'] = document.querySelector('#copyWorkAndProjName').value;
+                return;
+            }
+
+            const homePath = pathParts.slice(0, wsIndex + 1).join('/');
+            const projectPath = pathParts.slice(wsIndex + 1).join('/');
+
+            document.querySelector('#copyWorkspaces').value = homePath;
+            document.querySelector('#copyWorkAndProjName').value = projectPath;
+
+            vmJson['workSpaces'] = homePath;
+            vmJson['workAndProjectName'] = projectPath;
+        }
+
+        function setWasVm(event) {
+            const setArr = (event.target.value).split('\n');
+            vmJson['vmConfig'] = setArr || [];
+            viewWasVm(setArr);
+        }
+
+        function convertJVMConfig() {
+            const setArr = (document.querySelector('#jvmConfig').value).split('\n');
+            vmJson['vmConfig'] = setArr || [];
+            viewWasVm(setArr);
+        }
+
+        function setLicenseKey(event) {
+            vmJson['vmLicenseKey'] = (event.target.value).split('\n') || [];
+        }
+
+        function viewWasVm(result) {
+            const modifyArr = result.map(set => {
+                let modifySet = set.trim();
+                modifySet = modifySet.replace(/!/g, vmJson['workSpaces'] || '');
+                modifySet = modifySet.replace(/#/g, vmJson['workAndProjectName'] || '');
+                modifySet = modifySet.replace(/\//g, '\\');
+                return modifySet;
+            });
+            document.querySelector('#completedjvmConfig').value = modifyArr.join('\n');
+        }
+
+        function createConfigFile() {
+            let configJson = {};
+            setTomcatConfig(configJson);
+            setWorkspacesHome(configJson);
+            setWorkspaceAndProjecName(configJson);
+            setVmConfig(configJson);
+            setLicense(configJson);
+
+            let text = `window.configObj = ${JSON.stringify(configJson, null, 2)};`
+            download("config.js", text);
+            alert('다운로드된 config.js 파일을 본 파일과 동일한 디렉토리로 옮기세요');
+            
+            // Notify parent that config has been updated
+            window.parent.postMessage({ type: 'config-updated' }, '*');
+        }
+        
+        function setWorkspaceAndProjecName(configJson) { configJson['workAndProjectName'] = vmJson['workAndProjectName'] || ''; }
+        function setWorkspacesHome(configJson) { configJson['workSpaces'] = vmJson['workSpaces'] || ''; }
+        function setVmConfig(configJson) { configJson['vmConfig'] = vmJson['vmConfig'] || []; }
+        function setLicense(configJson) { configJson['vmLicenseKey'] = vmJson['vmLicenseKey'] || []; }
+
+        function setTomcatConfig(configJson) {
+            Object.assign(tomcatJson["home7"] || {}, tomcatJson["lib7"]);
+            Object.assign(tomcatJson["home8"] || {}, tomcatJson["lib8"]);
+            Object.assign(tomcatJson["home9"] || {}, tomcatJson["lib9"]);
+
+            configJson.tomcatObj = {
+                '7': tomcatJson["home7"] || {},
+                '8': tomcatJson["home8"] || {},
+                '9': tomcatJson["home9"] || {}
+            };
+        }
+
+        async function inputTomcatHomeDir(event) {
+            const tomcatHomePath = modifyDelimiter(event.target.value);
+            const key = event.target.dataset["value"];
+            tomcatJson["home" + key] = { wasHome: tomcatHomePath };
+        }
+
+        async function inputTomcatLibDir(event) {
+            const input = event.target;
+            let tomcatArray = [];
+            for (const file of input.files) {
+                tomcatArray.push(file.webkitRelativePath);
+            }
+            const key = event.target.dataset["value"];
+            tomcatJson["lib" + key] = { lib: tomcatArray };
+            
+            if (tomcatArray.length > 0) {
+                const firstPath = tomcatArray[0];
+                const homePath = firstPath.substring(0, firstPath.indexOf('/lib'));
+                document.getElementById(`tomcatHomeVer${key}`).value = homePath;
+                tomcatJson["home" + key] = { wasHome: homePath };
+            }
+        }
+
+        // Event Listeners
+        document.querySelector("#createConfigFile").addEventListener("click", createConfigFile);
+        document.querySelectorAll(".tomcatFile").forEach(el => el.addEventListener("change", inputTomcatLibDir));
+        document.querySelectorAll(".tomcatHome").forEach(el => el.addEventListener("change", inputTomcatHomeDir));
+        document.querySelector('#copyWorkspaces').addEventListener('change', handlePathChange);
+        document.querySelector('#copyWorkAndProjName').addEventListener('change', handlePathChange);
+        document.querySelector('#jvmConfig').addEventListener('change', setWasVm);
+        document.querySelector('#convertJVMConfig').addEventListener('click', convertJVMConfig);
+        document.querySelector('#licenseKey').addEventListener('change', setLicenseKey);
+
+        // Initial Load
+        initConfig();
+    });
+  </script>
+</body>
+</html>

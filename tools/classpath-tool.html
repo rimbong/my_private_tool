@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classpath Tool</title>
+  <style>
+    :root {
+        --background-color: #ffffff; --text-color: #111827; --muted-text-color: #6b7280;
+        --card-background-color: #f9fafb; --border-color: #e5e7eb; --button-background-color: #111827;
+        --button-text-color: #ffffff; --button-hover-background-color: #374151;
+        --outline-button-border-color: #d1d5db; --outline-button-text-color: #111827; 
+        --outline-button-hover-background-color: #f3f4f6;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-color); line-height: 1.5; padding: 2rem; }
+    .card { background-color: var(--card-background-color); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .card-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1.25rem; }
+    label, .label { display: block; font-weight: 500; margin-bottom: 0.5rem; }
+    input[type="text"], textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.375rem; font-size: 0.9rem; box-sizing: border-box; }
+    textarea { min-height: 250px; resize: vertical; font-family: monospace; }
+    .button-group { display: flex; gap: 0.75rem; margin-top: 1rem; }
+    .button { display: inline-block; padding: 0.75rem 1.5rem; border-radius: 0.375rem; border: 1px solid transparent; font-weight: 600; cursor: pointer; transition: background-color 0.2s; background-color: var(--button-background-color); color: var(--button-text-color); width: 100%; text-align: center; }
+    .button:hover { background-color: var(--button-hover-background-color); }
+    .outline-button { background-color: transparent; border-color: var(--outline-button-border-color); color: var(--outline-button-text-color); }
+    .outline-button:hover { background-color: var(--outline-button-hover-background-color); }
+    .note { font-size: 0.85rem; color: var(--muted-text-color); margin-top: 0.5rem; }
+    .file-upload-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .output-container { position: relative; }
+    .radio-options {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 0.5rem;
+    }
+    .radio-option {
+        display: flex;
+        align-items: center;
+    }
+    .radio-option label {
+        display: inline-block;
+        margin-bottom: 0;
+        margin-left: 0.4rem;
+        font-weight: 400;
+        cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2 class="card-title">Classpath 설정</h2>
+    <div class="form-group">
+      <label class="label">Tomcat Version</label>
+      <div class="radio-options">
+        <div class="radio-option">
+          <input type="radio" name="tomcatVersion" id="version7" value="7" checked>
+          <label for="version7">Tomcat 7</label>
+        </div>
+        <div class="radio-option">
+          <input type="radio" name="tomcatVersion" id="version8" value="8">
+          <label for="version8">Tomcat 8</label>
+        </div>
+        <div class="radio-option">
+          <input type="radio" name="tomcatVersion" id="version9" value="9">
+          <label for="version9">Tomcat 9</label>
+        </div>
+      </div>
+    </div>
+    <div class="form-group file-upload-group">
+      <label for="addFile">WEB-INF/lib 모든 jar파일 선택</label>
+      <div style="position: relative; margin-bottom: 0.5rem;">
+        <input type="text" id="plusWebappPath" placeholder="프로젝트 경로를 붙여넣으면 lib 경로가 자동 완성 및 복사됩니다.">
+        <span id="webappPathAlert"></span>
+      </div>
+      <input type="file" class="addFile" id="addFile" multiple />
+      <span class="fileCnt note">0개 선택됨</span>
+    </div>
+    <div class="form-group">
+        <input type="checkbox" name="enablePrefix" id="enablePrefix"> <label for="enablePrefix" style="display: inline;">지정할 prefix 명</label>
+        <input type="text" id="prefix" class="prefix" disabled />
+        <p class="note">예: projectWorkspace/projectName. 현재 prefix: <span class="prefixTxt"></span></p>
+    </div>
+    <div class="button-group">
+        <button class="button" id="fileConfirm">생성</button>
+        <button class="button outline-button" id="fileinit">초기화</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-group output-container">
+        <h2 class="card-title">생성된 Classpath 항목</h2>
+        <span id="completeFileListAlert"></span>
+        <textarea id="fileList" readonly></textarea>
+    </div>
+    <div class="form-group file-upload-group">
+        <label for="classpath">기존 .classpath 파일에 추가 (선택 사항)</label>
+        <input type="file" id="classpath" />
+        <p class="note">파일을 선택하면 생성된 항목이 추가되어 바로 다운로드됩니다.</p>
+    </div>
+  </div>
+
+  <script src="./shared-utils.js"></script>
+  <script>
+    window.addEventListener('message', (event) => {
+        if (event.data.type !== 'config-data') return;
+
+        const configObj = event.data.data || {};
+        const tomcatObj = configObj.tomcatObj || null;
+
+        const DOM_FORM_START = '<classpathentry kind="lib" path="';
+        const DOM_FORM_END = '"/>\n';
+        const EXCEPT_FILE_ARRAY = [];
+        const ACCEPT_TOMCAT_FILE_ARRAY = ["servlet", "jsp-api"];
+        let fileCount = 0;
+
+        function checkConfig() {
+            if (!tomcatObj || Object.keys(tomcatObj).length === 0) {
+                alert('config.js 파일이 없거나 유효하지 않습니다. 먼저 Config 설정 도구에서 파일을 생성하고 이 페이지를 다시 로드해주세요.');
+                return false;
+            }
+            return true;
+        }
+
+        function fileInit() {
+            fileCount = 0;
+            document.querySelector(".addFile").value = "";
+            document.querySelector("#classpath").value = "";
+            document.querySelector(".prefix").value = "";
+            document.querySelector("#fileList").value = "";
+            document.querySelector(".fileCnt").innerHTML = "0개";
+            document.querySelector(".prefixTxt").innerHTML = "";
+        }
+
+        function enablePrefix(event) {
+            document.querySelector(".prefix").disabled = !event.target.checked;
+        }
+
+        function fileRead(file) {
+            return new Promise(resolve => resolve(file.name));
+        }
+
+        function jarWriteString(fileString) {
+            const prefix = document.querySelector(".prefixTxt").innerHTML;
+            const docMake = DOM_FORM_START + prefix + fileString + DOM_FORM_END;
+            fileCount++;
+            document.querySelector(".fileCnt").innerHTML = fileCount + "개";
+            document.querySelector("#fileList").value += docMake;
+        }
+
+        async function showJarList() {
+            if (!checkConfig()) return;
+
+            // Manually clear outputs instead of calling fileInit(), which clears inputs.
+            fileCount = 0;
+            document.querySelector("#fileList").value = ""; 
+            document.querySelector(".fileCnt").innerHTML = "0개";
+            document.querySelector(".prefixTxt").innerHTML = "";
+
+            const workspaceName = document.querySelector("#enablePrefix").checked && document.querySelector(".prefix").value;
+            const workspaces = configObj.workSpaces || '';
+            const fullPath = workspaceName ? `${workspaces}/${workspaceName}/webapp/WEB-INF/lib/` : `webapp/WEB-INF/lib/`;
+            document.querySelector(".prefixTxt").innerHTML = modifyDelimiter(fullPath);
+
+            const files = document.querySelector(".addFile").files;
+            const fileArray = Array.from(files);
+
+            const fileNames = await Promise.all(fileArray.map(fileRead));
+            
+            const acceptArr = fileNames.filter(name => !EXCEPT_FILE_ARRAY.some(except => name.includes(except)));
+            const exceptArr = fileNames.filter(name => EXCEPT_FILE_ARRAY.some(except => name.includes(except)));
+
+            if (exceptArr.length > 0) {
+                document.querySelector("#fileList").value += "<!-- 제외된 파일 -- >\n";
+                exceptArr.forEach(jarWriteString);
+                document.querySelector("#fileList").value += "<!-- -- >\n";
+            }
+            acceptArr.forEach(jarWriteString);
+            
+            showTomcatJarList();
+            copyAndAlert(document.querySelector("#fileList").value, document.getElementById('completeFileListAlert'));
+        }
+
+        function showTomcatJarList() {
+            let docMake = "";
+            const tomcatVersion = document.querySelector('input[name="tomcatVersion"]:checked').value;
+            const tomcatVersionObj = tomcatObj[tomcatVersion];
+
+            if (!tomcatVersionObj || !tomcatVersionObj.lib) {
+                alert(`Tomcat ${tomcatVersion}에 대한 설정이 config.js에 없습니다.`);
+                return;
+            }
+
+            const tomcatWasPath = tomcatVersionObj.wasHome;
+            const tomcatPath = tomcatVersionObj.lib;
+
+            const acceptedJars = tomcatPath.filter(jar => ACCEPT_TOMCAT_FILE_ARRAY.some(name => jar.includes(name)));
+            const remainingJars = tomcatPath.filter(jar => !ACCEPT_TOMCAT_FILE_ARRAY.some(name => jar.includes(name)));
+
+            acceptedJars.forEach(jar => {
+                const tomcatfullPath = `${tomcatWasPath}/${jar}`;
+                docMake = DOM_FORM_START + tomcatfullPath + DOM_FORM_END;
+                document.querySelector("#fileList").value += docMake;
+            });
+
+            document.querySelector("#fileList").value += "<!-- Tomcat 라이브러리 (주석 처리됨) -- >\n";
+            remainingJars.forEach(jar => {
+                const tomcatfullPath = `${tomcatWasPath}/${jar}`;
+                docMake = DOM_FORM_START + tomcatfullPath + DOM_FORM_END;
+                document.querySelector("#fileList").value += docMake;
+            });
+            document.querySelector("#fileList").value += "<!-- -- >\n";
+        }
+
+        async function classpathFileDownload() {
+            if (!checkConfig()) return;
+            try {
+                const file = document.getElementById("classpath").files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const classpathTxt = e.target.result;
+                    const insertIndex = classpathTxt.lastIndexOf("</classpath>");
+                    let insertDoc = document.querySelector("#fileList").value;
+                    insertDoc = insertDoc.replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+                    const newContent = classpathTxt.slice(0, insertIndex) + "\n" + insertDoc + "\n" + classpathTxt.slice(insertIndex);
+                    download(".classpath", newContent);
+                };
+                reader.readAsText(file);
+            } catch (error) {
+                console.error("Error processing .classpath file:", error);
+                alert("기존 .classpath 파일을 처리하는 중 오류가 발생했습니다.");
+            }
+        }
+
+        function plusWebappPath(event) {
+            let value = event.target.value;
+            if (value.endsWith('\\') || value.endsWith('/')) {
+                value = value.slice(0, -1);
+            }
+            event.target.value = value + "\\webapp\\WEB-INF\\lib";
+            copyAndAlert(event.target.value, document.getElementById('webappPathAlert'));
+        }
+
+        // Event Listeners
+        document.getElementById("plusWebappPath").addEventListener("change", plusWebappPath);
+        document.getElementById("classpath").addEventListener("change", classpathFileDownload);
+        document.querySelector("#fileinit").addEventListener("click", fileInit);
+        document.querySelector('#enablePrefix').addEventListener("change", enablePrefix);
+        document.querySelector("#fileConfirm").addEventListener("click", showJarList);
+
+        // Initial check
+        checkConfig();
+    });
+  </script>
+</body>
+</html>

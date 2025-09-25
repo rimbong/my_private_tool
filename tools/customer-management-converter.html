@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Management Converter</title>
+  <style>
+    :root {
+      --background-color: #ffffff;
+      --text-color: #111827;
+      --muted-text-color: #6b7280;
+      --card-background-color: #f9fafb;
+      --border-color: #e5e7eb;
+      --button-background-color: #111827;
+      --button-text-color: #ffffff;
+      --button-hover-background-color: #374151;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+    .card {
+      background-color: var(--card-background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+    }
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+      resize: vertical;
+    }
+    button {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      margin-top: 1rem;
+      border-radius: 0.375rem;
+      border: 1px solid transparent;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      background-color: var(--button-background-color);
+      color: var(--button-text-color);
+    }
+    button:hover {
+      background-color: var(--button-hover-background-color);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <textarea name="inputCmDom" id="inputCmDom" placeholder="고객관리 목록 HTML을 붙여넣으세요..."></textarea>
+    <button id="inputCmDomChange">변환</button>
+    <textarea name="changedCmDom" id="changedCmDom" readonly placeholder="변환된 텍스트 리포트가 여기에 표시됩니다..."></textarea>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      function convertStringToCM() {
+        const inputCmDom = document.getElementById('inputCmDom').value;
+        if (!inputCmDom) {
+            document.getElementById('changedCmDom').value = '입력된 내용이 없습니다.';
+            return;
+        }
+        try {
+            const CmDom = domParser(inputCmDom);
+            const refinedManageArr = getManageList(CmDom);
+            document.getElementById('changedCmDom').value = refinedManageArr.join('\n');
+        } catch (e) {
+            document.getElementById('changedCmDom').value = '오류: 입력된 HTML 형식을 처리할 수 없습니다.';
+            console.error(e);
+        }
+      }
+
+      function getManageList(dom) {
+        let refinedManageArr = [];
+        const manageList = dom.querySelectorAll('tbody > tr'); // Simplified selector
+        let manageArr = Array.prototype.slice.call(manageList);
+        
+        manageArr = manageArr.filter(item => item.hasAttribute('data-uid'));
+
+        if (manageArr.length === 0) {
+            throw new Error("필요한 'data-uid' 속성을 가진 'tr' 태그를 찾을 수 없습니다.");
+        }
+
+        refinedManageArr = manageArr.map((tr, index) => {
+            let tdList = tr.querySelectorAll('td');
+            let tdArr = Array.prototype.slice.call(tdList);
+            
+            tdArr = tdArr.filter(td => td.style && td.style.display !== 'none');
+            
+            if (tdArr.length < 4) return '오류: 예상보다 적은 수의 셀(td)이 있습니다.';
+
+            return `□ ${tdArr[2].innerHTML.trim()} (진행중)\n- [${tdArr[0].innerHTML.trim()}] ${tdArr[3].innerHTML.trim()}`;
+        });
+        return refinedManageArr;
+      }
+
+      function domParser(param) {
+        let parser = new DOMParser();
+        let doc = parser.parseFromString(param, 'text/html');
+        return doc;
+      }
+
+      document.getElementById('inputCmDomChange').addEventListener('click', convertStringToCM);
+    });
+  </script>
+</body>
+</html>
