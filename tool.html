@@ -26,6 +26,14 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     #tool-frame { flex-grow: 1; border: none; }
+    footer {
+      text-align: center;
+      padding: 1rem;
+      background-color: #fff;
+      border-top: 1px solid #e5e7eb;
+      font-size: 0.9rem;
+      color: #6b7280;
+    }
   </style>
 </head>
 
@@ -40,6 +48,10 @@
     <input type="radio" name="selectView" id="selectMarkdownCleaner" value="./tools/markdown-cleaner.html"><label for="selectMarkdownCleaner">마크다운 변환</label>
   </div>
   <iframe id="tool-frame" src="./tools/classpath-tool.html"></iframe>
+
+  <footer>
+    <p>© 2025 Multi-purpose Development Assistant Tools. All rights reserved.</p>
+  </footer>
 
 <script>
   document.addEventListener('DOMContentLoaded', () => {
