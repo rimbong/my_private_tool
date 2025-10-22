@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maven pom.xml Generator</title>
+  <style>
+    :root {
+        --background-color: #ffffff; --text-color: #111827; --muted-text-color: #6b7280;
+        --card-background-color: #f9fafb; --border-color: #e5e7eb; --button-background-color: #111827;
+        --button-text-color: #ffffff; --button-hover-background-color: #374151;
+        --outline-button-border-color: #d1d5db; --outline-button-text-color: #111827; 
+        --outline-button-hover-background-color: #f3f4f6;
+        --code-background-color: #e5e7eb;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-color); line-height: 1.5; padding: 2rem; }
+    .card { background-color: var(--card-background-color); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; }
+    .card-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1.25rem; }
+    label, .label { display: block; font-weight: 500; margin-bottom: 0.5rem; }
+    input[type="text"], textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 0.375rem; font-size: 0.9rem; box-sizing: border-box; }
+    textarea { min-height: 300px; resize: vertical; font-family: monospace; }
+    .button-group { display: flex; gap: 0.75rem; margin-top: 1rem; }
+    .button { display: inline-block; padding: 0.75rem 1.5rem; border-radius: 0.375rem; border: 1px solid transparent; font-weight: 600; cursor: pointer; transition: background-color 0.2s; background-color: var(--button-background-color); color: var(--button-text-color); width: 100%; text-align: center; }
+    .button:hover { background-color: var(--button-hover-background-color); }
+    .outline-button { background-color: transparent; border-color: var(--outline-button-border-color); color: var(--outline-button-text-color); }
+    .outline-button:hover { background-color: var(--outline-button-hover-background-color); }
+    .note { font-size: 0.85rem; color: var(--muted-text-color); margin-top: 0.5rem; }
+    .file-upload-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .output-container { position: relative; }
+    .radio-options { display: flex; gap: 1.5rem; margin-top: 0.5rem; }
+    .radio-option { display: flex; align-items: center; }
+    .radio-option label { display: inline-block; margin-bottom: 0; margin-left: 0.4rem; font-weight: 400; cursor: pointer; }
+    pre { background-color: var(--code-background-color); padding: 1rem; border-radius: 0.375rem; white-space: pre-wrap; word-wrap: break-word; font-family: monospace; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h2 class="card-title">Maven pom.xml 생성</h2>
+    <div class="form-group">
+      <label for="groupId">GroupId</label>
+      <input type="text" id="groupId" value="com.nanum">
+    </div>
+    <div class="form-group">
+      <label for="artifactId">ArtifactId</label>
+      <input type="text" id="artifactId" value="smart-flow-ose">
+    </div>
+    <div class="form-group">
+      <label for="projectHome">Project Home Path</label>
+      <input type="text" id="projectHome" placeholder="예: D:\NANUM\workspaces\EX38\SmartFlowOSE3.8">
+      <p class="note">프로젝트의 절대 경로를 입력하세요. `pom.xml`에서 `${project.home}`으로 사용됩니다.</p>
+    </div>
+    <div class="form-group">
+      <label class="label">Tomcat Version</label>
+      <div class="radio-options">
+        <div class="radio-option"><input type="radio" name="tomcatVersion" id="version7" value="7" checked><label for="version7">Tomcat 7</label></div>
+        <div class="radio-option"><input type="radio" name="tomcatVersion" id="version8" value="8"><label for="version8">Tomcat 8</label></div>
+        <div class="radio-option"><input type="radio" name="tomcatVersion" id="version9" value="9"><label for="version9">Tomcat 9</label></div>
+      </div>
+    </div>
+    <div class="form-group file-upload-group">
+      <label for="srcFolders">src 폴더 선택 (예: C:\NANUM\workspaces\EX38\SmartFlowOSE3.8\src, 하위 폴더들이 소스 폴더로 자동인식)</label>
+      <input type="file" id="srcFolders" webkitdirectory directory />
+      <span class="srcFileCnt note">0개 폴더 선택됨</span>
+    </div>
+    <div class="form-group file-upload-group">
+      <label for="libFiles">WEB-INF/lib 모든 jar파일 선택</label>
+      <input type="file" id="libFiles" multiple />
+      <span class="fileCnt note">0개 선택됨</span>
+    </div>
+    <div class="button-group">
+        <button class="button" id="generateButton">생성</button>
+        <button class="button outline-button" id="resetButton">초기화</button>
+    </div>
+  </div>
+
+  <div id="resultCard" class="card hidden">
+    <div class="form-group output-container">
+        <h2 class="card-title">생성된 pom.xml</h2>
+        <span id="copyPomAlert"></span>
+        <textarea id="pomOutput" readonly></textarea>
+        <div class="button-group">
+            <button class="button" id="copyPomButton">pom.xml 복사</button>
+        </div>
+    </div>
+    
+    <div class="form-group">
+        <h2 class="card-title">안내: Maven 프로젝트로 설정하기</h2>
+        <p>생성된 `pom.xml` 파일을 프로젝트 루트에 저장한 후, Eclipse가 Maven 프로젝트로 인식하도록 아래 두 파일을 수정하세요.</p>
+        
+        <h3>1. `.project` 파일 수정</h3>
+        <p>`<buildSpec>`과 `<natures>` 섹션에 아래 내용을 추가합니다.</p>
+        <pre><code>&lt;!-- buildSpec에 추가 --&gt;
+&lt;buildCommand&gt;
+    &lt;name&gt;org.eclipse.m2e.core.maven2Builder&lt;/name&gt;
+    &lt;arguments&gt;&lt;/arguments&gt;
+&lt;/buildCommand&gt;
+
+&lt;!-- natures에 추가 --&gt;
+&lt;nature&gt;org.eclipse.m2e.core.maven2Nature&lt;/nature&gt;</code></pre>
+
+        <h3>2. `.classpath` 파일 수정</h3>
+        <p>기존의 모든 `&lt;classpathentry kind="lib" ...&gt;` 항목들을 삭제하고, 아래 내용을 추가합니다.</p>
+        <pre><code>&lt;!-- classpath에 추가 --&gt;
+&lt;classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER"/&gt;</code></pre>
+        
+        <h3>3. 프로젝트 새로고침</h3>
+        <p>파일 수정 후, Eclipse에서 프로젝트를 우클릭하여 <strong>[Maven] > [Update Project]</strong>를 실행하면 라이브러리가 적용됩니다.</p>
+
+        <hr style="margin: 2rem 0;">
+
+        <h2 class="card-title">문제 해결 가이드</h2>
+        <h3>오류: "Maven Update" 시도시 'src/{소스파일명}' 과 같은 에러 발생 (예: Cannot nest 'SmartFlowOSE3/src/hwp' inside 'SmartFlowOSE3/src'. To enable the nesting exclude 'hwp/' from 'SmartFlowOSE3/src') </h3>
+        <p>프로젝트를 Maven 프로젝트로 변환한 후에도 문제가 발생한다면, Eclipse의 기존 설정과 충돌이 원인일 수 있습니다. 아래 단계를 따라 해결해 보세요.</p>
+        <ol>
+            <li><strong><code>.settings/org.eclipse.wst.common.component</code> 파일 삭제:</strong>
+                <p>프로젝트 폴더의 <code>.settings</code> 디렉토리에서 <code>org.eclipse.wst.common.component</code> 파일을 찾아 삭제하세요. 이 파일은 Eclipse의 웹 프로젝트 설정 파일로, 때때로 Maven 설정과 충돌을 일으킵니다.</p>
+            </li>
+            <li><strong>Maven 프로젝트 업데이트:</strong>
+                <p>파일 삭제 후, Eclipse에서 프로젝트를 다시 우클릭하고 <strong>[Maven] &gt; [Update Project...]</strong>를 선택하세요. 'Force Update of Snapshots/Releases' 옵션을 체크하고 OK를 누르면 프로젝트 설정이 새로고침됩니다.</p>
+            </li>
+        </ol>
+    </div>
+  </div>
+
+  <script src="./shared-utils.js"></script>
+  <script>
+    window.addEventListener('message', (event) => {
+        if (event.data.type !== 'config-data') return;
+
+        const configObj = event.data.data || {};
+        const tomcatObj = configObj.tomcatObj || null;
+
+        function setDefaultProjectHome() {
+            if (configObj.workSpaces && configObj.workAndProjectName) {
+                const defaultProjectHome = `${configObj.workSpaces}/${configObj.workAndProjectName}`;
+                document.getElementById('projectHome').value = defaultProjectHome.replace(/\\/g, '/');
+            }
+        }
+
+        function checkConfig() {
+            if (!tomcatObj || Object.keys(tomcatObj).length === 0) {
+                alert('config.js 파일이 없거나 유효하지 않습니다. 먼저 Config 설정 도구에서 파일을 생성하고 이 페이지를 다시 로드해주세요.');
+                return false;
+            }
+            return true;
+        }
+
+        function resetAll() {
+            document.getElementById('libFiles').value = "";
+            document.getElementById('srcFolders').value = "";
+            document.querySelector('.fileCnt').innerHTML = "0개";
+            document.querySelector('.srcFileCnt').innerHTML = "0개 폴더 선택됨";
+            document.getElementById('pomOutput').value = "";
+            document.getElementById('resultCard').classList.add('hidden');
+            setDefaultProjectHome();
+        }
+
+        function generatePomXml() {
+            if (!checkConfig()) return;
+
+            const groupId = document.getElementById('groupId').value;
+            const artifactId = document.getElementById('artifactId').value;
+            const projectHome = document.getElementById('projectHome').value;
+            const tomcatVersion = document.querySelector('input[name="tomcatVersion"]:checked').value;
+            const tomcatVersionObj = tomcatObj[tomcatVersion];
+            const libFiles = document.getElementById('libFiles').files;
+            const srcFiles = document.getElementById('srcFolders').files;
+
+            if (!projectHome) {
+                alert('Project Home Path를 입력해주세요.');
+                return;
+            }
+            
+            document.querySelector('.fileCnt').innerHTML = `${libFiles.length}개 선택됨`;
+            document.querySelector('.srcFileCnt').innerHTML = `${srcFiles.length}개 파일(폴더 내) 선택됨`;
+
+            if (!tomcatVersionObj || !tomcatVersionObj.lib) {
+                alert(`Tomcat ${tomcatVersion}에 대한 설정이 config.js에 없습니다.`);
+                return;
+            }
+
+            let dependencies = '';
+
+            // 프로젝트 lib 추가
+            for (const file of libFiles) {
+                const fileName = file.name;
+                const artifact = fileName.replace('.jar', '');
+                dependencies += `
+        <dependency>
+            <groupId>local.lib</groupId>
+            <artifactId>${artifact}</artifactId>
+            <version>1.0</version>
+            <scope>system</scope>
+            <systemPath>\${project.home}/webapp/WEB-INF/lib/${fileName}</systemPath>
+        </dependency>`;
+            }
+
+            // 톰캣 lib 추가
+            const tomcatWasPath = tomcatVersionObj.wasHome;
+            const servletApi = tomcatVersionObj.lib.find(lib => lib.includes('servlet-api'));
+            const jspApi = tomcatVersionObj.lib.find(lib => lib.includes('jsp-api'));
+
+            if (servletApi) {
+                 dependencies += `
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>servlet-api</artifactId>
+            <version>3.0</version> <!-- Version might need adjustment -->
+            <scope>system</scope>
+            <systemPath>\${tomcat.home}/${servletApi}</systemPath>
+        </dependency>`;
+            }
+            if (jspApi) {
+                dependencies += `
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>jsp-api</artifactId>
+            <version>2.2</version> <!-- Version might need adjustment -->
+            <scope>system</scope>
+            <systemPath>\${tomcat.home}/${jspApi}</systemPath>
+        </dependency>`;
+            }
+
+            // build-helper-maven-plugin 내용 생성
+            let sources = '';
+            if (srcFiles.length > 0) {
+                const subDirs = new Set();
+                //  'src' 선택시 , webkitRelativePath 값은 'src/board/file.java' 하위까지 포함됨
+                const parentFolderName = srcFiles[0].webkitRelativePath.split('/')[0];
+
+                for (const file of srcFiles) {
+                    const pathComponents = file.webkitRelativePath.split('/');
+                    if (pathComponents.length > 1) {
+                        // subdirectory 찾아야함, e.g., 'board' from 'src/board/file.java'
+                        const subDir = pathComponents[1];
+                        if (subDir && subDir !== '.' && subDir !== '..') {
+                            subDirs.add(subDir);
+                        }
+                    }
+                }
+                
+                const sortedDirs = Array.from(subDirs).sort();
+
+                for (const dir of sortedDirs) {
+                    // full path 만들기 like 'src/board', 'src/mail'
+                    sources += `
+                                <source>${parentFolderName}/${dir}</source>`;
+                }
+            }
+
+            let buildHelperPlugin = '';
+            if (sources) {
+                buildHelperPlugin = `
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>${sources}
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>`;
+            }
+
+            const pomTemplate = `
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>${groupId}</groupId>
+    <artifactId>${artifactId}</artifactId>
+    <version>1.0.0</version>
+    <packaging>war</packaging>
+
+    <properties>
+        <project.home>${projectHome.split('\\').join('/')}</project.home>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <tomcat.home>${tomcatWasPath}</tomcat.home>
+    </properties>
+
+    <build>        
+        <outputDirectory>\${project.home}/webapp/WEB-INF/classes</outputDirectory>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>3.3.2</version>
+                <configuration>
+                    <warSourceDirectory>webapp</warSourceDirectory>
+                </configuration>
+            </plugin>${buildHelperPlugin}
+        </plugins>
+    </build>
+
+    <dependencies>${dependencies}
+    </dependencies>
+
+</project>`;
+
+            document.getElementById('pomOutput').value = pomTemplate.trim();
+            document.getElementById('resultCard').classList.remove('hidden');
+        }
+
+        // Event Listeners
+        document.getElementById('generateButton').addEventListener('click', generatePomXml);
+        document.getElementById('resetButton').addEventListener('click', resetAll);
+        document.getElementById('copyPomButton').addEventListener('click', () => {
+            copyAndAlert(document.getElementById('pomOutput').value, document.getElementById('copyPomAlert'));
+        });
+
+        // Initial setup
+        setDefaultProjectHome();
+        checkConfig();
+    });
+  </script>
+</body>
+</html>
