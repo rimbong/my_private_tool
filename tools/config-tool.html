@@ -25,7 +25,7 @@
     .button:hover { background-color: var(--button-hover-background-color); }
     .button.button-secondary { background-color: var(--button-secondary-background-color); color: var(--button-secondary-text-color); border-color: var(--button-secondary-border-color); }
     .button.button-secondary:hover { background-color: var(--button-secondary-hover-background-color); }
-    .note { font-size: 0.85rem; color: var(--muted-text-color); margin-top: 0.5rem; }
+    .note { font-size: 1.5rem; color: var(--muted-text-color); margin-top: 0.5rem; }
     mark { background-color: #fef08a; padding: 0.2em; border-radius: 0.2em; }
     .form-line { display: flex; align-items: center; gap: 1rem; }
     .form-line label { margin-bottom: 0; flex-shrink: 0; }
@@ -67,7 +67,7 @@
   </div>
 
   <div class="card">
-    <h2 class="card-title">Workspace 설정</h2>
+    <h2 class="card-title">Workspace / JVM 옵션 설정</h2>
     <div class="form-group">
       <label for="copyWorkspaces">Workspace Home</label>
       <input type="text" id="copyWorkspaces" placeholder="예: D:/HOME/workspaces" size="50">
@@ -78,10 +78,6 @@
       <input type="text" id="copyWorkAndProjName" placeholder="예: projectWorkspace/projectName" size="50">
       <p class="note">실제 프로젝트가 위치한 경로입니다.</p>
     </div>
-  </div>
-
-  <div class="card">
-    <h2 class="card-title">JVM 옵션 설정</h2>
     <div class="form-group">
       <label for="jvmConfig">JVM 설정 변수</label>
       <textarea id="jvmConfig"></textarea>
@@ -92,6 +88,10 @@
       <label for="completedjvmConfig">변환 결과</label>
       <textarea id="completedjvmConfig" readonly></textarea>
     </div>
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">라이센스 키</h2>
     <div class="form-group">
       <label for="licenseKey">License Key</label>
       <textarea id="licenseKey"></textarea>
