@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVN Log Converter</title>
+  <style>
+    :root {
+      --background-color: #ffffff;
+      --text-color: #111827;
+      --muted-text-color: #6b7280;
+      --card-background-color: #f9fafb;
+      --border-color: #e5e7eb;
+      --button-background-color: #111827;
+      --button-text-color: #ffffff;
+      --button-hover-background-color: #374151;
+      --outline-button-border-color: #d1d5db;
+      --outline-button-text-color: #111827;
+      --outline-button-hover-background-color: #f3f4f6;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      line-height: 1.5;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 1500px;
+      margin: 0 auto;
+    }
+    .card {
+      background-color: var(--card-background-color);
+      border: 1px solid var(--border-color);
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+    @media (min-width: 1024px) {
+      .grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    textarea {
+      width: 100%;
+      min-height: 400px;
+      padding: 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 0.375rem;
+      font-family: monospace;
+      font-size: 0.9rem;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .button-group {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+    .button {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      border-radius: 0.375rem;
+      border: 1px solid transparent;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      background-color: var(--button-background-color);
+      color: var(--button-text-color);
+      text-align: center;
+      text-decoration: none;
+    }
+    .button:hover {
+      background-color: var(--button-hover-background-color);
+    }
+    .outline-button {
+      background-color: transparent;
+      border-color: var(--outline-button-border-color);
+      color: var(--outline-button-text-color);
+    }
+    .outline-button:hover {
+      background-color: var(--outline-button-hover-background-color);
+    }
+    .output-container {
+        position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="grid">
+      <div class="card">
+        <h2 class="card-title">SVN 로그 입력</h2>
+        <textarea id="inputLog" placeholder="예시:
+r123 | id1234 | yyyy-mm-dd hh:mm:ss KST
+Changed paths:
+   M /path/to/file.jsp
+(공백 라인)
+커밋 메시지 내용
+----------------------------------------------------------------------------"></textarea>
+        <div class="button-group">
+          <button class="button" id="convertBtn">변환하기</button>
+          <button class="button outline-button" id="clearBtn">지우기</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">변환된 패치 내역 (TXT)</h2>
+        <div class="output-container">
+            <span id="copyAlert"></span>
+            <textarea id="outputReadme" readonly placeholder="변환된 텍스트가 여기에 표시됩니다..."></textarea>
+        </div>
+        <div class="button-group">
+          <button class="button" id="copyBtn">복사하기</button>
+          <button class="button outline-button" id="downloadBtn">다운로드</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./shared-utils.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const inputLog = document.getElementById('inputLog');
+      const outputReadme = document.getElementById('outputReadme');
+      const convertBtn = document.getElementById('convertBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const copyBtn = document.getElementById('copyBtn');
+      const downloadBtn = document.getElementById('downloadBtn');
+      const copyAlert = document.getElementById('copyAlert');
+
+      function convertSvnLog(input) {
+        if (!input.trim()) return "";
+        
+        const separator = '-'.repeat(76);
+        const blocks = input.split(new RegExp(separator, 'g'));
+        let result = "";
+        
+        blocks.forEach(block => {
+          block = block.trim();
+          if (!block) return;
+          
+          const lines = block.split('\n');
+          
+          if (lines.length === 0) {
+            return;
+          }
+          
+          // 리비전 정보 추출 (첫 번째 라인에서 r1234 패턴 찾기)
+          const headerLine = lines[0].trim();
+          const revMatch = headerLine.match(/^r(\d+)/);
+          const revision = revMatch ? revMatch[0] : "";
+          
+          let messageLines = [];
+          let fileLines = [];
+          let isChangedPaths = false;
+          let isMessage = false;
+          
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line === "Changed paths:") {
+              isChangedPaths = true;
+              continue;
+            }
+            
+            if (isChangedPaths && line === "") {
+              isChangedPaths = false;
+              isMessage = true;
+              continue;
+            }
+            
+            if (!isChangedPaths && !isMessage && line === "") {
+                isMessage = true;
+                continue;
+            }
+
+            if (isChangedPaths) {
+              fileLines.push(line);
+            } else if (isMessage) {
+              messageLines.push(line);
+            }
+          }
+          
+          const message = messageLines.join('\n').trim();
+          if (message || fileLines.length > 0) {
+            const revisionPrefix = revision ? `[${revision}] ` : "";
+            if (message) {
+              result += `■ ${revisionPrefix}${message.replace(/\n/g, ' ')}\n`;
+            } else {
+              result += `■ (메시지 없음)\n`;
+            }
+            
+            const groups = [];
+            fileLines.forEach(fileLine => {
+              const match = fileLine.match(/^[MADRUC ]+\s+(.*)$/);
+              const fullPath = match ? match[1] : fileLine;
+              
+              const lastSlashIndex = fullPath.lastIndexOf('/');
+              const fileName = fullPath.substring(lastSlashIndex + 1);
+              const dirPath = fullPath.substring(0, lastSlashIndex + 1);
+              
+              let group = groups.find(g => g.path === dirPath);
+              if (!group) {
+                group = { path: dirPath, files: [] };
+                groups.push(group);
+              }
+              group.files.push(fileName);
+            });
+            
+            groups.forEach(group => {
+              result += `  [Path] ${group.path}\n`;
+              group.files.forEach(f => {
+                result += `  [File] ${f}\n`;
+              });
+            });
+            result += '\n';
+          }
+        });
+        
+        return result.trim();
+      }
+
+      convertBtn.addEventListener('click', () => {
+        outputReadme.value = convertSvnLog(inputLog.value);
+      });
+
+      clearBtn.addEventListener('click', () => {
+        inputLog.value = '';
+        outputReadme.value = '';
+      });
+
+      copyBtn.addEventListener('click', () => {
+        if (outputReadme.value) {
+          copyAndAlert(outputReadme.value, copyAlert);
+        }
+      });
+
+      downloadBtn.addEventListener('click', () => {
+        if (outputReadme.value) {
+          download('README_patch.txt', outputReadme.value);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
