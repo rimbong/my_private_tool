@@ -13,26 +13,103 @@
       --border: #d1d5db;
       --text-main: #111827;
       --text-muted: #6b7280;
+      --sidebar-width: 380px;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text-main); }
-    header { background: #111827; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    main { display: flex; flex: 1; overflow: hidden; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text-main); overflow: hidden; }
+    header { background: #111827; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 100; flex-shrink: 0; }
+    main { display: flex; flex: 1; overflow: hidden; position: relative; }
     
     /* Sidebar */
-    .sidebar { width: 380px; background: var(--card-bg); border-right: 1px solid var(--border); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
-    .sidebar h3 { margin: 0; font-size: 1.1rem; }
-    textarea { flex: 1; width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-family: 'Cascadia Code', 'Courier New', monospace; font-size: 12px; resize: none; box-sizing: border-box; }
+    .sidebar { 
+      width: var(--sidebar-width); 
+      background: var(--card-bg); 
+      border-right: 1px solid var(--border); 
+      padding: 1.25rem; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 0.8rem; 
+      z-index: 50; 
+      flex-shrink: 0; 
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+      position: relative;
+    }
+    .sidebar.collapsed { width: 0; padding: 0; border-right: none; }
+    .sidebar.collapsed > *:not(.toggle-sidebar-btn) { display: none !important; }
+    
+    .sidebar-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+      margin-top: auto;
+      padding-top: 1rem;
+    }
+
+    /* Toggle Button */
+    .toggle-sidebar-btn {
+      position: absolute;
+      right: -24px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 60px;
+      background: var(--primary);
+      color: white;
+      border: 1px solid var(--primary-hover);
+      border-radius: 0 8px 8px 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    .toggle-sidebar-btn:hover { background: var(--primary-hover); }
+
+    .sidebar h3 { margin: 0; font-size: 1.1rem; white-space: nowrap; }
+    textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-family: 'Cascadia Code', 'Courier New', monospace; font-size: 12px; resize: none; box-sizing: border-box; }
+    textarea#logInput { flex: 1; font-size: 7px; min-height: 100px; }
+    
     .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
     .input-group label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
     input[type="text"] { padding: 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
     
-    /* Content Area */
-    .content { flex: 1; padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; }
-    .tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
-    .tab { cursor: pointer; padding: 0.75rem 1.25rem; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all 0.2s; }
-    .tab:hover { color: var(--text-main); background: rgba(0,0,0,0.05); }
-    .tab.active { border-bottom-color: var(--primary); font-weight: bold; color: var(--primary); }
+    /* Search Bar & Filters */
+    .search-group { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; }
+    .search-input { width: 95%; border: none; background: transparent; font-size: 0.9rem; outline: none; padding: 2px 4px; }
+    .filter-item { margin-top: 5px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; color: var(--text-muted); cursor: pointer; }
     
+    /* Extension Filter Area */
+    .ext-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .ext-tag { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #e2e8f0; color: #475569; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+    .ext-tag:hover { background: #cbd5e1; }
+    .ext-tag.active { background: var(--primary); color: white; }
+
+    /* Content Area */
+    .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--bg); }
+    
+    /* Sticky Tab Menu */
+    .tabs { 
+      display: flex; 
+      gap: 0.5rem; 
+      border-bottom: 1px solid var(--border); 
+      background: var(--bg); 
+      padding: 1.5rem 1.5rem 0 1.5rem; 
+      z-index: 20; 
+      flex-shrink: 0;
+    }
+    .tab { cursor: pointer; padding: 0.75rem 1.25rem; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all 0.2s; white-space: nowrap; background: white; border-radius: 6px 6px 0 0; border: 1px solid transparent; border-bottom: none; margin-bottom: -1px; }
+    .tab:hover { color: var(--text-main); background: #fff; }
+    .tab.active { border-color: var(--border); border-bottom-color: white; font-weight: bold; color: var(--primary); background: white; }
+    
+    /* Independent Scroll Containers */
+    .tab-container { flex: 1; overflow-y: auto; padding: 1.5rem; display: none; flex-direction: column; }
+    .tab-container.active { display: flex; }
+
     /* Revision Cards */
     .rev-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
     .rev-header { display: flex; justify-content: space-between; align-items: flex-start; font-weight: bold; border-bottom: 1px solid #f3f4f6; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
@@ -41,25 +118,51 @@
     
     /* File Items */
     .file-list { display: flex; flex-direction: column; gap: 0.4rem; }
-    .file-item { display: flex; align-items: center; padding: 0.5rem; border-radius: 4px; transition: background 0.1s; border: 1px solid transparent; }
-    .file-item:hover { background: #f9fafb; border-color: #f3f4f6; }
-    .file-item.merged { background: #f0fdf4; opacity: 0.7; }
-    .file-item.merged span { text-decoration: line-through; color: #6b7280; }
-    .file-path { font-family: monospace; font-size: 0.85rem; flex: 1; margin: 0 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item { display: flex; align-items: center; padding: 0.2rem 0.5rem; border-radius: 6px; transition: background 0.1s; border: 1px solid transparent; }
+    .file-item:hover { background: #f1f5f9; border-color: #e2e8f0; }
+    .file-item.merged { background: #f0fdf4; opacity: 0.8; }
+    .file-item.merged .file-path { text-decoration: line-through; color: #94a3b8; }
     
-    /* Buttons */
-    .btn { padding: 0.6rem 1rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-hover); }
-    .btn-outline { background: white; border: 1px solid var(--border); font-size: 0.75rem; padding: 0.3rem 0.6rem; }
-    .btn-outline:hover { background: #f9fafb; }
-    .btn-danger { background: #fee2e2; color: #991b1b; font-size: 0.75rem; margin-top: auto; }
+    /* Clickable Label Area */
+    .toggle-label { display: flex; align-items: center; flex: 1; cursor: pointer; padding: 0.4rem 0; overflow: hidden; }
+    input[type="checkbox"].main-check { width: 18px; height: 18px; cursor: pointer; margin-right: 12px; accent-color: var(--primary); flex-shrink: 0; }
 
-    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .file-path { font-family: monospace; font-size: 0.85rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    
+    /* Action Group */
+    .action-group { display: flex; gap: 4px; align-items: center; padding-left: 8px; }
+    .btn { padding: 0.6rem 1rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-outline { background: white; border: 1px solid var(--border); font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+    .btn-danger { background: #fee2e2; color: #991b1b; font-size: 0.75rem; }
+
+    .icon-btn { background: none; border: 1px solid transparent; cursor: pointer; font-size: 1.1rem; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+    .icon-btn:hover { background: #e2e8f0; border-color: #cbd5e1; transform: scale(1.1); }
+
+    .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-flex; align-items: center; }
     .badge-latest { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .badge-history { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; font-weight: normal; margin-right: 2px; }
     
     #progress-bar-container { width: 200px; height: 8px; background: #374151; border-radius: 4px; overflow: hidden; margin-left: 1rem; }
     #progress-bar { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
+    #progressLabel { margin-left: 10px; font-size: 0.8rem; color: #9ca3af; font-weight: 600; min-width: 70px; }
+
+    .sync-btn { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; transition: color 0.2s, transform 0.3s; padding: 5px; }
+    .sync-btn:hover { color: white; transform: rotate(180deg); }
+    .sync-btn.syncing { animation: rotate 1s infinite linear; color: var(--success); }
+    @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+    .modal-content { background-color: #fff; padding: 1.5rem; border-radius: 8px; width: 600px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 1rem; max-height: 90vh; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid #eee; padding-top: 0.5rem; }
+    .memo-indicator { cursor: pointer; font-size: 16px; opacity: 0.3; transition: all 0.2s; padding: 2px 6px; border-radius: 4px; }
+    .memo-indicator:hover { background: #e2e8f0; opacity: 1; }
+    .memo-indicator.active { opacity: 1; color: var(--primary); }
+
+    .memo-summary-item { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    .memo-content-box { background: #fffbeb; border-left: 4px solid #fbbf24; padding: 0.75rem; margin-top: 0.5rem; font-size: 0.9rem; color: #92400e; white-space: pre-wrap; }
   </style>
 </head>
 <body>
@@ -67,14 +170,28 @@
     <div style="display: flex; align-items: center;">
       <span style="font-size: 1.25rem; font-weight: bold;">SVN Merge Assistant</span>
       <div id="progress-bar-container"><div id="progress-bar"></div></div>
-      <span id="progressInfo" style="margin-left: 10px; font-size: 0.85rem; color: #d1d5db;">0% (0/0)</span>
+      <span id="progressLabel">진척도</span>
+      <span id="progressInfo" style="margin-left: 5px; font-size: 0.85rem; color: #d1d5db;">0% (0/0)</span>
+      <button class="sync-btn" id="syncBtn" onclick="syncData(true)" title="다른 창과 동기화">🔄</button>
     </div>
     <div style="font-size: 0.85rem; color: #9ca3af;">r329 ~ r425 Merge Helper</div>
   </header>
   <main>
-    <div class="sidebar">
-      <h3>1. 로그 데이터 입력</h3>
-      <textarea id="logInput" placeholder="SVN 로그(Revision ~ --- 분리선 포함)를 여기에 붙여넣으세요..."></textarea>
+    <div class="sidebar" id="sidebar">
+      <button class="toggle-sidebar-btn" onclick="toggleSidebar()" id="toggleBtn" title="사이드바 접기/펴기">◀</button>
+      
+      <div class="search-group">
+        <input type="text" id="searchInput" class="search-input" placeholder="검색어 입력..." oninput="handleSearch()">
+        <div id="extensionFilters" class="ext-filters">
+          <!-- Extension tags will be injected here -->
+        </div>
+        <label class="filter-item">
+          <input type="checkbox" id="filterRemaining" onchange="handleFilterChange()"> 미완료 항목만 보기
+        </label>
+      </div>
+
+      <h3>1. 로그 데이터 입력(Generate ChangeLog)</h3>
+      <textarea id="logInput" placeholder="SVN 로그를 여기에 붙여넣으세요..."></textarea>
       
       <div class="input-group">
         <label for="localPath">2. 로컬 작업 디렉토리 매핑</label>
@@ -82,266 +199,454 @@
       </div>
       
       <button class="btn btn-primary" onclick="processLog()">분석 및 대시보드 생성</button>
-
+      
       <div style="display: flex; gap: 0.5rem;">
         <button class="btn btn-outline" style="flex: 1;" onclick="exportData()">데이터 내보내기</button>
         <button class="btn btn-outline" style="flex: 1;" onclick="document.getElementById('importFile').click()">데이터 가져오기</button>
         <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importData(this)">
       </div>
 
-      <button class="btn btn-danger" onclick="clearStatus()">진행 데이터 초기화</button>
-      
-      <div style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; margin-top: 1rem;">
-        * 팁: '파일별 최종본 보기' 탭에서는 여러 번 수정된 파일의 마지막 버전만 하이라이트됩니다.
+      <div style="display: flex; gap: 0.5rem;">
+        <button class="btn btn-primary" style="flex: 2; background: #4f46e5;" onclick="generateMergeReport()">머지 보고서 생성 📋</button>
+        <button class="btn btn-danger" style="flex: 1;" onclick="clearStatus()">초기화</button>
+      </div>
+
+      <div class="sidebar-info">
+        <div>* 복사 안내:<br>📋 : 로컬 전체 경로 복사<br>🔗 : 프로젝트 기준 경로 복사</div>
+        <div style="text-align: left; font-weight: 500; color: var(--success);">* 실시간 저장:<br>모든 작업 내역은<br>실시간으로 저장되고 있습니다.</div>
       </div>
     </div>
     
     <div class="content">
       <div class="tabs">
         <div id="tab-rev" class="tab active" onclick="switchTab('rev')">리비전별 타임라인</div>
-        <div id="tab-file" class="tab" onclick="switchTab('file')">파일별 최종본 체크리스트</div>
+        <div id="tab-file" class="tab" onclick="switchTab('file')">파일별 타임라인</div>
+        <div id="tab-memo" class="tab" onclick="switchTab('memo')">메모 모아보기 📝</div>
       </div>
-      <div id="displayArea"></div>
+      
+      <div id="area-rev" class="tab-container active"></div>
+      <div id="area-file" class="tab-container"></div>
+      <div id="area-memo" class="tab-container"></div>
     </div>
   </main>
 
+  <!-- Memo Modal -->
+  <div id="memoModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><span id="memoTitle">파일 메모</span><span style="cursor:pointer; font-size: 20px;" onclick="closeMemo()">&times;</span></div>
+      <textarea id="memoText" style="min-height: 200px; font-family: inherit; font-size: 14px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="머지 시 주의사항이나 메모를 입력하세요..."></textarea>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeMemo()">취소</button><button class="btn btn-primary" onclick="saveMemo()">저장</button></div>
+    </div>
+  </div>
+
+  <!-- Report Modal -->
+  <div id="reportModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><span>머지 완료 보고서 (Merge Report)</span><span style="cursor:pointer; font-size: 20px;" onclick="document.getElementById('reportModal').style.display='none'">&times;</span></div>
+      <p style="font-size: 0.8rem; color: #666; margin: 0;">복사하여 메모장이나 보고서에 활용하세요.</p>
+      <textarea id="reportArea" style="flex: 1; font-family: monospace; font-size: 11px; padding: 10px; background: #f9fafb; border: 1px solid #ddd; border-radius: 4px; line-height: 1.5;" readonly></textarea>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="copyReport()">보고서 복사</button>
+        <button class="btn btn-primary" onclick="document.getElementById('reportModal').style.display='none'">닫기</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let svnData = [];
-    let mergeStatus = JSON.parse(localStorage.getItem('svn_merge_status_v1') || '{}');
+    let mergeStatus = {};
+    let mergeMemos = {};
     let currentTab = 'rev';
+    let currentMemoKey = null;
+    let searchTerm = "";
+    let filterRemaining = false;
+    let extensionFilter = "";
 
-    // 설정 저장
-    function saveSettings() {
-      localStorage.setItem('svn_local_path', document.getElementById('localPath').value);
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      const btn = document.getElementById('toggleBtn');
+      const isCollapsed = sidebar.classList.toggle('collapsed');
+      btn.innerText = isCollapsed ? '▶' : '◀';
+      localStorage.setItem('svn_sidebar_collapsed', isCollapsed);
     }
 
-    // 설정 로드
+    function handleFilterChange() {
+      filterRemaining = document.getElementById('filterRemaining').checked;
+      localStorage.setItem('svn_filter_remaining', filterRemaining);
+      renderAll();
+    }
+
+    function syncData(isManual = false) {
+      if (isManual) document.getElementById('syncBtn').classList.add('syncing');
+      mergeStatus = JSON.parse(localStorage.getItem('svn_merge_status_v1') || '{}');
+      mergeMemos = JSON.parse(localStorage.getItem('svn_merge_memos_v1') || '{}');
+      if (svnData.length > 0) renderAllWithScrollPreservation();
+      if (isManual) setTimeout(() => { document.getElementById('syncBtn').classList.remove('syncing'); }, 500);
+    }
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'svn_merge_status_v1' || e.key === 'svn_merge_memos_v1') syncData();
+    });
+
+    function saveSettings() { localStorage.setItem('svn_local_path', document.getElementById('localPath').value); }
+
     window.onload = () => {
+      if (localStorage.getItem('svn_sidebar_collapsed') === 'true') {
+        const sidebar = document.getElementById('sidebar');
+        const btn = document.getElementById('toggleBtn');
+        sidebar.classList.add('collapsed'); btn.innerText = '▶';
+      }
+      filterRemaining = localStorage.getItem('svn_filter_remaining') === 'true';
+      document.getElementById('filterRemaining').checked = filterRemaining;
       document.getElementById('localPath').value = localStorage.getItem('svn_local_path') || '';
       const savedLog = localStorage.getItem('svn_raw_log');
-      if (savedLog) {
-        document.getElementById('logInput').value = savedLog;
-        processLog();
-      }
+      if (savedLog) { document.getElementById('logInput').value = savedLog; processLog(); }
+      syncData();
     };
+
+    function handleSearch() { searchTerm = document.getElementById('searchInput').value.toLowerCase().trim(); renderAll(); }
 
     function processLog() {
       const input = document.getElementById('logInput').value;
       if (!input.trim()) return;
-      
       localStorage.setItem('svn_raw_log', input);
-      
       const separator = '-'.repeat(76);
       const blocks = input.split(separator);
       svnData = [];
+      const extensions = new Set();
 
       blocks.forEach(block => {
-        block = block.trim();
-        if (!block) return;
+        block = block.trim(); if (!block) return;
         const lines = block.split('\n');
-        const revMatch = lines[0].match(/^r(\d+)/);
-        if (!revMatch) return;
-
+        const revMatch = lines[0].match(/^r(\d+)/); if (!revMatch) return;
         const rev = revMatch[1];
-        let files = [];
-        let isPath = false;
-        let msgLines = [];
-
+        let files = [], isPath = false, msgLines = [];
         lines.forEach((line, idx) => {
           if (idx === 0) return;
           if (line.includes('Changed paths:')) { isPath = true; return; }
           if (isPath && line.trim() === "") { isPath = false; return; }
-          
           if (isPath) {
             const m = line.trim().match(/^[MADRUC ]+\s+(.*)$/);
-            if (m) files.push(m[1]);
-          } else {
-            if (line.trim()) msgLines.push(line.trim());
-          }
+            if (m) {
+              const f = m[1];
+              files.push(f);
+              const ext = f.split('.').pop().toLowerCase();
+              if (ext && ext.length < 10) extensions.add(ext);
+            }
+          } else if (line.trim()) msgLines.push(line.trim());
         });
-
         svnData.push({ rev: parseInt(rev), msg: msgLines.join(' '), files });
       });
-
-      // 리비전 역순 정렬 (최신이 위로)
       svnData.sort((a, b) => b.rev - a.rev);
-      render();
+      
+      renderExtensionFilters(Array.from(extensions).sort());
+      renderAll();
+    }
+
+    function renderExtensionFilters(exts) {
+      const container = document.getElementById('extensionFilters');
+      container.innerHTML = `<span class="ext-tag ${!extensionFilter ? 'active' : ''}" onclick="setExtFilter('')">ALL</span>`;
+      exts.forEach(ext => {
+        container.innerHTML += `<span class="ext-tag ${extensionFilter === ext ? 'active' : ''}" onclick="setExtFilter('${ext}')">${ext.toUpperCase()}</span>`;
+      });
+    }
+
+    function setExtFilter(ext) {
+      extensionFilter = ext;
+      document.querySelectorAll('.ext-tag').forEach(tag => {
+        tag.classList.toggle('active', tag.innerText === (ext ? ext.toUpperCase() : 'ALL'));
+      });
+      renderAll();
     }
 
     function toggleMerge(rev, filePath) {
       const key = `${rev}:${filePath}`;
       mergeStatus[key] = !mergeStatus[key];
       localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus));
-      render();
+      renderAllWithScrollPreservation();
     }
 
-    function render() {
-      const area = document.getElementById('displayArea');
-      area.innerHTML = "";
+    function toggleFileAllMerge(filePath, isChecked) {
+      svnData.forEach(item => {
+        if (item.files.includes(filePath)) mergeStatus[`${item.rev}:${filePath}`] = isChecked;
+      });
+      localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus));
+      renderAllWithScrollPreservation();
+    }
+
+    function openMemo(rev, filePath) {
+      currentMemoKey = `${rev}:${filePath}`;
+      const memo = mergeMemos[currentMemoKey] || '';
+      document.getElementById('memoTitle').innerText = `r${rev} - ${filePath.split('/').pop()} 메모`;
+      document.getElementById('memoText').value = memo;
+      document.getElementById('memoModal').style.display = 'flex';
+      document.getElementById('memoText').focus();
+    }
+
+    function closeMemo() { document.getElementById('memoModal').style.display = 'none'; currentMemoKey = null; }
+
+    function saveMemo() {
+      if (currentMemoKey) {
+        const text = document.getElementById('memoText').value.trim();
+        if (text) mergeMemos[currentMemoKey] = text; else delete mergeMemos[currentMemoKey];
+        localStorage.setItem('svn_merge_memos_v1', JSON.stringify(mergeMemos));
+        renderAllWithScrollPreservation(); closeMemo();
+      }
+    }
+
+    function renderAllWithScrollPreservation() {
+      const containers = ['area-rev', 'area-file', 'area-memo'];
+      const scrollPositions = {};
+      containers.forEach(id => { scrollPositions[id] = document.getElementById(id).scrollTop; });
+      renderAll();
+      containers.forEach(id => { document.getElementById(id).scrollTop = scrollPositions[id]; });
+    }
+
+    function renderAll() { renderRev(); renderFile(); renderMemo(); updateProgress(); }
+
+    function applyFilters(files, rev = null) {
+      return files.filter(f => {
+        const matchesSearch = !searchTerm || f.toLowerCase().includes(searchTerm) || (rev && rev.toString().includes(searchTerm));
+        const matchesExt = !extensionFilter || f.toLowerCase().endsWith('.' + extensionFilter);
+        const matchesRemaining = !filterRemaining || !mergeStatus[`${rev}:${f}`];
+        return matchesSearch && matchesExt && matchesRemaining;
+      });
+    }
+
+    function renderRev() {
+      const area = document.getElementById('area-rev'); area.innerHTML = "";
+      const filteredData = svnData.map(item => {
+        const displayFiles = applyFilters(item.files, item.rev);
+        return { ...item, displayFiles };
+      }).filter(item => {
+        if (item.displayFiles.length === 0 && (filterRemaining || searchTerm || extensionFilter)) return false;
+        return true;
+      });
+
+      if (filteredData.length === 0 && svnData.length > 0) { area.innerHTML = '<div style="text-align:center; padding:3rem; color:#6b7280;">필터 조건에 맞는 리비전이 없습니다.</div>'; return; }
       
-      let totalFilesCount = 0;
-      let mergedFilesCount = 0;
-
-      if (currentTab === 'rev') {
-        svnData.forEach(item => {
-          const card = document.createElement('div');
-          card.className = 'rev-card';
-          
-          let filesHtml = '<div class="file-list">';
-          item.files.forEach(f => {
-            const isMerged = mergeStatus[`${item.rev}:${f}`];
-            totalFilesCount++;
-            if (isMerged) mergedFilesCount++;
-            
-            filesHtml += `
-              <div class="file-item ${isMerged ? 'merged' : ''}">
-                <input type="checkbox" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${item.rev}, '${f}')">
+      filteredData.forEach(item => {
+        const card = document.createElement('div'); card.className = 'rev-card';
+        let filesHtml = '<div class="file-list">';
+        item.displayFiles.forEach(f => {
+          const key = `${item.rev}:${f}`, isMerged = mergeStatus[key];
+          filesHtml += `
+            <div class="file-item ${isMerged ? 'merged' : ''}">
+              <label class="toggle-label">
+                <input type="checkbox" class="main-check" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${item.rev}, '${f}')">
                 <span class="file-path" title="${f}">${f}</span>
-                <button class="btn btn-outline" onclick="copyPath('${f}')">경로복사</button>
-              </div>`;
-          });
-          filesHtml += '</div>';
-
-          card.innerHTML = `
-            <div class="rev-header">
-              <span class="rev-id">r${item.rev}</span>
-              <span class="rev-msg">${item.msg}</span>
-            </div>
-            ${filesHtml}
-          `;
-          area.appendChild(card);
+              </label>
+              <div class="action-group">
+                <span class="memo-indicator ${mergeMemos[key] ? 'active' : ''}" onclick="openMemo(${item.rev}, '${f}')" title="${mergeMemos[key] || '메모 작성'}">📝</span>
+                <button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button>
+                <button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button>
+              </div>
+            </div>`;
         });
-      } else {
-        // 파일별 최종 리비전 맵 생성
-        const fileMap = {};
-        svnData.forEach(item => {
-          item.files.forEach(f => {
-            if (!fileMap[f] || item.rev > fileMap[f].rev) {
-              fileMap[f] = { rev: item.rev, msg: item.msg };
-            }
-          });
-        });
+        filesHtml += '</div>';
+        card.innerHTML = `<div class="rev-header"><span class="rev-id">r${item.rev}</span><span class="rev-msg">${item.msg}</span></div>${filesHtml}`;
+        area.appendChild(card);
+      });
+    }
 
-        const sortedFiles = Object.keys(fileMap).sort();
-        sortedFiles.forEach(f => {
-          const info = fileMap[f];
-          const isMerged = mergeStatus[`${info.rev}:${f}`];
-          totalFilesCount++;
-          if (isMerged) mergedFilesCount++;
-          
-          const div = document.createElement('div');
-          div.className = `file-item ${isMerged ? 'merged' : ''}`;
-          div.style.borderBottom = "1px solid #f3f4f6";
-          div.style.padding = "0.75rem";
-          
-          div.innerHTML = `
-            <input type="checkbox" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${info.rev}, '${f}')">
-            <div style="display:flex; flex-direction:column; flex:1; margin-left:1rem; overflow:hidden;">
-              <div style="display:flex; align-items:center; gap:8px;">
+    function renderFile() {
+      const area = document.getElementById('area-file'); area.innerHTML = "";
+      const fileMap = {};
+      svnData.forEach(item => {
+        item.files.forEach(f => {
+          if (!fileMap[f]) fileMap[f] = { revs: [], latestRev: item.rev, msg: item.msg };
+          fileMap[f].revs.push(item.rev);
+          if (item.rev > fileMap[f].latestRev) { fileMap[f].latestRev = item.rev; fileMap[f].msg = item.msg; }
+        });
+      });
+      const filteredFiles = Object.keys(fileMap).filter(f => {
+        const info = fileMap[f];
+        const matchesSearch = !searchTerm || f.toLowerCase().includes(searchTerm) || info.revs.some(r => r.toString().includes(searchTerm));
+        const matchesExt = !extensionFilter || f.toLowerCase().endsWith('.' + extensionFilter);
+        const allMerged = info.revs.every(r => mergeStatus[`${r}:${f}`]);
+        const matchesRemaining = !filterRemaining || !allMerged;
+        return matchesSearch && matchesExt && matchesRemaining;
+      }).sort();
+
+      if (filteredFiles.length === 0 && svnData.length > 0) { area.innerHTML = '<div style="text-align:center; padding:3rem; color:#6b7280;">필터 조건에 맞는 파일이 없습니다.</div>'; return; }
+      
+      filteredFiles.forEach(f => {
+        const info = fileMap[f], allRevsMerged = info.revs.every(r => mergeStatus[`${r}:${f}`]), latestKey = `${info.latestRev}:${f}`;
+        const historyHtml = info.revs.sort((a,b) => b-a).map(r => `<span class="badge ${r === info.latestRev ? 'badge-latest' : 'badge-history'}">r${r}</span>`).join(' ');
+        const div = document.createElement('div'); div.className = `file-item ${allRevsMerged ? 'merged' : ''}`;
+        div.style.borderBottom = "1px solid #f3f4f6";
+        div.innerHTML = `
+          <label class="toggle-label" style="padding: 0.75rem;">
+            <input type="checkbox" class="main-check" ${allRevsMerged ? 'checked' : ''} onchange="toggleFileAllMerge('${f}', this.checked)">
+            <div style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
                 <strong style="font-size:0.95rem;">${f.split('/').pop()}</strong>
-                <span class="badge badge-latest">최신 r${info.rev}</span>
+                <div style="display:flex; gap:3px; flex-wrap: wrap;">${historyHtml}</div>
               </div>
               <span style="font-size:0.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f}</span>
             </div>
-            <button class="btn btn-outline" onclick="copyPath('${f}')">경로복사</button>
-          `;
-          area.appendChild(div);
-        });
-      }
-
-      // 진행률 업데이트
-      const percent = totalFilesCount === 0 ? 0 : Math.round((mergedFilesCount / totalFilesCount) * 100);
-      document.getElementById('progress-bar').style.width = percent + '%';
-      document.getElementById('progressInfo').innerText = `${percent}% (${mergedFilesCount}/${totalFilesCount})`;
+          </label>
+          <div class="action-group" style="padding-right: 0.75rem;">
+            <span class="memo-indicator ${mergeMemos[latestKey] ? 'active' : ''}" onclick="openMemo(${info.latestRev}, '${f}')" title="${mergeMemos[latestKey] || '메모 작성'}">📝</span>
+            <button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button>
+            <button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button>
+          </div>`;
+        area.appendChild(div);
+      });
     }
 
-    function copyPath(path) {
-      const root = document.getElementById('localPath').value.trim();
-      let fullPath = path;
-      if (root) {
-        // trunk 경로 등 공통 접두어 제거 시도 (선택 사항)
-        const cleanPath = path.replace(/^\/trunk\/[^\/]+\//, '');
-        fullPath = root + (root.endsWith('\\') || root.endsWith('/') ? '' : '\\') + cleanPath;
+    function renderMemo() {
+      const area = document.getElementById('area-memo'); area.innerHTML = "";
+      const memoKeys = Object.keys(mergeMemos);
+      const filteredMemoKeys = memoKeys.filter(key => {
+        const [rev, ...pathParts] = key.split(':');
+        const path = pathParts.join(':');
+        const matchesSearch = !searchTerm || rev.includes(searchTerm) || path.toLowerCase().includes(searchTerm) || mergeMemos[key].toLowerCase().includes(searchTerm);
+        const matchesExt = !extensionFilter || path.toLowerCase().endsWith('.' + extensionFilter);
+        return matchesSearch && matchesExt;
+      });
+      if (filteredMemoKeys.length === 0) { area.innerHTML = `<div style="text-align:center; padding:3rem; color:#6b7280;">${memoKeys.length === 0 ? '작성된 메모가 없습니다.' : '조건에 맞는 메모가 없습니다.'}</div>`; return; }
+      filteredMemoKeys.forEach(key => {
+        const [rev, ...pathParts] = key.split(':'), path = pathParts.join(':');
+        const div = document.createElement('div'); div.className = 'memo-summary-item';
+        div.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div><span class="badge badge-latest">r${rev}</span><strong style="margin-left:8px;">${path.split('/').pop()}</strong></div>
+            <div class="action-group">
+              <button class="icon-btn" onclick="openMemo('${rev}', '${path}')" title="메모 수정">📝</button>
+              <button class="icon-btn" onclick="copyPath(event, '${path}', 'abs')" title="로컬 전체 경로 복사">📋</button>
+              <button class="icon-btn" onclick="copyPath(event, '${path}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button>
+            </div>
+          </div>
+          <div class="memo-content-box">${mergeMemos[key]}</div>`;
+        area.appendChild(div);
+      });
+    }
+
+    function updateProgress() {
+      if (currentTab === 'rev' || currentTab === 'memo') {
+        let total = 0, merged = 0;
+        svnData.forEach(item => {
+          total += item.files.length;
+          item.files.forEach(f => { if(mergeStatus[`${item.rev}:${f}`]) merged++; });
+        });
+        const percent = total === 0 ? 0 : Math.round((merged / total) * 100);
+        document.getElementById('progressLabel').innerText = "리비전 진행률";
+        document.getElementById('progress-bar').style.width = percent + '%';
+        document.getElementById('progressInfo').innerText = `${percent}% (${merged}/${total})`;
+      } else if (currentTab === 'file') {
+        const fileMap = {};
+        svnData.forEach(item => {
+          item.files.forEach(f => { if (!fileMap[f]) fileMap[f] = []; fileMap[f].push(item.rev); });
+        });
+        const uniquePaths = Object.keys(fileMap);
+        const totalFiles = uniquePaths.length;
+        const mergedFiles = uniquePaths.filter(path => fileMap[path].every(r => mergeStatus[`${r}:${path}`])).length;
+        const percent = totalFiles === 0 ? 0 : Math.round((mergedFiles / totalFiles) * 100);
+        document.getElementById('progressLabel').innerText = "파일 완수율";
+        document.getElementById('progress-bar').style.width = percent + '%';
+        document.getElementById('progressInfo').innerText = `${percent}% (${mergedFiles}/${totalFiles})`;
       }
-      fullPath = fullPath.replace(/\//g, '\\');
+    }
+
+    function generateMergeReport() {
+      let report = "==================================================\n";
+      report += "       SVN 머지 완료 보고서 (Merge Report)\n";
+      report += "==================================================\n";
+      report += `작성일: ${new Date().toLocaleString()}\n\n`;
       
-      navigator.clipboard.writeText(fullPath).then(() => {
-        // 간단한 알림 효과
-        const btn = event.target;
-        const originalText = btn.innerText;
-        btn.innerText = "복사됨!";
-        btn.style.color = "var(--success)";
-        setTimeout(() => {
-          btn.innerText = originalText;
-          btn.style.color = "";
-        }, 1000);
+      const fileMap = {};
+      svnData.forEach(item => {
+        item.files.forEach(f => {
+          if (!fileMap[f]) fileMap[f] = [];
+          fileMap[f].push(item.rev);
+        });
+      });
+
+      const mergedFiles = Object.keys(fileMap).filter(f => fileMap[f].every(r => mergeStatus[`${r}:${f}`])).sort();
+      
+      if (mergedFiles.length === 0) {
+        alert('머지 완료된 파일이 없습니다.');
+        return;
+      }
+
+      report += `[1. 머지 완료 통계]\n`;
+      report += `- 총 고유 파일: ${Object.keys(fileMap).length}개\n`;
+      report += `- 완료된 파일: ${mergedFiles.length}개\n`;
+      report += `- 최종 진척도: ${Math.round((mergedFiles.length / Object.keys(fileMap).length) * 100)}%\n`;
+      
+      report += "\n[2. 세부 머지 내역]\n";
+      report += "--------------------------------------------------\n";
+
+      mergedFiles.forEach(f => {
+        const latestRev = Math.max(...fileMap[f]);
+        const memo = mergeMemos[`${latestRev}:${f}`] || "-";
+        const relPath = f.replace(/^\/trunk\//, '');
+        report += `■ ${f.split('/').pop()} (r${latestRev})\n`;
+        report += `   - 경로: ${relPath}\n`;
+        report += `   - 메모: ${memo}\n`;
+        report += "--------------------------------------------------\n";
+      });
+
+      document.getElementById('reportArea').value = report;
+      document.getElementById('reportModal').style.display = 'flex';
+    }
+
+    function copyReport() {
+      const area = document.getElementById('reportArea');
+      navigator.clipboard.writeText(area.value).then(() => {
+        alert('보고서 내용이 클립보드에 복사되었습니다.');
+      });
+    }
+
+    function copyPath(e, path, type) {
+      const root = document.getElementById('localPath').value.trim();
+      let textToCopy = (type === 'abs') ? (root + (root.endsWith('\\') || root.endsWith('/') ? '' : '\\') + path.replace(/^\/trunk\/[^\/]+\//, '')).replace(/\//g, '\\') : path.replace(/^\/trunk\//, '');
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        const btn = e.currentTarget || e.target; const icon = btn.innerText; btn.innerText = "✅";
+        setTimeout(() => { btn.innerText = icon; }, 1000);
       });
     }
 
     function switchTab(tab) {
       currentTab = tab;
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-container').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-' + tab).classList.add('active');
-      render();
+      document.getElementById('area-' + tab).classList.add('active');
+      updateProgress();
     }
 
     function clearStatus() {
-      if (confirm('주의: 모든 머지 체크 기록과 입력된 로그가 초기화됩니다. 계속할까요?')) {
-        mergeStatus = {};
-        localStorage.removeItem('svn_merge_status_v1');
-        localStorage.removeItem('svn_raw_log');
-        document.getElementById('logInput').value = "";
-        svnData = [];
-        render();
+      if (confirm('주의: 모든 데이터가 초기화됩니다.')) {
+        mergeStatus = {}; mergeMemos = {};
+        localStorage.removeItem('svn_merge_status_v1'); localStorage.removeItem('svn_merge_memos_v1'); localStorage.removeItem('svn_raw_log');
+        document.getElementById('logInput').value = ""; svnData = []; renderAll();
       }
     }
 
-    // 데이터 내보내기 (Export)
     function exportData() {
-      const data = {
-        rawLog: document.getElementById('logInput').value,
-        localPath: document.getElementById('localPath').value,
-        mergeStatus: mergeStatus,
-        exportDate: new Date().toISOString()
-      };
-      
+      const data = { rawLog: document.getElementById('logInput').value, localPath: document.getElementById('localPath').value, mergeStatus, mergeMemos };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `svn_merge_backup_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `svn_merge_backup_${new Date().toISOString().split('T')[0]}.json`; a.click();
     }
 
-    // 데이터 가져오기 (Import)
     function importData(input) {
-      const file = input.files[0];
-      if (!file) return;
-
+      const file = input.files[0]; if (!file) return;
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
           const data = JSON.parse(e.target.result);
-          if (confirm('기존 데이터를 덮어쓰고 백업 데이터를 가져올까요?')) {
-            document.getElementById('logInput').value = data.rawLog || '';
-            document.getElementById('localPath').value = data.localPath || '';
-            mergeStatus = data.mergeStatus || {};
-            
-            localStorage.setItem('svn_raw_log', data.rawLog || '');
-            localStorage.setItem('svn_local_path', data.localPath || '');
-            localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus));
-            
+          if (confirm('데이터를 가져올까요?')) {
+            document.getElementById('logInput').value = data.rawLog || ''; document.getElementById('localPath').value = data.localPath || '';
+            mergeStatus = data.mergeStatus || {}; mergeMemos = data.mergeMemos || {};
+            localStorage.setItem('svn_raw_log', data.rawLog || ''); localStorage.setItem('svn_local_path', data.localPath || '');
+            localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus)); localStorage.setItem('svn_merge_memos_v1', JSON.stringify(mergeMemos));
             processLog();
-            alert('데이터를 성공적으로 가져왔습니다.');
           }
-        } catch (err) {
-          alert('파일 형식이 올바르지 않습니다.');
-          console.error(err);
-        }
+        } catch (err) { alert('형식이 올바르지 않습니다.'); }
       };
-      reader.readAsText(file);
-      input.value = ''; // 파일 선택 초기화
+      reader.readAsText(file); input.value = '';
     }
   </script>
 </body>
