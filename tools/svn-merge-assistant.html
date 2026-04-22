@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>SVN 머지 보조도구 (Merge Assistant)</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔀</text></svg>">
   <style>
     :root {
       --bg: #f3f4f6;
@@ -36,39 +37,12 @@
     .sidebar.collapsed { width: 0; padding: 0; border-right: none; }
     .sidebar.collapsed > *:not(.toggle-sidebar-btn) { display: none !important; }
     
-    .sidebar-info {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      line-height: 1.4;
-      margin-top: auto;
-      padding-top: 1rem;
-    }
+    .sidebar-info { display: flex; justify-content: space-between; align-items: flex-end; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; margin-top: auto; padding-top: 1rem; }
 
     /* Toggle Button */
     .toggle-sidebar-btn {
-      position: absolute;
-      right: -24px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 24px;
-      height: 60px;
-      background: var(--primary);
-      color: white;
-      border: 1px solid var(--primary-hover);
-      border-radius: 0 8px 8px 0;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-      font-size: 14px;
-      transition: background 0.2s;
+      position: absolute; right: -24px; top: 50%; transform: translateY(-50%); width: 24px; height: 60px; background: var(--primary); color: white; border: 1px solid var(--primary-hover); border-radius: 0 8px 8px 0; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000; box-shadow: 2px 0 5px rgba(0,0,0,0.1); font-size: 14px;
     }
-    .toggle-sidebar-btn:hover { background: var(--primary-hover); }
 
     .sidebar h3 { margin: 0; font-size: 1.1rem; white-space: nowrap; }
     textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-family: 'Cascadia Code', 'Courier New', monospace; font-size: 12px; resize: none; box-sizing: border-box; }
@@ -78,58 +52,46 @@
     .input-group label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
     input[type="text"] { padding: 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
     
-    /* Search Bar & Filters */
     .search-group { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; }
     .search-input { width: 95%; border: none; background: transparent; font-size: 0.9rem; outline: none; padding: 2px 4px; }
     .filter-item { margin-top: 5px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; color: var(--text-muted); cursor: pointer; }
-    
-    /* Extension Filter Area */
     .ext-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
     .ext-tag { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #e2e8f0; color: #475569; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
-    .ext-tag:hover { background: #cbd5e1; }
     .ext-tag.active { background: var(--primary); color: white; }
 
-    /* Content Area */
     .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--bg); }
-    
-    /* Sticky Tab Menu */
-    .tabs { 
-      display: flex; 
-      gap: 0.5rem; 
-      border-bottom: 1px solid var(--border); 
-      background: var(--bg); 
-      padding: 1.5rem 1.5rem 0 1.5rem; 
-      z-index: 20; 
-      flex-shrink: 0;
-    }
+    .tabs { display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border); background: var(--bg); padding: 1.5rem 1.5rem 0 1.5rem; z-index: 20; flex-shrink: 0; }
     .tab { cursor: pointer; padding: 0.75rem 1.25rem; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all 0.2s; white-space: nowrap; background: white; border-radius: 6px 6px 0 0; border: 1px solid transparent; border-bottom: none; margin-bottom: -1px; }
-    .tab:hover { color: var(--text-main); background: #fff; }
     .tab.active { border-color: var(--border); border-bottom-color: white; font-weight: bold; color: var(--primary); background: white; }
     
-    /* Independent Scroll Containers */
-    .tab-container { flex: 1; overflow-y: auto; padding: 1.5rem; display: none; flex-direction: column; }
+    .tab-container { flex: 1; overflow-y: auto; padding: 1.5rem; display: none; flex-direction: column; position: relative; }
     .tab-container.active { display: flex; }
+    .virtual-viewport { position: relative; width: 100%; }
+    .virtual-spacer { position: absolute; top: 0; left: 0; width: 1px; visibility: hidden; }
+    .virtual-content { position: absolute; top: 0; left: 0; width: 100%; }
 
-    /* Revision Cards */
-    .rev-card { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    /* [성능 최적화] content-visibility 적용 */
+    .rev-card { 
+      background: white; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      /* content-visibility: auto; contain-intrinsic-size: 1px 200px; */ /* 가상스크롤 도입으로 제거 */
+    }
     .rev-header { display: flex; justify-content: space-between; align-items: flex-start; font-weight: bold; border-bottom: 1px solid #f3f4f6; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
     .rev-id { background: #eff6ff; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
     .rev-msg { font-weight: normal; font-size: 0.9rem; color: #374151; flex: 1; margin-left: 1rem; }
     
-    /* File Items */
     .file-list { display: flex; flex-direction: column; gap: 0.4rem; }
-    .file-item { display: flex; align-items: center; padding: 0.2rem 0.5rem; border-radius: 6px; transition: background 0.1s; border: 1px solid transparent; }
+    .file-item { 
+      display: flex; align-items: center; padding: 0.2rem 0.5rem; border-radius: 6px; transition: background 0.1s; border: 1px solid transparent;
+      content-visibility: auto; contain-intrinsic-size: 1px 40px;
+    }
     .file-item:hover { background: #f1f5f9; border-color: #e2e8f0; }
-    .file-item.merged { background: #f0fdf4; opacity: 0.8; }
+    .file-item.merged { background: #f0fdf4 !important; opacity: 0.8; }
     .file-item.merged .file-path { text-decoration: line-through; color: #94a3b8; }
     
-    /* Clickable Label Area */
     .toggle-label { display: flex; align-items: center; flex: 1; cursor: pointer; padding: 0.4rem 0; overflow: hidden; }
     input[type="checkbox"].main-check { width: 18px; height: 18px; cursor: pointer; margin-right: 12px; accent-color: var(--primary); flex-shrink: 0; }
-
     .file-path { font-family: monospace; font-size: 0.85rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     
-    /* Action Group */
     .action-group { display: flex; gap: 4px; align-items: center; padding-left: 8px; }
     .btn { padding: 0.6rem 1rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
     .btn-primary { background: var(--primary); color: white; }
@@ -147,18 +109,20 @@
     #progress-bar { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
     #progressLabel { margin-left: 10px; font-size: 0.8rem; color: #9ca3af; font-weight: 600; min-width: 70px; }
 
-    .sync-btn { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; transition: color 0.2s, transform 0.3s; padding: 5px; }
-    .sync-btn:hover { color: white; transform: rotate(180deg); }
+    .sync-btn { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; transition: color 0.2s; padding: 5px; }
     .sync-btn.syncing { animation: rotate 1s infinite linear; color: var(--success); }
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-    /* Modal Styles */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
     .modal-content { background-color: #fff; padding: 1.5rem; border-radius: 8px; width: 600px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 1rem; max-height: 90vh; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
     .modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid #eee; padding-top: 0.5rem; }
+    
+    .loading-overlay { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); flex-direction: column; align-items: center; justify-content: center; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
     .memo-indicator { cursor: pointer; font-size: 16px; opacity: 0.3; transition: all 0.2s; padding: 2px 6px; border-radius: 4px; }
-    .memo-indicator:hover { background: #e2e8f0; opacity: 1; }
     .memo-indicator.active { opacity: 1; color: var(--primary); }
 
     .memo-summary-item { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
@@ -166,108 +130,122 @@
   </style>
 </head>
 <body>
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <div style="font-weight: 600; color: #333;">데이터 분석 및 화면 최적화 중...</div>
+    <div style="font-size: 0.85rem; color: #666; margin-top: 5px;">잠시만 기다려 주세요.</div>
+  </div>
+
   <header>
     <div style="display: flex; align-items: center;">
-      <span style="font-size: 1.25rem; font-weight: bold;">SVN Merge Assistant</span>
+      <span style="font-size: 1.25rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">🔀 SVN Merge Assistant</span>
       <div id="progress-bar-container"><div id="progress-bar"></div></div>
       <span id="progressLabel">진척도</span>
       <span id="progressInfo" style="margin-left: 5px; font-size: 0.85rem; color: #d1d5db;">0% (0/0)</span>
       <button class="sync-btn" id="syncBtn" onclick="syncData(true)" title="다른 창과 동기화">🔄</button>
     </div>
-    <div style="font-size: 0.85rem; color: #9ca3af;">r329 ~ r425 Merge Helper</div>
   </header>
   <main>
     <div class="sidebar" id="sidebar">
       <button class="toggle-sidebar-btn" onclick="toggleSidebar()" id="toggleBtn" title="사이드바 접기/펴기">◀</button>
-      
       <div class="search-group">
-        <input type="text" id="searchInput" class="search-input" placeholder="검색어 입력..." oninput="handleSearch()">
-        <div id="extensionFilters" class="ext-filters">
-          <!-- Extension tags will be injected here -->
+        <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+          <input type="text" id="searchInput" class="search-input" style="flex: 1;" placeholder="실시간 검색..." oninput="handleSearchDebounced()">
+          <button class="icon-btn" onclick="toggleSort()" id="sortBtn" title="리비전 정렬 변경">▼</button>
         </div>
+        <div id="extensionFilters" class="ext-filters"></div>
         <label class="filter-item">
           <input type="checkbox" id="filterRemaining" onchange="handleFilterChange()"> 미완료 항목만 보기
         </label>
       </div>
-
       <h3>1. 로그 데이터 입력(Generate ChangeLog)</h3>
       <textarea id="logInput" placeholder="SVN 로그를 여기에 붙여넣으세요..."></textarea>
-      
       <div class="input-group">
         <label for="localPath">2. 로컬 작업 디렉토리 매핑</label>
         <input type="text" id="localPath" placeholder="예: D:\workspace\project" oninput="saveSettings()">
       </div>
-      
-      <button class="btn btn-primary" onclick="processLog()">분석 및 대시보드 생성</button>
-      
+      <button class="btn btn-primary" onclick="startProcess()">분석 및 대시보드 생성</button>
       <div style="display: flex; gap: 0.5rem;">
         <button class="btn btn-outline" style="flex: 1;" onclick="exportData()">데이터 내보내기</button>
         <button class="btn btn-outline" style="flex: 1;" onclick="document.getElementById('importFile').click()">데이터 가져오기</button>
         <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importData(this)">
       </div>
-
       <div style="display: flex; gap: 0.5rem;">
         <button class="btn btn-primary" style="flex: 2; background: #4f46e5;" onclick="generateMergeReport()">머지 보고서 생성 📋</button>
         <button class="btn btn-danger" style="flex: 1;" onclick="clearStatus()">초기화</button>
       </div>
-
       <div class="sidebar-info">
         <div>* 복사 안내:<br>📋 : 로컬 전체 경로 복사<br>🔗 : 프로젝트 기준 경로 복사</div>
         <div style="text-align: left; font-weight: 500; color: var(--success);">* 실시간 저장:<br>모든 작업 내역은<br>실시간으로 저장되고 있습니다.</div>
       </div>
     </div>
-    
     <div class="content">
       <div class="tabs">
         <div id="tab-rev" class="tab active" onclick="switchTab('rev')">리비전별 타임라인</div>
         <div id="tab-file" class="tab" onclick="switchTab('file')">파일별 타임라인</div>
         <div id="tab-memo" class="tab" onclick="switchTab('memo')">메모 모아보기 📝</div>
       </div>
-      
       <div id="area-rev" class="tab-container active"></div>
       <div id="area-file" class="tab-container"></div>
       <div id="area-memo" class="tab-container"></div>
     </div>
   </main>
 
-  <!-- Memo Modal -->
   <div id="memoModal" class="modal">
     <div class="modal-content">
       <div class="modal-header"><span id="memoTitle">파일 메모</span><span style="cursor:pointer; font-size: 20px;" onclick="closeMemo()">&times;</span></div>
-      <textarea id="memoText" style="min-height: 200px; font-family: inherit; font-size: 14px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="머지 시 주의사항이나 메모를 입력하세요..."></textarea>
+      <textarea id="memoText" style="min-height: 200px; font-family: inherit; font-size: 14px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="메모를 입력하세요..."></textarea>
       <div class="modal-footer"><button class="btn btn-outline" onclick="closeMemo()">취소</button><button class="btn btn-primary" onclick="saveMemo()">저장</button></div>
     </div>
   </div>
 
-  <!-- Report Modal -->
   <div id="reportModal" class="modal">
     <div class="modal-content">
       <div class="modal-header"><span>머지 완료 보고서 (Merge Report)</span><span style="cursor:pointer; font-size: 20px;" onclick="document.getElementById('reportModal').style.display='none'">&times;</span></div>
       <p style="font-size: 0.8rem; color: #666; margin: 0;">복사하여 메모장이나 보고서에 활용하세요.</p>
       <textarea id="reportArea" style="flex: 1; font-family: monospace; font-size: 11px; padding: 10px; background: #f9fafb; border: 1px solid #ddd; border-radius: 4px; line-height: 1.5;" readonly></textarea>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="copyReport()">보고서 복사</button>
-        <button class="btn btn-primary" onclick="document.getElementById('reportModal').style.display='none'">닫기</button>
-      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="copyReport()">보고서 복사</button><button class="btn btn-primary" onclick="document.getElementById('reportModal').style.display='none'">닫기</button></div>
     </div>
   </div>
 
   <script>
     let svnData = [];
+    let fileMap = {};
     let mergeStatus = {};
     let mergeMemos = {};
     let currentTab = 'rev';
-    let currentMemoKey = null;
     let searchTerm = "";
     let filterRemaining = false;
     let extensionFilter = "";
+    let sortOrder = "desc"; // 'desc' or 'asc'
+    let searchTimeout = null;
+
+    // 가상 스크롤 상태 관리
+    const virtualState = {
+      rev: { data: [], filtered: [], offsets: [], totalHeight: 0, scrollTop: 0 },
+      file: { data: [], filtered: [], itemHeight: 60, totalHeight: 0, scrollTop: 0 }
+    };
+
+    function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
+    function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+
+    function startProcess() {
+      showLoading();
+      setTimeout(() => {
+        processLog();
+        hideLoading();
+      }, 50);
+    }
 
     function toggleSidebar() {
-      const sidebar = document.getElementById('sidebar');
-      const btn = document.getElementById('toggleBtn');
-      const isCollapsed = sidebar.classList.toggle('collapsed');
-      btn.innerText = isCollapsed ? '▶' : '◀';
+      const isCollapsed = document.getElementById('sidebar').classList.toggle('collapsed');
+      document.getElementById('toggleBtn').innerText = isCollapsed ? '▶' : '◀';
       localStorage.setItem('svn_sidebar_collapsed', isCollapsed);
+    }
+
+    function handleSearchDebounced() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => { searchTerm = document.getElementById('searchInput').value.toLowerCase().trim(); renderAll(); }, 250);
     }
 
     function handleFilterChange() {
@@ -291,36 +269,54 @@
     function saveSettings() { localStorage.setItem('svn_local_path', document.getElementById('localPath').value); }
 
     window.onload = () => {
-      if (localStorage.getItem('svn_sidebar_collapsed') === 'true') {
-        const sidebar = document.getElementById('sidebar');
-        const btn = document.getElementById('toggleBtn');
-        sidebar.classList.add('collapsed'); btn.innerText = '▶';
-      }
+      if (localStorage.getItem('svn_sidebar_collapsed') === 'true') toggleSidebar();
       filterRemaining = localStorage.getItem('svn_filter_remaining') === 'true';
       document.getElementById('filterRemaining').checked = filterRemaining;
       document.getElementById('localPath').value = localStorage.getItem('svn_local_path') || '';
+      
       const savedLog = localStorage.getItem('svn_raw_log');
-      if (savedLog) { document.getElementById('logInput').value = savedLog; processLog(); }
-      syncData();
+      if (savedLog) {
+        document.getElementById('logInput').value = savedLog;
+        // [최적화] 초기 로드 시 syncData 중복 호출을 막고 한 번만 처리
+        startProcess();
+      } else {
+        syncData();
+      }
     };
 
-    function handleSearch() { searchTerm = document.getElementById('searchInput').value.toLowerCase().trim(); renderAll(); }
+    function toggleSort() {
+      sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
+      document.getElementById('sortBtn').innerText = (sortOrder === 'desc') ? '▼' : '▲';
+      document.getElementById('sortBtn').title = `리비전 ${(sortOrder === 'desc') ? '내림차순' : '오름차순'} 정렬`;
+      
+      // 데이터 재정렬
+      svnData.sort((a, b) => (sortOrder === 'desc' ? b.rev - a.rev : a.rev - b.rev));
+      virtualState.rev.data = svnData;
+      
+      // 스크롤 초기화 및 다시 그리기
+      document.getElementById('area-rev').scrollTop = 0;
+      virtualState.rev.scrollTop = 0;
+      renderAll();
+    }
 
     function processLog() {
       const input = document.getElementById('logInput').value;
       if (!input.trim()) return;
-      localStorage.setItem('svn_raw_log', input);
+      
+      setTimeout(() => localStorage.setItem('svn_raw_log', input), 1000);
+      
       const separator = '-'.repeat(76);
       const blocks = input.split(separator);
-      svnData = [];
+      svnData = []; fileMap = {};
       const extensions = new Set();
 
       blocks.forEach(block => {
         block = block.trim(); if (!block) return;
         const lines = block.split('\n');
         const revMatch = lines[0].match(/^r(\d+)/); if (!revMatch) return;
-        const rev = revMatch[1];
+        const rev = parseInt(revMatch[1]);
         let files = [], isPath = false, msgLines = [];
+        
         lines.forEach((line, idx) => {
           if (idx === 0) return;
           if (line.includes('Changed paths:')) { isPath = true; return; }
@@ -328,17 +324,26 @@
           if (isPath) {
             const m = line.trim().match(/^[MADRUC ]+\s+(.*)$/);
             if (m) {
-              const f = m[1];
-              files.push(f);
+              const f = m[1]; files.push(f);
+              if (!fileMap[f]) fileMap[f] = { revs: [], latestRev: 0, msg: "" };
+              fileMap[f].revs.push(rev);
+              if (rev > fileMap[f].latestRev) fileMap[f].latestRev = rev;
               const ext = f.split('.').pop().toLowerCase();
               if (ext && ext.length < 10) extensions.add(ext);
             }
           } else if (line.trim()) msgLines.push(line.trim());
         });
-        svnData.push({ rev: parseInt(rev), msg: msgLines.join(' '), files });
+        const msg = msgLines.join(' ');
+        svnData.push({ rev, msg, files });
+        files.forEach(f => { if(fileMap[f].latestRev === rev) fileMap[f].msg = msg; });
       });
-      svnData.sort((a, b) => b.rev - a.rev);
       
+      // 설정된 정렬 순서 적용
+      svnData.sort((a, b) => (sortOrder === 'desc' ? b.rev - a.rev : a.rev - b.rev));
+      
+      virtualState.rev.data = svnData;
+      virtualState.file.data = Object.keys(fileMap).sort();
+
       renderExtensionFilters(Array.from(extensions).sort());
       renderAll();
     }
@@ -346,32 +351,45 @@
     function renderExtensionFilters(exts) {
       const container = document.getElementById('extensionFilters');
       container.innerHTML = `<span class="ext-tag ${!extensionFilter ? 'active' : ''}" onclick="setExtFilter('')">ALL</span>`;
-      exts.forEach(ext => {
-        container.innerHTML += `<span class="ext-tag ${extensionFilter === ext ? 'active' : ''}" onclick="setExtFilter('${ext}')">${ext.toUpperCase()}</span>`;
-      });
+      exts.forEach(ext => { container.innerHTML += `<span class="ext-tag ${extensionFilter === ext ? 'active' : ''}" onclick="setExtFilter('${ext}')">${ext.toUpperCase()}</span>`; });
     }
 
     function setExtFilter(ext) {
       extensionFilter = ext;
-      document.querySelectorAll('.ext-tag').forEach(tag => {
-        tag.classList.toggle('active', tag.innerText === (ext ? ext.toUpperCase() : 'ALL'));
-      });
+      document.querySelectorAll('.ext-tag').forEach(tag => { tag.classList.toggle('active', tag.innerText === (ext ? ext.toUpperCase() : 'ALL')); });
       renderAll();
+    }
+
+    function updateUIStatus(key, isMerged) {
+      const elements = document.querySelectorAll(`[data-key="${key}"]`);
+      elements.forEach(el => {
+        el.classList.toggle('merged', isMerged);
+        const cb = el.querySelector('input[type="checkbox"]');
+        if (cb) cb.checked = isMerged;
+      });
+      const [rev, ...pathParts] = key.split(':');
+      const path = pathParts.join(':');
+      const info = fileMap[path];
+      if (info) {
+        const allMerged = info.revs.every(r => mergeStatus[`${r}:${path}`]);
+        const fileEls = document.querySelectorAll(`[data-file-key="${path}"]`);
+        fileEls.forEach(el => { el.classList.toggle('merged', allMerged); const cb = el.querySelector('input[type="checkbox"]'); if (cb) cb.checked = allMerged; });
+      }
+      updateProgress();
     }
 
     function toggleMerge(rev, filePath) {
       const key = `${rev}:${filePath}`;
       mergeStatus[key] = !mergeStatus[key];
       localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus));
-      renderAllWithScrollPreservation();
+      updateUIStatus(key, mergeStatus[key]);
     }
 
     function toggleFileAllMerge(filePath, isChecked) {
-      svnData.forEach(item => {
-        if (item.files.includes(filePath)) mergeStatus[`${item.rev}:${filePath}`] = isChecked;
-      });
+      const info = fileMap[filePath]; if (!info) return;
+      info.revs.forEach(r => { mergeStatus[`${r}:${filePath}`] = isChecked; });
       localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus));
-      renderAllWithScrollPreservation();
+      info.revs.forEach(r => updateUIStatus(`${r}:${filePath}`, isChecked));
     }
 
     function openMemo(rev, filePath) {
@@ -383,26 +401,161 @@
       document.getElementById('memoText').focus();
     }
 
-    function closeMemo() { document.getElementById('memoModal').style.display = 'none'; currentMemoKey = null; }
+    function closeMemo() { document.getElementById('memoModal').style.display = 'none'; }
 
     function saveMemo() {
       if (currentMemoKey) {
         const text = document.getElementById('memoText').value.trim();
         if (text) mergeMemos[currentMemoKey] = text; else delete mergeMemos[currentMemoKey];
         localStorage.setItem('svn_merge_memos_v1', JSON.stringify(mergeMemos));
-        renderAllWithScrollPreservation(); closeMemo();
+        const indicators = document.querySelectorAll(`[data-memo-key="${currentMemoKey}"]`);
+        indicators.forEach(ind => { ind.classList.toggle('active', !!text); ind.title = text || '메모 작성'; });
+        if (currentTab === 'memo') renderMemo();
+        closeMemo();
       }
     }
 
     function renderAllWithScrollPreservation() {
-      const containers = ['area-rev', 'area-file', 'area-memo'];
-      const scrollPositions = {};
-      containers.forEach(id => { scrollPositions[id] = document.getElementById(id).scrollTop; });
+      // 가상 스크롤에서는 스크롤 위치가 곧 상태이므로 단순히 다시 그립니다.
       renderAll();
-      containers.forEach(id => { document.getElementById(id).scrollTop = scrollPositions[id]; });
     }
 
-    function renderAll() { renderRev(); renderFile(); renderMemo(); updateProgress(); }
+    function renderAll() { 
+      refreshVirtualOffsets();
+      updateVirtualDisplay('rev'); 
+      updateVirtualDisplay('file'); 
+      renderMemo(); 
+      updateProgress(); 
+    }
+
+    function refreshVirtualOffsets() {
+      // 1. 리비전 데이터 필터링 및 높이 계산
+      const filteredRev = virtualState.rev.data.filter(item => {
+        const displayFiles = applyFilters(item.files, item.rev);
+        return !(displayFiles.length === 0 && (filterRemaining || searchTerm || extensionFilter));
+      });
+      virtualState.rev.filtered = filteredRev;
+      
+      let currentOffset = 0;
+      virtualState.rev.offsets = filteredRev.map(item => {
+        const displayFiles = applyFilters(item.files, item.rev);
+        const height = 80 + (displayFiles.length * 34); // 헤더(80) + 파일당(34)
+        const offset = currentOffset;
+        currentOffset += height + 20; // 간격(20) 포함
+        return { offset, height };
+      });
+      virtualState.rev.totalHeight = currentOffset;
+
+      // 2. 파일 데이터 필터링 및 높이 계산
+      const filteredFile = virtualState.file.data.filter(f => {
+        const info = fileMap[f];
+        if (filterRemaining && info.revs.every(r => mergeStatus[`${r}:${f}`])) return false;
+        if (extensionFilter && !f.toLowerCase().endsWith('.' + extensionFilter)) return false;
+        if (searchTerm && !f.toLowerCase().includes(searchTerm) && !info.revs.some(r => r.toString().includes(searchTerm))) return false;
+        return true;
+      });
+      virtualState.file.filtered = filteredFile;
+      virtualState.file.totalHeight = filteredFile.length * virtualState.file.itemHeight;
+    }
+
+    function updateVirtualDisplay(type) {
+      const container = document.getElementById(`area-${type}`);
+      if (!container) return;
+
+      // 초기 구조 생성 (최초 1회)
+      if (!container.querySelector('.virtual-viewport')) {
+        container.innerHTML = `<div class="virtual-viewport"><div class="virtual-spacer"></div><div class="virtual-content"></div></div>`;
+        container.onscroll = (e) => {
+          virtualState[type].scrollTop = e.target.scrollTop;
+          updateVirtualDisplay(type);
+        };
+      }
+
+      const viewport = container.querySelector('.virtual-viewport');
+      const spacer = container.querySelector('.virtual-spacer');
+      const content = container.querySelector('.virtual-content');
+      const state = virtualState[type];
+      
+      spacer.style.height = state.totalHeight + 'px';
+      
+      const viewHeight = container.clientHeight;
+      const scrollTop = state.scrollTop;
+      
+      let startIdx = 0, endIdx = 0, contentTop = 0;
+
+      if (type === 'rev') {
+        // 이진 탐색으로 시작 인덱스 찾기
+        startIdx = binarySearchOffset(state.offsets, scrollTop);
+        startIdx = Math.max(0, startIdx - 2); // 버퍼
+        contentTop = state.offsets[startIdx]?.offset || 0;
+        
+        // 끝 인덱스 찾기
+        endIdx = startIdx;
+        while (endIdx < state.offsets.length && state.offsets[endIdx].offset < scrollTop + viewHeight + 200) {
+          endIdx++;
+        }
+        endIdx = Math.min(state.filtered.length, endIdx + 2);
+      } else {
+        startIdx = Math.floor(scrollTop / state.itemHeight);
+        startIdx = Math.max(0, startIdx - 5);
+        endIdx = Math.min(state.filtered.length, startIdx + Math.ceil(viewHeight / state.itemHeight) + 10);
+        contentTop = startIdx * state.itemHeight;
+      }
+
+      content.style.transform = `translateY(${contentTop}px)`;
+      
+      // 실제 렌더링
+      const fragment = document.createDocumentFragment();
+      for (let i = startIdx; i < endIdx; i++) {
+        const item = state.filtered[i];
+        const el = (type === 'rev') ? createRevCard(item) : createFileItem(item);
+        fragment.appendChild(el);
+      }
+      
+      content.innerHTML = "";
+      if (state.filtered.length === 0) {
+        content.innerHTML = '<div style="text-align:center; padding:3rem; color:#6b7280;">결과가 없습니다.</div>';
+      } else {
+        content.appendChild(fragment);
+      }
+    }
+
+    function binarySearchOffset(offsets, top) {
+      let low = 0, high = offsets.length - 1;
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        if (offsets[mid].offset <= top) low = mid + 1;
+        else high = mid - 1;
+      }
+      return high < 0 ? 0 : high;
+    }
+
+    function createRevCard(item) {
+      const card = document.createElement('div');
+      card.className = 'rev-card';
+      const displayFiles = applyFilters(item.files, item.rev);
+      let filesHtml = '<div class="file-list">';
+      displayFiles.forEach(f => {
+        const key = `${item.rev}:${f}`, isMerged = mergeStatus[key];
+        filesHtml += `<div class="file-item ${isMerged ? 'merged' : ''}" data-key="${key}"><label class="toggle-label"><input type="checkbox" class="main-check" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${item.rev}, '${f}')"><span class="file-path" title="${f}">${f}</span></label><div class="action-group"><span class="memo-indicator ${mergeMemos[key] ? 'active' : ''}" data-memo-key="${key}" onclick="openMemo(${item.rev}, '${f}')" title="${mergeMemos[key] || '메모 작성'}">📝</span><button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div></div>`;
+      });
+      filesHtml += '</div>';
+      card.innerHTML = `<div class="rev-header"><span class="rev-id">r${item.rev}</span><span class="rev-msg">${item.msg}</span></div>${filesHtml}`;
+      return card;
+    }
+
+    function createFileItem(f) {
+      const info = fileMap[f], allRevsMerged = info.revs.every(r => mergeStatus[`${r}:${f}`]), latestKey = `${info.latestRev}:${f}`;
+      const historyHtml = info.revs.slice().sort((a,b) => b-a).map(r => `<span class="badge ${r === info.latestRev ? 'badge-latest' : 'badge-history'}">r${r}</span>`).join(' ');
+      const div = document.createElement('div');
+      div.className = `file-item ${allRevsMerged ? 'merged' : ''}`;
+      div.setAttribute('data-file-key', f);
+      div.style.height = virtualState.file.itemHeight + 'px';
+      div.style.borderBottom = "1px solid #f3f4f6";
+      div.style.boxSizing = "border-box";
+      div.innerHTML = `<label class="toggle-label" style="padding: 0.75rem;"><input type="checkbox" class="main-check" ${allRevsMerged ? 'checked' : ''} onchange="toggleFileAllMerge('${f}', this.checked)"><div style="display:flex; flex-direction:column; flex:1; overflow:hidden;"><div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;"><strong style="font-size:0.95rem;">${f.split('/').pop()}</strong><div style="display:flex; gap:3px; flex-wrap: wrap;">${historyHtml}</div></div><span style="font-size:0.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f}</span></div></label><div class="action-group" style="padding-right: 0.75rem;"><span class="memo-indicator ${mergeMemos[latestKey] ? 'active' : ''}" data-memo-key="${latestKey}" onclick="openMemo(${info.latestRev}, '${f}')" title="${mergeMemos[latestKey] || '메모 작성'}">📝</span><button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div>`;
+      return div;
+    }
 
     function applyFilters(files, rev = null) {
       return files.filter(f => {
@@ -413,198 +566,62 @@
       });
     }
 
-    function renderRev() {
-      const area = document.getElementById('area-rev'); area.innerHTML = "";
-      const filteredData = svnData.map(item => {
-        const displayFiles = applyFilters(item.files, item.rev);
-        return { ...item, displayFiles };
-      }).filter(item => {
-        if (item.displayFiles.length === 0 && (filterRemaining || searchTerm || extensionFilter)) return false;
-        return true;
-      });
-
-      if (filteredData.length === 0 && svnData.length > 0) { area.innerHTML = '<div style="text-align:center; padding:3rem; color:#6b7280;">필터 조건에 맞는 리비전이 없습니다.</div>'; return; }
-      
-      filteredData.forEach(item => {
-        const card = document.createElement('div'); card.className = 'rev-card';
-        let filesHtml = '<div class="file-list">';
-        item.displayFiles.forEach(f => {
-          const key = `${item.rev}:${f}`, isMerged = mergeStatus[key];
-          filesHtml += `
-            <div class="file-item ${isMerged ? 'merged' : ''}">
-              <label class="toggle-label">
-                <input type="checkbox" class="main-check" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${item.rev}, '${f}')">
-                <span class="file-path" title="${f}">${f}</span>
-              </label>
-              <div class="action-group">
-                <span class="memo-indicator ${mergeMemos[key] ? 'active' : ''}" onclick="openMemo(${item.rev}, '${f}')" title="${mergeMemos[key] || '메모 작성'}">📝</span>
-                <button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button>
-                <button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button>
-              </div>
-            </div>`;
-        });
-        filesHtml += '</div>';
-        card.innerHTML = `<div class="rev-header"><span class="rev-id">r${item.rev}</span><span class="rev-msg">${item.msg}</span></div>${filesHtml}`;
-        area.appendChild(card);
-      });
-    }
-
-    function renderFile() {
-      const area = document.getElementById('area-file'); area.innerHTML = "";
-      const fileMap = {};
-      svnData.forEach(item => {
-        item.files.forEach(f => {
-          if (!fileMap[f]) fileMap[f] = { revs: [], latestRev: item.rev, msg: item.msg };
-          fileMap[f].revs.push(item.rev);
-          if (item.rev > fileMap[f].latestRev) { fileMap[f].latestRev = item.rev; fileMap[f].msg = item.msg; }
-        });
-      });
-      const filteredFiles = Object.keys(fileMap).filter(f => {
-        const info = fileMap[f];
-        const matchesSearch = !searchTerm || f.toLowerCase().includes(searchTerm) || info.revs.some(r => r.toString().includes(searchTerm));
-        const matchesExt = !extensionFilter || f.toLowerCase().endsWith('.' + extensionFilter);
-        const allMerged = info.revs.every(r => mergeStatus[`${r}:${f}`]);
-        const matchesRemaining = !filterRemaining || !allMerged;
-        return matchesSearch && matchesExt && matchesRemaining;
-      }).sort();
-
-      if (filteredFiles.length === 0 && svnData.length > 0) { area.innerHTML = '<div style="text-align:center; padding:3rem; color:#6b7280;">필터 조건에 맞는 파일이 없습니다.</div>'; return; }
-      
-      filteredFiles.forEach(f => {
-        const info = fileMap[f], allRevsMerged = info.revs.every(r => mergeStatus[`${r}:${f}`]), latestKey = `${info.latestRev}:${f}`;
-        const historyHtml = info.revs.sort((a,b) => b-a).map(r => `<span class="badge ${r === info.latestRev ? 'badge-latest' : 'badge-history'}">r${r}</span>`).join(' ');
-        const div = document.createElement('div'); div.className = `file-item ${allRevsMerged ? 'merged' : ''}`;
-        div.style.borderBottom = "1px solid #f3f4f6";
-        div.innerHTML = `
-          <label class="toggle-label" style="padding: 0.75rem;">
-            <input type="checkbox" class="main-check" ${allRevsMerged ? 'checked' : ''} onchange="toggleFileAllMerge('${f}', this.checked)">
-            <div style="display:flex; flex-direction:column; flex:1; overflow:hidden;">
-              <div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;">
-                <strong style="font-size:0.95rem;">${f.split('/').pop()}</strong>
-                <div style="display:flex; gap:3px; flex-wrap: wrap;">${historyHtml}</div>
-              </div>
-              <span style="font-size:0.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f}</span>
-            </div>
-          </label>
-          <div class="action-group" style="padding-right: 0.75rem;">
-            <span class="memo-indicator ${mergeMemos[latestKey] ? 'active' : ''}" onclick="openMemo(${info.latestRev}, '${f}')" title="${mergeMemos[latestKey] || '메모 작성'}">📝</span>
-            <button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button>
-            <button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button>
-          </div>`;
-        area.appendChild(div);
-      });
-    }
-
     function renderMemo() {
       const area = document.getElementById('area-memo'); area.innerHTML = "";
-      const memoKeys = Object.keys(mergeMemos);
-      const filteredMemoKeys = memoKeys.filter(key => {
-        const [rev, ...pathParts] = key.split(':');
-        const path = pathParts.join(':');
-        const matchesSearch = !searchTerm || rev.includes(searchTerm) || path.toLowerCase().includes(searchTerm) || mergeMemos[key].toLowerCase().includes(searchTerm);
-        const matchesExt = !extensionFilter || path.toLowerCase().endsWith('.' + extensionFilter);
-        return matchesSearch && matchesExt;
+      const memoKeys = Object.keys(mergeMemos).filter(key => {
+        const [rev, ...pathParts] = key.split(':'); const path = pathParts.join(':');
+        if (searchTerm && !rev.includes(searchTerm) && !path.toLowerCase().includes(searchTerm) && !mergeMemos[key].toLowerCase().includes(searchTerm)) return false;
+        if (extensionFilter && !path.toLowerCase().endsWith('.' + extensionFilter)) return false;
+        return true;
       });
-      if (filteredMemoKeys.length === 0) { area.innerHTML = `<div style="text-align:center; padding:3rem; color:#6b7280;">${memoKeys.length === 0 ? '작성된 메모가 없습니다.' : '조건에 맞는 메모가 없습니다.'}</div>`; return; }
-      filteredMemoKeys.forEach(key => {
+      if (memoKeys.length === 0) { area.innerHTML = '<div style="text-align:center; padding:3rem; color:#6b7280;">메모가 없습니다.</div>'; return; }
+      memoKeys.forEach(key => {
         const [rev, ...pathParts] = key.split(':'), path = pathParts.join(':');
         const div = document.createElement('div'); div.className = 'memo-summary-item';
-        div.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div><span class="badge badge-latest">r${rev}</span><strong style="margin-left:8px;">${path.split('/').pop()}</strong></div>
-            <div class="action-group">
-              <button class="icon-btn" onclick="openMemo('${rev}', '${path}')" title="메모 수정">📝</button>
-              <button class="icon-btn" onclick="copyPath(event, '${path}', 'abs')" title="로컬 전체 경로 복사">📋</button>
-              <button class="icon-btn" onclick="copyPath(event, '${path}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button>
-            </div>
-          </div>
-          <div class="memo-content-box">${mergeMemos[key]}</div>`;
+        div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><div><span class="badge badge-latest">r${rev}</span><strong style="margin-left:8px;">${path.split('/').pop()}</strong></div><div class="action-group"><button class="icon-btn" onclick="openMemo('${rev}', '${path}')" title="메모 수정">📝</button><button class="icon-btn" onclick="copyPath(event, '${path}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${path}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div></div><div class="memo-content-box">${mergeMemos[key]}</div>`;
         area.appendChild(div);
       });
     }
 
     function updateProgress() {
-      if (currentTab === 'rev' || currentTab === 'memo') {
-        let total = 0, merged = 0;
-        svnData.forEach(item => {
-          total += item.files.length;
-          item.files.forEach(f => { if(mergeStatus[`${item.rev}:${f}`]) merged++; });
-        });
-        const percent = total === 0 ? 0 : Math.round((merged / total) * 100);
-        document.getElementById('progressLabel').innerText = "리비전 진행률";
-        document.getElementById('progress-bar').style.width = percent + '%';
-        document.getElementById('progressInfo').innerText = `${percent}% (${merged}/${total})`;
-      } else if (currentTab === 'file') {
-        const fileMap = {};
-        svnData.forEach(item => {
-          item.files.forEach(f => { if (!fileMap[f]) fileMap[f] = []; fileMap[f].push(item.rev); });
-        });
-        const uniquePaths = Object.keys(fileMap);
-        const totalFiles = uniquePaths.length;
-        const mergedFiles = uniquePaths.filter(path => fileMap[path].every(r => mergeStatus[`${r}:${path}`])).length;
-        const percent = totalFiles === 0 ? 0 : Math.round((mergedFiles / totalFiles) * 100);
+      const uniquePaths = Object.keys(fileMap);
+      const mergedF = uniquePaths.filter(p => fileMap[p].revs.every(r => mergeStatus[`${r}:${p}`])).length;
+      if (currentTab === 'file') {
+        const p = uniquePaths.length === 0 ? 0 : Math.round((mergedF / uniquePaths.length) * 100);
         document.getElementById('progressLabel').innerText = "파일 완수율";
-        document.getElementById('progress-bar').style.width = percent + '%';
-        document.getElementById('progressInfo').innerText = `${percent}% (${mergedFiles}/${totalFiles})`;
+        document.getElementById('progress-bar').style.width = p + '%';
+        document.getElementById('progressInfo').innerText = `${p}% (${mergedF}/${uniquePaths.length})`;
+      } else {
+        let totalR = 0, mergedR = 0;
+        svnData.forEach(item => { totalR += item.files.length; item.files.forEach(f => { if(mergeStatus[`${item.rev}:${f}`]) mergedR++; }); });
+        const p = totalR === 0 ? 0 : Math.round((mergedR / totalR) * 100);
+        document.getElementById('progressLabel').innerText = "리비전 진행률";
+        document.getElementById('progress-bar').style.width = p + '%';
+        document.getElementById('progressInfo').innerText = `${p}% (${mergedR}/${totalR})`;
       }
     }
 
     function generateMergeReport() {
-      let report = "==================================================\n";
-      report += "       SVN 머지 완료 보고서 (Merge Report)\n";
-      report += "==================================================\n";
-      report += `작성일: ${new Date().toLocaleString()}\n\n`;
-      
-      const fileMap = {};
-      svnData.forEach(item => {
-        item.files.forEach(f => {
-          if (!fileMap[f]) fileMap[f] = [];
-          fileMap[f].push(item.rev);
-        });
+      let report = `==================================================\n       SVN 머지 완료 보고서 (Merge Report)\n==================================================\n작성일: ${new Date().toLocaleString()}\n\n`;
+      const mergedPaths = Object.keys(fileMap).filter(p => fileMap[p].revs.every(r => mergeStatus[`${r}:${p}`])).sort();
+      if (mergedPaths.length === 0) { alert('완료된 파일이 없습니다.'); return; }
+      report += `[1. 통계]\n- 완료 파일: ${mergedPaths.length}개 / 전체: ${Object.keys(fileMap).length}개\n\n[2. 내역]\n--------------------------------------------------\n`;
+      mergedPaths.forEach(p => {
+        const lRev = fileMap[p].latestRev;
+        report += `■ ${p.split('/').pop()} (r${lRev})\n   - 경로: ${p.replace(/^\/trunk\//, '')}\n   - 메모: ${mergeMemos[`${lRev}:${p}`] || "-"}\n--------------------------------------------------\n`;
       });
-
-      const mergedFiles = Object.keys(fileMap).filter(f => fileMap[f].every(r => mergeStatus[`${r}:${f}`])).sort();
-      
-      if (mergedFiles.length === 0) {
-        alert('머지 완료된 파일이 없습니다.');
-        return;
-      }
-
-      report += `[1. 머지 완료 통계]\n`;
-      report += `- 총 고유 파일: ${Object.keys(fileMap).length}개\n`;
-      report += `- 완료된 파일: ${mergedFiles.length}개\n`;
-      report += `- 최종 진척도: ${Math.round((mergedFiles.length / Object.keys(fileMap).length) * 100)}%\n`;
-      
-      report += "\n[2. 세부 머지 내역]\n";
-      report += "--------------------------------------------------\n";
-
-      mergedFiles.forEach(f => {
-        const latestRev = Math.max(...fileMap[f]);
-        const memo = mergeMemos[`${latestRev}:${f}`] || "-";
-        const relPath = f.replace(/^\/trunk\//, '');
-        report += `■ ${f.split('/').pop()} (r${latestRev})\n`;
-        report += `   - 경로: ${relPath}\n`;
-        report += `   - 메모: ${memo}\n`;
-        report += "--------------------------------------------------\n";
-      });
-
       document.getElementById('reportArea').value = report;
       document.getElementById('reportModal').style.display = 'flex';
     }
 
-    function copyReport() {
-      const area = document.getElementById('reportArea');
-      navigator.clipboard.writeText(area.value).then(() => {
-        alert('보고서 내용이 클립보드에 복사되었습니다.');
-      });
-    }
+    function copyReport() { navigator.clipboard.writeText(document.getElementById('reportArea').value).then(() => alert('복사되었습니다.')); }
 
     function copyPath(e, path, type) {
       const root = document.getElementById('localPath').value.trim();
-      let textToCopy = (type === 'abs') ? (root + (root.endsWith('\\') || root.endsWith('/') ? '' : '\\') + path.replace(/^\/trunk\/[^\/]+\//, '')).replace(/\//g, '\\') : path.replace(/^\/trunk\//, '');
-      navigator.clipboard.writeText(textToCopy).then(() => {
-        const btn = e.currentTarget || e.target; const icon = btn.innerText; btn.innerText = "✅";
-        setTimeout(() => { btn.innerText = icon; }, 1000);
+      let txt = (type === 'abs') ? (root + (root.endsWith('\\') || root.endsWith('/') ? '' : '\\') + path.replace(/^\/trunk\/[^\/]+\//, '')).replace(/\//g, '\\') : path.replace(/^\/trunk\//, '');
+      navigator.clipboard.writeText(txt).then(() => {
+        const btn = e.currentTarget || e.target; const old = btn.innerText; btn.innerText = "✅";
+        setTimeout(() => { btn.innerText = old; }, 1000);
       });
     }
 
@@ -619,9 +636,8 @@
 
     function clearStatus() {
       if (confirm('주의: 모든 데이터가 초기화됩니다.')) {
-        mergeStatus = {}; mergeMemos = {};
-        localStorage.removeItem('svn_merge_status_v1'); localStorage.removeItem('svn_merge_memos_v1'); localStorage.removeItem('svn_raw_log');
-        document.getElementById('logInput').value = ""; svnData = []; renderAll();
+        mergeStatus = {}; mergeMemos = {}; localStorage.removeItem('svn_merge_status_v1'); localStorage.removeItem('svn_merge_memos_v1'); localStorage.removeItem('svn_raw_log');
+        document.getElementById('logInput').value = ""; svnData = []; fileMap = {}; renderAll();
       }
     }
 
@@ -642,9 +658,9 @@
             mergeStatus = data.mergeStatus || {}; mergeMemos = data.mergeMemos || {};
             localStorage.setItem('svn_raw_log', data.rawLog || ''); localStorage.setItem('svn_local_path', data.localPath || '');
             localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus)); localStorage.setItem('svn_merge_memos_v1', JSON.stringify(mergeMemos));
-            processLog();
+            startProcess();
           }
-        } catch (err) { alert('형식이 올바르지 않습니다.'); }
+        } catch (err) { alert('오류 발생'); }
       };
       reader.readAsText(file); input.value = '';
     }
