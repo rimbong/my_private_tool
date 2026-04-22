@@ -429,21 +429,28 @@
     }
 
     function refreshVirtualOffsets() {
-      // 1. 리비전 데이터 필터링 및 높이 계산
-      const filteredRev = virtualState.rev.data.filter(item => {
-        const displayFiles = applyFilters(item.files, item.rev);
-        return !(displayFiles.length === 0 && (filterRemaining || searchTerm || extensionFilter));
-      });
-      virtualState.rev.filtered = filteredRev;
-      
+      // 1. 리비전 데이터 필터링 및 높이 캐싱 + 높이 계산 통합
+      const filteredRev = [];
+      const offsets = [];
       let currentOffset = 0;
-      virtualState.rev.offsets = filteredRev.map(item => {
+
+      virtualState.rev.data.forEach(item => {
         const displayFiles = applyFilters(item.files, item.rev);
+        // 필터 결과가 없고 검색/필터링 중이면 제외
+        if (displayFiles.length === 0 && (filterRemaining || searchTerm || extensionFilter)) return;
+
         const height = 80 + (displayFiles.length * 34); // 헤더(80) + 파일당(34)
         const offset = currentOffset;
+        
+        // 데이터와 필터링된 파일 목록을 함께 저장 (캐싱)
+        filteredRev.push({ item, displayFiles });
+        offsets.push({ offset, height });
+        
         currentOffset += height + 20; // 간격(20) 포함
-        return { offset, height };
       });
+
+      virtualState.rev.filtered = filteredRev;
+      virtualState.rev.offsets = offsets;
       virtualState.rev.totalHeight = currentOffset;
 
       // 2. 파일 데이터 필터링 및 높이 계산
@@ -484,14 +491,12 @@
       let startIdx = 0, endIdx = 0, contentTop = 0;
 
       if (type === 'rev') {
-        // 이진 탐색으로 시작 인덱스 찾기
         startIdx = binarySearchOffset(state.offsets, scrollTop);
-        startIdx = Math.max(0, startIdx - 2); // 버퍼
+        startIdx = Math.max(0, startIdx - 2);
         contentTop = state.offsets[startIdx]?.offset || 0;
         
-        // 끝 인덱스 찾기
         endIdx = startIdx;
-        while (endIdx < state.offsets.length && state.offsets[endIdx].offset < scrollTop + viewHeight + 200) {
+        while (endIdx < state.offsets.length && state.offsets[endIdx].offset < scrollTop + viewHeight + 400) {
           endIdx++;
         }
         endIdx = Math.min(state.filtered.length, endIdx + 2);
@@ -504,11 +509,10 @@
 
       content.style.transform = `translateY(${contentTop}px)`;
       
-      // 실제 렌더링
       const fragment = document.createDocumentFragment();
       for (let i = startIdx; i < endIdx; i++) {
-        const item = state.filtered[i];
-        const el = (type === 'rev') ? createRevCard(item) : createFileItem(item);
+        const data = state.filtered[i];
+        const el = (type === 'rev') ? createRevCard(data) : createFileItem(data);
         fragment.appendChild(el);
       }
       
@@ -530,10 +534,10 @@
       return high < 0 ? 0 : high;
     }
 
-    function createRevCard(item) {
+    function createRevCard(data) {
+      const { item, displayFiles } = data; // 캐싱된 필터 결과를 즉시 사용
       const card = document.createElement('div');
       card.className = 'rev-card';
-      const displayFiles = applyFilters(item.files, item.rev);
       let filesHtml = '<div class="file-list">';
       displayFiles.forEach(f => {
         const key = `${item.rev}:${f}`, isMerged = mergeStatus[key];
