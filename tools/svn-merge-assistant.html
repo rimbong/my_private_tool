@@ -100,6 +100,10 @@
 
     .icon-btn { background: none; border: 1px solid transparent; cursor: pointer; font-size: 1.1rem; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
     .icon-btn:hover { background: #e2e8f0; border-color: #cbd5e1; transform: scale(1.1); }
+    .sort-badge {
+      display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: #fff; border: 1px solid var(--border); border-radius: 4px; font-size: 0.72rem; font-weight: 600; color: #4b5563; cursor: pointer; transition: all 0.2s; white-space: nowrap; height: 37px; box-sizing: border-box; margin-left: 4px;
+    }
+    .sort-badge:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
 
     .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-flex; align-items: center; }
     .badge-latest { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
@@ -127,6 +131,10 @@
 
     .memo-summary-item { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
     .memo-content-box { background: #fffbeb; border-left: 4px solid #fbbf24; padding: 0.75rem; margin-top: 0.5rem; font-size: 0.9rem; color: #92400e; white-space: pre-wrap; }
+    
+    .highlight { background-color: #fef08a; color: #111827; font-weight: bold; border-radius: 2px; padding: 0 2px; }
+    .file-item.focused { outline: 2px solid var(--primary); outline-offset: -2px; background: #eff6ff; }
+    .rev-card.focused { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
   </style>
 </head>
 <body>
@@ -151,7 +159,9 @@
       <div class="search-group">
         <div style="display: flex; gap: 5px; margin-bottom: 8px;">
           <input type="text" id="searchInput" class="search-input" style="flex: 1;" placeholder="실시간 검색..." oninput="handleSearchDebounced()">
-          <button class="icon-btn" onclick="toggleSort()" id="sortBtn" title="리비전 정렬 변경">▼</button>
+          <button class="sort-badge" onclick="toggleSort()" id="sortBtn" title="리비전 정렬 변경">
+            리비전 <span id="sortLabel">내림차순</span> <i id="sortIcon" style="font-style: normal; color: var(--primary); font-size: 10px;">▼</i>
+          </button>
         </div>
         <div id="extensionFilters" class="ext-filters"></div>
         <label class="filter-item">
@@ -208,6 +218,7 @@
     </div>
   </div>
 
+  <script src="db-manager.js"></script>
   <script>
     let svnData = [];
     let fileMap = {};
@@ -220,10 +231,14 @@
     let sortOrder = "desc"; // 'desc' or 'asc'
     let searchTimeout = null;
 
+    // 탭 간 동기화 채널
+    const syncChannel = new BroadcastChannel('svn_merge_sync');
+    syncChannel.onmessage = (e) => { if (e.data.type === 'update') syncData(); };
+
     // 가상 스크롤 상태 관리
     const virtualState = {
-      rev: { data: [], filtered: [], offsets: [], totalHeight: 0, scrollTop: 0 },
-      file: { data: [], filtered: [], itemHeight: 60, totalHeight: 0, scrollTop: 0 }
+      rev: { data: [], filtered: [], offsets: [], totalHeight: 0, scrollTop: 0, focusedIndex: -1 },
+      file: { data: [], filtered: [], itemHeight: 60, totalHeight: 0, scrollTop: 0, focusedIndex: -1 }
     };
 
     function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
@@ -240,53 +255,105 @@
     function toggleSidebar() {
       const isCollapsed = document.getElementById('sidebar').classList.toggle('collapsed');
       document.getElementById('toggleBtn').innerText = isCollapsed ? '▶' : '◀';
-      localStorage.setItem('svn_sidebar_collapsed', isCollapsed);
+      dbManager.setItem('config', 'sidebar_collapsed', isCollapsed);
     }
 
     function handleSearchDebounced() {
       clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => { searchTerm = document.getElementById('searchInput').value.toLowerCase().trim(); renderAll(); }, 250);
+      searchTimeout = setTimeout(() => { 
+        searchTerm = document.getElementById('searchInput').value.toLowerCase().trim(); 
+        virtualState.rev.focusedIndex = -1;
+        virtualState.file.focusedIndex = -1;
+        renderAll(); 
+      }, 250);
     }
 
     function handleFilterChange() {
       filterRemaining = document.getElementById('filterRemaining').checked;
-      localStorage.setItem('svn_filter_remaining', filterRemaining);
+      dbManager.setItem('config', 'filter_remaining', filterRemaining);
       renderAll();
     }
 
-    function syncData(isManual = false) {
+    // 단축키 시스템 구현
+    window.addEventListener('keydown', (e) => {
+      // 1. 입력창 포커스 시 단축키 무시 (Esc 제외)
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        if (e.key === 'Escape') document.activeElement.blur();
+        return;
+      }
+      
+      // 2. 모달이 열려있는 경우
+      if (document.getElementById('memoModal').style.display === 'flex') {
+        if (e.key === 'Escape') closeMemo();
+        return;
+      }
+
+      const state = virtualState[currentTab];
+      if (!state || currentTab === 'memo') return;
+
+      switch(e.key.toLowerCase()) {
+        case '/': // 검색창 포커스
+          e.preventDefault();
+          document.getElementById('searchInput').focus();
+          break;         
+      }
+    });
+
+    async function syncData(isManual = false) {
       if (isManual) document.getElementById('syncBtn').classList.add('syncing');
-      mergeStatus = JSON.parse(localStorage.getItem('svn_merge_status_v1') || '{}');
-      mergeMemos = JSON.parse(localStorage.getItem('svn_merge_memos_v1') || '{}');
-      if (svnData.length > 0) renderAllWithScrollPreservation();
+      
+      mergeStatus = await dbManager.getAll('mergeStatus');
+      mergeMemos = await dbManager.getAll('mergeMemos');
+      
+      if (svnData.length > 0) renderAll();
       if (isManual) setTimeout(() => { document.getElementById('syncBtn').classList.remove('syncing'); }, 500);
     }
 
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'svn_merge_status_v1' || e.key === 'svn_merge_memos_v1') syncData();
-    });
+    function saveSettings() {
+      const localPath = document.getElementById('localPath').value;
+      dbManager.setItem('config', 'localPath', localPath);
+      dbManager.setItem('config', 'sortOrder', sortOrder);
+    }
 
-    function saveSettings() { localStorage.setItem('svn_local_path', document.getElementById('localPath').value); }
+    window.onload = async () => {
+      showLoading();
+      await dbManager.init('SVNMergeAssistantDB', ['config', 'rawData', 'mergeStatus', 'mergeMemos']);
 
-    window.onload = () => {
-      if (localStorage.getItem('svn_sidebar_collapsed') === 'true') toggleSidebar();
-      filterRemaining = localStorage.getItem('svn_filter_remaining') === 'true';
-      document.getElementById('filterRemaining').checked = filterRemaining;
-      document.getElementById('localPath').value = localStorage.getItem('svn_local_path') || '';
+      const config = await dbManager.getAll('config');
+      sortOrder = config.sortOrder || "desc";
       
-      const savedLog = localStorage.getItem('svn_raw_log');
+      const labelEl = document.getElementById('sortLabel');
+      const iconEl = document.getElementById('sortIcon');
+      if (labelEl) labelEl.innerText = (sortOrder === 'desc') ? '내림차순' : '오름차순';
+      if (iconEl) iconEl.innerText = (sortOrder === 'desc') ? '▼' : '▲';
+      document.getElementById('localPath').value = config.localPath || '';
+      
+      if (config.sidebar_collapsed === true) {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('toggleBtn').innerText = '▶';
+      }
+      
+      filterRemaining = config.filter_remaining === true;
+      document.getElementById('filterRemaining').checked = filterRemaining;
+
+      const savedLog = await dbManager.getItem('rawData', 'log');
       if (savedLog) {
         document.getElementById('logInput').value = savedLog;
-        // [최적화] 초기 로드 시 syncData 중복 호출을 막고 한 번만 처리
-        startProcess();
+        await syncData();
+        processLog();
       } else {
-        syncData();
+        await syncData();
       }
+      hideLoading();
     };
 
     function toggleSort() {
       sortOrder = (sortOrder === 'desc') ? 'asc' : 'desc';
-      document.getElementById('sortBtn').innerText = (sortOrder === 'desc') ? '▼' : '▲';
+      
+      const labelEl = document.getElementById('sortLabel');
+      const iconEl = document.getElementById('sortIcon');
+      if (labelEl) labelEl.innerText = (sortOrder === 'desc') ? '내림차순' : '오름차순';
+      if (iconEl) iconEl.innerText = (sortOrder === 'desc') ? '▼' : '▲';
       document.getElementById('sortBtn').title = `리비전 ${(sortOrder === 'desc') ? '내림차순' : '오름차순'} 정렬`;
       
       // 데이터 재정렬
@@ -303,7 +370,7 @@
       const input = document.getElementById('logInput').value;
       if (!input.trim()) return;
       
-      setTimeout(() => localStorage.setItem('svn_raw_log', input), 1000);
+      setTimeout(() => dbManager.setItem('rawData', 'log', input), 500);
       
       const separator = '-'.repeat(76);
       const blocks = input.split(separator);
@@ -313,7 +380,11 @@
       blocks.forEach(block => {
         block = block.trim(); if (!block) return;
         const lines = block.split('\n');
-        const revMatch = lines[0].match(/^r(\d+)/); if (!revMatch) return;
+                
+        // r번호 파싱 (기존 로직 복구)
+        const revMatch = lines[0].match(/^r(\d+)/);
+        if (!revMatch) return;
+
         const rev = parseInt(revMatch[1]);
         let files = [], isPath = false, msgLines = [];
         
@@ -378,39 +449,62 @@
       updateProgress();
     }
 
-    function toggleMerge(rev, filePath) {
+    async function toggleMerge(rev, filePath) {
       const key = `${rev}:${filePath}`;
       mergeStatus[key] = !mergeStatus[key];
-      localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus));
+      await dbManager.setItem('mergeStatus', key, mergeStatus[key]);
       updateUIStatus(key, mergeStatus[key]);
+      syncChannel.postMessage({ type: 'update' });
     }
 
-    function toggleFileAllMerge(filePath, isChecked) {
+    async function toggleFileAllMerge(filePath, isChecked) {
       const info = fileMap[filePath]; if (!info) return;
-      info.revs.forEach(r => { mergeStatus[`${r}:${filePath}`] = isChecked; });
-      localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus));
-      info.revs.forEach(r => updateUIStatus(`${r}:${filePath}`, isChecked));
+      const tx = dbManager.db.transaction('mergeStatus', 'readwrite');
+      const store = tx.objectStore('mergeStatus');
+      info.revs.forEach(r => { 
+        const key = `${r}:${filePath}`;
+        mergeStatus[key] = isChecked; 
+        store.put(isChecked, key);
+      });
+      tx.oncomplete = () => {
+        info.revs.forEach(r => updateUIStatus(`${r}:${filePath}`, isChecked));
+        syncChannel.postMessage({ type: 'update' });
+      };
     }
 
+    let currentMemoKey = null;
     function openMemo(rev, filePath) {
       currentMemoKey = `${rev}:${filePath}`;
       const memo = mergeMemos[currentMemoKey] || '';
       document.getElementById('memoTitle').innerText = `r${rev} - ${filePath.split('/').pop()} 메모`;
       document.getElementById('memoText').value = memo;
       document.getElementById('memoModal').style.display = 'flex';
-      document.getElementById('memoText').focus();
+      setTimeout(() => document.getElementById('memoText').focus(), 50);
     }
 
-    function closeMemo() { document.getElementById('memoModal').style.display = 'none'; }
+    function closeMemo() { 
+      document.getElementById('memoModal').style.display = 'none'; 
+      // 단축키 재사용을 위해 포커스 해제
+      document.activeElement.blur();
+    }
 
-    function saveMemo() {
+    async function saveMemo() {
       if (currentMemoKey) {
         const text = document.getElementById('memoText').value.trim();
-        if (text) mergeMemos[currentMemoKey] = text; else delete mergeMemos[currentMemoKey];
-        localStorage.setItem('svn_merge_memos_v1', JSON.stringify(mergeMemos));
+        if (text) {
+          mergeMemos[currentMemoKey] = text;
+          await dbManager.setItem('mergeMemos', currentMemoKey, text);
+        } else {
+          delete mergeMemos[currentMemoKey];
+          // Delete from DB
+          const tx = dbManager.db.transaction('mergeMemos', 'readwrite');
+          tx.objectStore('mergeMemos').delete(currentMemoKey);
+        }
+        
         const indicators = document.querySelectorAll(`[data-memo-key="${currentMemoKey}"]`);
         indicators.forEach(ind => { ind.classList.toggle('active', !!text); ind.title = text || '메모 작성'; });
         if (currentTab === 'memo') renderMemo();
+        syncChannel.postMessage({ type: 'update' });
         closeMemo();
       }
     }
@@ -534,30 +628,38 @@
       return high < 0 ? 0 : high;
     }
 
-    function createRevCard(data) {
+    function createRevCard(data, index) {
       const { item, displayFiles } = data; // 캐싱된 필터 결과를 즉시 사용
       const card = document.createElement('div');
-      card.className = 'rev-card';
+      card.className = `rev-card ${index === virtualState.rev.focusedIndex ? 'focused' : ''}`;
       let filesHtml = '<div class="file-list">';
       displayFiles.forEach(f => {
         const key = `${item.rev}:${f}`, isMerged = mergeStatus[key];
-        filesHtml += `<div class="file-item ${isMerged ? 'merged' : ''}" data-key="${key}"><label class="toggle-label"><input type="checkbox" class="main-check" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${item.rev}, '${f}')"><span class="file-path" title="${f}">${f}</span></label><div class="action-group"><span class="memo-indicator ${mergeMemos[key] ? 'active' : ''}" data-memo-key="${key}" onclick="openMemo(${item.rev}, '${f}')" title="${mergeMemos[key] || '메모 작성'}">📝</span><button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div></div>`;
+        const highlightedPath = searchTerm ? f.replace(new RegExp(`(${searchTerm})`, 'gi'), '<mark class="highlight">$1</mark>') : f;
+        filesHtml += `<div class="file-item ${isMerged ? 'merged' : ''}" data-key="${key}"><label class="toggle-label"><input type="checkbox" class="main-check" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${item.rev}, '${f}')"><span class="file-path" title="${f}">${highlightedPath}</span></label><div class="action-group"><span class="memo-indicator ${mergeMemos[key] ? 'active' : ''}" data-memo-key="${key}" onclick="openMemo(${item.rev}, '${f}')" title="${mergeMemos[key] || '메모 작성'}">📝</span><button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div></div>`;
       });
       filesHtml += '</div>';
-      card.innerHTML = `<div class="rev-header"><span class="rev-id">r${item.rev}</span><span class="rev-msg">${item.msg}</span></div>${filesHtml}`;
+      
+      const highlightedMsg = searchTerm ? item.msg.replace(new RegExp(`(${searchTerm})`, 'gi'), '<mark class="highlight">$1</mark>') : item.msg;
+      card.innerHTML = `<div class="rev-header"><span class="rev-id">r${item.rev}</span><span class="rev-msg">${highlightedMsg}</span></div>${filesHtml}`;
       return card;
     }
 
-    function createFileItem(f) {
+    function createFileItem(f, index) {
       const info = fileMap[f], allRevsMerged = info.revs.every(r => mergeStatus[`${r}:${f}`]), latestKey = `${info.latestRev}:${f}`;
       const historyHtml = info.revs.slice().sort((a,b) => b-a).map(r => `<span class="badge ${r === info.latestRev ? 'badge-latest' : 'badge-history'}">r${r}</span>`).join(' ');
+      
+      const fileName = f.split('/').pop();
+      const highlightedFileName = searchTerm ? fileName.replace(new RegExp(`(${searchTerm})`, 'gi'), '<mark class="highlight">$1</mark>') : fileName;
+      const highlightedPath = searchTerm ? f.replace(new RegExp(`(${searchTerm})`, 'gi'), '<mark class="highlight">$1</mark>') : f;
+
       const div = document.createElement('div');
-      div.className = `file-item ${allRevsMerged ? 'merged' : ''}`;
+      div.className = `file-item ${allRevsMerged ? 'merged' : ''} ${index === virtualState.file.focusedIndex ? 'focused' : ''}`;
       div.setAttribute('data-file-key', f);
       div.style.height = virtualState.file.itemHeight + 'px';
       div.style.borderBottom = "1px solid #f3f4f6";
       div.style.boxSizing = "border-box";
-      div.innerHTML = `<label class="toggle-label" style="padding: 0.75rem;"><input type="checkbox" class="main-check" ${allRevsMerged ? 'checked' : ''} onchange="toggleFileAllMerge('${f}', this.checked)"><div style="display:flex; flex-direction:column; flex:1; overflow:hidden;"><div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;"><strong style="font-size:0.95rem;">${f.split('/').pop()}</strong><div style="display:flex; gap:3px; flex-wrap: wrap;">${historyHtml}</div></div><span style="font-size:0.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${f}</span></div></label><div class="action-group" style="padding-right: 0.75rem;"><span class="memo-indicator ${mergeMemos[latestKey] ? 'active' : ''}" data-memo-key="${latestKey}" onclick="openMemo(${info.latestRev}, '${f}')" title="${mergeMemos[latestKey] || '메모 작성'}">📝</span><button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div>`;
+      div.innerHTML = `<label class="toggle-label" style="padding: 0.75rem;"><input type="checkbox" class="main-check" ${allRevsMerged ? 'checked' : ''} onchange="toggleFileAllMerge('${f}', this.checked)"><div style="display:flex; flex-direction:column; flex:1; overflow:hidden;"><div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;"><strong style="font-size:0.95rem;">${highlightedFileName}</strong><div style="display:flex; gap:3px; flex-wrap: wrap;">${historyHtml}</div></div><span style="font-size:0.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${highlightedPath}</span></div></label><div class="action-group" style="padding-right: 0.75rem;"><span class="memo-indicator ${mergeMemos[latestKey] ? 'active' : ''}" data-memo-key="${latestKey}" onclick="openMemo(${info.latestRev}, '${f}')" title="${mergeMemos[latestKey] || '메모 작성'}">📝</span><button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div>`;
       return div;
     }
 
@@ -590,6 +692,11 @@
     function updateProgress() {
       const uniquePaths = Object.keys(fileMap);
       const mergedF = uniquePaths.filter(p => fileMap[p].revs.every(r => mergeStatus[`${r}:${p}`])).length;
+      
+      // 리비전 완수 계산 (모든 파일이 머지된 리비전 수)
+      const totalRevisions = svnData.length;
+      const completedRevisions = svnData.filter(item => item.files.every(f => mergeStatus[`${item.rev}:${f}`])).length;
+
       if (currentTab === 'file') {
         const p = uniquePaths.length === 0 ? 0 : Math.round((mergedF / uniquePaths.length) * 100);
         document.getElementById('progressLabel').innerText = "파일 완수율";
@@ -601,7 +708,7 @@
         const p = totalR === 0 ? 0 : Math.round((mergedR / totalR) * 100);
         document.getElementById('progressLabel').innerText = "리비전 진행률";
         document.getElementById('progress-bar').style.width = p + '%';
-        document.getElementById('progressInfo').innerText = `${p}% (${mergedR}/${totalR})`;
+        document.getElementById('progressInfo').innerText = `${p}% (${mergedR}/${totalR}) | 리비전: ${completedRevisions}/${totalRevisions}`;
       }
     }
 
@@ -638,33 +745,95 @@
       updateProgress();
     }
 
-    function clearStatus() {
+    async function clearStatus() {
       if (confirm('주의: 모든 데이터가 초기화됩니다.')) {
-        mergeStatus = {}; mergeMemos = {}; localStorage.removeItem('svn_merge_status_v1'); localStorage.removeItem('svn_merge_memos_v1'); localStorage.removeItem('svn_raw_log');
-        document.getElementById('logInput').value = ""; svnData = []; fileMap = {}; renderAll();
+        const stores = ['config', 'rawData', 'mergeStatus', 'mergeMemos'];
+        await dbManager.clearAll(stores);
+        // localStorage도 함께 정리 (호환성)
+        localStorage.removeItem('svn_merge_status_v1');
+        localStorage.removeItem('svn_merge_memos_v1');
+        localStorage.removeItem('svn_raw_log');
+        
+        mergeStatus = {}; mergeMemos = {};
+        document.getElementById('logInput').value = "";
+        svnData = []; fileMap = {};
+        renderAll();
+        syncChannel.postMessage({ type: 'update' });
       }
     }
 
-    function exportData() {
-      const data = { rawLog: document.getElementById('logInput').value, localPath: document.getElementById('localPath').value, mergeStatus, mergeMemos };
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `svn_merge_backup_${new Date().toISOString().split('T')[0]}.json`; a.click();
+    async function exportData() {
+      showLoading();
+      try {
+        const stores = ['config', 'rawData', 'mergeStatus', 'mergeMemos'];
+        const exportObj = {
+          version: '2.0',
+          timestamp: new Date().toISOString(),
+          db: {}
+        };
+        
+        for (const store of stores) {
+          exportObj.db[store] = await dbManager.getAll(store);
+        }
+
+        // 구 버전 호환성을 위한 필드 유지
+        exportObj.rawLog = exportObj.db.rawData?.log || document.getElementById('logInput').value;
+        exportObj.localPath = exportObj.db.config?.localPath || document.getElementById('localPath').value;
+        exportObj.mergeStatus = exportObj.db.mergeStatus;
+        exportObj.mergeMemos = exportObj.db.mergeMemos;
+        exportObj.config = exportObj.db.config;
+
+        const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        const dateStr = new Date().toISOString().split('T')[0];
+        a.href = URL.createObjectURL(blob);
+        a.download = `svn_merge_backup_${dateStr}.json`;
+        a.click();
+      } catch (err) {
+        alert('내보내기 중 오류 발생: ' + err.message);
+      } finally {
+        hideLoading();
+      }
     }
 
     function importData(input) {
       const file = input.files[0]; if (!file) return;
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
           const data = JSON.parse(e.target.result);
-          if (confirm('데이터를 가져올까요?')) {
-            document.getElementById('logInput').value = data.rawLog || ''; document.getElementById('localPath').value = data.localPath || '';
-            mergeStatus = data.mergeStatus || {}; mergeMemos = data.mergeMemos || {};
-            localStorage.setItem('svn_raw_log', data.rawLog || ''); localStorage.setItem('svn_local_path', data.localPath || '');
-            localStorage.setItem('svn_merge_status_v1', JSON.stringify(mergeStatus)); localStorage.setItem('svn_merge_memos_v1', JSON.stringify(mergeMemos));
-            startProcess();
+          if (confirm('데이터를 가져올까요? (기존 데이터는 덮어씌워집니다)')) {
+            showLoading();
+            const stores = ['config', 'rawData', 'mergeStatus', 'mergeMemos'];
+            await dbManager.clearAll(stores);
+            
+            // 1. 신규 포맷 (db 객체 존재 시) 우선 처리
+            if (data.db) {
+              for (const storeName of stores) {
+                if (data.db[storeName]) {
+                  for (const [k, v] of Object.entries(data.db[storeName])) {
+                    await dbManager.setItem(storeName, k, v);
+                  }
+                }
+              }
+            } else {
+              // 2. 구 버전 포맷 호환 처리
+              if (data.rawLog) await dbManager.setItem('rawData', 'log', data.rawLog);
+              if (data.config) {
+                for (const [k, v] of Object.entries(data.config)) await dbManager.setItem('config', k, v);
+              }
+              if (data.mergeStatus) {
+                for (const [k, v] of Object.entries(data.mergeStatus)) await dbManager.setItem('mergeStatus', k, v);
+              }
+              if (data.mergeMemos) {
+                for (const [k, v] of Object.entries(data.mergeMemos)) await dbManager.setItem('mergeMemos', k, v);
+              }
+            }
+
+            alert('데이터를 성공적으로 가져왔습니다. 페이지를 새로고침합니다.');
+            window.location.reload();
           }
-        } catch (err) { alert('오류 발생'); }
+        } catch (err) { alert('오류 발생: ' + err.message); hideLoading(); }
       };
       reader.readAsText(file); input.value = '';
     }
