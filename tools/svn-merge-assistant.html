@@ -237,8 +237,8 @@
 
     // 가상 스크롤 상태 관리
     const virtualState = {
-      rev: { data: [], filtered: [], offsets: [], totalHeight: 0, scrollTop: 0, focusedIndex: -1 },
-      file: { data: [], filtered: [], itemHeight: 60, totalHeight: 0, scrollTop: 0, focusedIndex: -1 }
+      rev: { data: [], filtered: [], offsets: [], totalHeight: 0, scrollTop: 0, focusedIndex: -1, ticking: false },
+      file: { data: [], filtered: [], itemHeight: 60, totalHeight: 0, scrollTop: 0, focusedIndex: -1, ticking: false }
     };
 
     function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
@@ -568,7 +568,13 @@
         container.innerHTML = `<div class="virtual-viewport"><div class="virtual-spacer"></div><div class="virtual-content"></div></div>`;
         container.onscroll = (e) => {
           virtualState[type].scrollTop = e.target.scrollTop;
-          updateVirtualDisplay(type);
+          if (!virtualState[type].ticking) {
+            window.requestAnimationFrame(() => {
+              virtualState[type].ticking = false;
+              updateVirtualDisplay(type);
+            });
+          }
+          virtualState[type].ticking = true;
         };
       }
 
