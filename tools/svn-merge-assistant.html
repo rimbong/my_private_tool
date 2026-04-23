@@ -32,11 +32,24 @@
       z-index: 50; 
       flex-shrink: 0; 
       transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
-      position: relative;
+      position: relative;      
     }
-    .sidebar.collapsed { width: 0; padding: 0; border-right: none; }
-    .sidebar.collapsed > *:not(.toggle-sidebar-btn) { display: none !important; }
+    .sidebar.collapsed { width: 0; padding-left: 0; padding-right: 0; border-right: none; }
     
+    /* 추가: 사이드바 내부 고정 너비 컨테이너 (찌그러짐 방지) */
+    .sidebar-inner {
+      width: calc(var(--sidebar-width) - 0.5rem);
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      height: 100%;
+      flex-shrink: 0;
+      overflow: hidden; /* 여기에 적용하여 내부 내용물만 숨김 */
+      transition: opacity 0.2s;
+    }
+    
+    .sidebar.collapsed .sidebar-inner { opacity: 0; pointer-events: none; }
+
     .sidebar-info { display: flex; justify-content: space-between; align-items: flex-end; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; margin-top: auto; padding-top: 1rem; }
 
     /* Toggle Button */
@@ -156,37 +169,39 @@
   <main>
     <div class="sidebar" id="sidebar">
       <button class="toggle-sidebar-btn" onclick="toggleSidebar()" id="toggleBtn" title="사이드바 접기/펴기">◀</button>
-      <div class="search-group">
-        <div style="display: flex; gap: 5px; margin-bottom: 8px;">
-          <input type="text" id="searchInput" class="search-input" style="flex: 1;" placeholder="실시간 검색..." oninput="handleSearchDebounced()">
-          <button class="sort-badge" onclick="toggleSort()" id="sortBtn" title="리비전 정렬 변경">
-            리비전 <span id="sortLabel">내림차순</span> <i id="sortIcon" style="font-style: normal; color: var(--primary); font-size: 10px;">▼</i>
-          </button>
+      <div class="sidebar-inner">
+        <div class="search-group">
+          <div style="display: flex; gap: 5px; margin-bottom: 8px;">
+            <input type="text" id="searchInput" class="search-input" style="flex: 1;" placeholder="실시간 검색..." oninput="handleSearchDebounced()">
+            <button class="sort-badge" onclick="toggleSort()" id="sortBtn" title="리비전 정렬 변경">
+              리비전 <span id="sortLabel">내림차순</span> <i id="sortIcon" style="font-style: normal; color: var(--primary); font-size: 10px;">▼</i>
+            </button>
+          </div>
+          <div id="extensionFilters" class="ext-filters"></div>
+          <label class="filter-item">
+            <input type="checkbox" id="filterRemaining" onchange="handleFilterChange()"> 미완료 항목만 보기
+          </label>
         </div>
-        <div id="extensionFilters" class="ext-filters"></div>
-        <label class="filter-item">
-          <input type="checkbox" id="filterRemaining" onchange="handleFilterChange()"> 미완료 항목만 보기
-        </label>
-      </div>
-      <h3>1. 로그 데이터 입력(Generate ChangeLog)</h3>
-      <textarea id="logInput" placeholder="SVN 로그를 여기에 붙여넣으세요..."></textarea>
-      <div class="input-group">
-        <label for="localPath">2. 로컬 작업 디렉토리 매핑</label>
-        <input type="text" id="localPath" placeholder="예: D:\workspace\project" oninput="saveSettings()">
-      </div>
-      <button class="btn btn-primary" onclick="startProcess()">분석 및 대시보드 생성</button>
-      <div style="display: flex; gap: 0.5rem;">
-        <button class="btn btn-outline" style="flex: 1;" onclick="exportData()">데이터 내보내기</button>
-        <button class="btn btn-outline" style="flex: 1;" onclick="document.getElementById('importFile').click()">데이터 가져오기</button>
-        <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importData(this)">
-      </div>
-      <div style="display: flex; gap: 0.5rem;">
-        <button class="btn btn-primary" style="flex: 2; background: #4f46e5;" onclick="generateMergeReport()">머지 보고서 생성 📋</button>
-        <button class="btn btn-danger" style="flex: 1;" onclick="clearStatus()">초기화</button>
-      </div>
-      <div class="sidebar-info">
-        <div>* 복사 안내:<br>📋 : 로컬 전체 경로 복사<br>🔗 : 프로젝트 기준 경로 복사</div>
-        <div style="text-align: left; font-weight: 500; color: var(--success);">* 실시간 저장:<br>모든 작업 내역은<br>실시간으로 저장되고 있습니다.</div>
+        <h3>1. 로그 데이터 입력(Generate ChangeLog)</h3>
+        <textarea id="logInput" placeholder="SVN 로그를 여기에 붙여넣으세요..."></textarea>
+        <div class="input-group">
+          <label for="localPath">2. 로컬 작업 디렉토리 매핑</label>
+          <input type="text" id="localPath" placeholder="예: D:\workspace\project" oninput="saveSettings()">
+        </div>
+        <button class="btn btn-primary" onclick="startProcess()">분석 및 대시보드 생성</button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-outline" style="flex: 1;" onclick="exportData()">데이터 내보내기</button>
+          <button class="btn btn-outline" style="flex: 1;" onclick="document.getElementById('importFile').click()">데이터 가져오기</button>
+          <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importData(this)">
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-primary" style="flex: 2; background: #4f46e5;" onclick="generateMergeReport()">머지 보고서 생성 📋</button>
+          <button class="btn btn-danger" style="flex: 1;" onclick="clearStatus()">초기화</button>
+        </div>
+        <div class="sidebar-info">
+          <div>* 복사 안내:<br>📋 : 로컬 전체 경로 복사<br>🔗 : 프로젝트 기준 경로 복사</div>
+          <div style="text-align: left; font-weight: 500; color: var(--success);">* 실시간 저장:<br>모든 작업 내역은<br>실시간으로 저장되고 있습니다.</div>
+        </div>
       </div>
     </div>
     <div class="content">
