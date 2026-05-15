@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>개발 도구 포털</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
+    <style>
+        :root {
+            --primary: #111827;
+            --primary-hover: #1f2937;
+            --bg: #f9fafb;
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background-color: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 2rem 1rem;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        header p {
+            margin: 0.5rem 0 0;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        main {
+            flex-grow: 1;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .tool-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .tool-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-color: #d1d5db;
+        }
+
+        .tool-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .tool-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 0 0 0.5rem;
+            color: var(--primary);
+        }
+
+        .tool-desc {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            border-top: 1px solid var(--border);
+            background-color: #fff;
+        }
+
+        @media (max-width: 640px) {
+            header h1 { font-size: 1.75rem; }
+            .tool-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🛠️ 개발 보조 도구 포털</h1>
+        <p>효율적인 개발을 위한 유용한 도구 모음</p>
+    </header>
+
+    <main>
+        <div class="tool-grid">
+            <a href="tool.html?tool=config" class="tool-card">
+                <div class="tool-icon">⚙️</div>
+                <h3 class="tool-name">Config 설정</h3>
+                <p class="tool-desc">프로젝트 환경 설정 파일을 시각적으로 편집하고 관리합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=classpath" class="tool-card">
+                <div class="tool-icon">📂</div>
+                <h3 class="tool-name">Classpath 설정</h3>
+                <p class="tool-desc">Eclipse .classpath 파일의 라이브러리 경로를 쉽게 수정합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=maven" class="tool-card">
+                <div class="tool-icon">📦</div>
+                <h3 class="tool-name">Maven 설정</h3>
+                <p class="tool-desc">pom.xml 파일의 의존성 및 설정을 효율적으로 관리합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=sql" class="tool-card">
+                <div class="tool-icon">🔍</div>
+                <h3 class="tool-name">SQL문 변환</h3>
+                <p class="tool-desc">Log의 SQL문을 실행 가능한 쿼리로 변환하거나 포맷팅합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=uri" class="tool-card">
+                <div class="tool-icon">🔗</div>
+                <h3 class="tool-name">URI 디코딩</h3>
+                <p class="tool-desc">인코딩된 URL 주소를 읽기 쉬운 텍스트로 디코딩합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=xml" class="tool-card">
+                <div class="tool-icon">📄</div>
+                <h3 class="tool-name">XML 변환</h3>
+                <p class="tool-desc">XML 데이터를 다른 형식으로 변환하거나 구조를 정리합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=markdown" class="tool-card">
+                <div class="tool-icon">📝</div>
+                <h3 class="tool-name">마크다운 변환</h3>
+                <p class="tool-desc">텍스트를 깔끔한 마크다운 형식으로 변환하거나 정리합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=svn-log" class="tool-card">
+                <div class="tool-icon">📋</div>
+                <h3 class="tool-name">패치 내역 생성</h3>
+                <p class="tool-desc">SVN 로그를 바탕으로 배포용 패치 파일 목록을 생성합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=svn-merge" class="tool-card">
+                <div class="tool-icon">🔄</div>
+                <h3 class="tool-name">SVN 머지 도구</h3>
+                <p class="tool-desc">브랜치 간 코드 머지 작업을 시각적으로 보조합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=todo" class="tool-card">
+                <div class="tool-icon">✅</div>
+                <h3 class="tool-name">TODO 관리</h3>
+                <p class="tool-desc">할 일 목록을 효율적으로 관리하고 진행 상황을 추적합니다.</p>
+            </a>
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2025 Multi-purpose Development Assistant Tools. All rights reserved.</p>
+    </footer>
+</body>
+</html>
