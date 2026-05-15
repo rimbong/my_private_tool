@@ -5,27 +5,63 @@
 const dbManager = {
   db: null,
   dbName: '',
-  dbVersion: 1,
 
   /**
-   * Initialize Database
+   * Initialize Database with Auto-Versioning
    * @param {string} dbName 
    * @param {string[]} stores 
-   * @param {number} version 
    */
-  init(dbName, stores, version = 1) {
+  async init(dbName, stores) {
     this.dbName = dbName;
-    this.dbVersion = version;
+    
+    // 1. 먼저 현재 상태를 확인하기 위해 버전을 명시하지 않고 엽니다.
+    // 최초 생성 시에도 stores를 넘겨주면 v1에서 즉시 생성됩니다.
+    let db = await this._openDB(dbName, null, stores);
+    
+    // 2. 요청한 모든 저장소가 존재하는지 확인합니다.
+    const missingStores = stores.filter(s => !db.objectStoreNames.contains(s));
+    
+    if (missingStores.length > 0) {
+      // 3. 누락된 저장소가 있다면 현재 버전 + 1로 다시 열어 업그레이드를 유도합니다.
+      const nextVersion = db.version + 1;
+      db.close(); // 기존 연결을 닫아야 업그레이드 가능
+      db = await this._openDB(dbName, nextVersion, stores);
+    }
+    
+    this.db = db;
+    return db;
+  },
+
+  _openDB(name, version, allStores = []) {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, this.dbVersion);
+      const request = version ? indexedDB.open(name, version) : indexedDB.open(name);
+      
       request.onupgradeneeded = (e) => {
         const db = e.target.result;
-        stores.forEach(store => {
-          if (!db.objectStoreNames.contains(store)) db.createObjectStore(store);
+        // 업그레이드 시 요청된 모든 저장소를 생성 (이미 있는 건 무시)
+        allStores.forEach(store => {
+          if (!db.objectStoreNames.contains(store)) {
+            db.createObjectStore(store);
+          }
         });
       };
-      request.onsuccess = (e) => { this.db = e.target.result; resolve(); };
-      request.onerror = (e) => reject(e);
+      
+      request.onsuccess = (e) => {
+        const db = e.target.result;
+        
+        // 다른 탭에서 업그레이드가 시작되면 이 연결을 닫아 Blocked 상태를 방지합니다.
+        db.onversionchange = () => {
+          db.close();
+          console.warn("데이터베이스가 다른 탭에서 업데이트되었습니다. 페이지 새로고침이 필요할 수 있습니다.");
+        };
+        
+        resolve(db);
+      };
+      request.onerror = (e) => reject(e.target.error);
+      request.onblocked = () => {
+        alert('데이터베이스가 이전 탭에 의해 열려있습니다. 모든 탭을 닫고 다시 시도해주세요.');
+        reject(new Error('IDB Blocked'));
+      };
     });
   },
 
