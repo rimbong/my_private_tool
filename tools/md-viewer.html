@@ -158,14 +158,38 @@
     }
 
     .resizer {
-      width: 4px;
-      background: var(--border);
+      width: 8px;
+      margin: 0 -4px;
+      background: transparent;
       cursor: col-resize;
+      z-index: 100;
+      position: relative;
       transition: background 0.2s;
     }
 
-    .resizer:hover {
+    .resizer::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: var(--border);
+    }
+
+    .resizer:hover::after, .resizer.active::after {
       background: #3b82f6;
+      width: 4px;
+      left: 2px;
+    }
+
+    body.resizing {
+      cursor: col-resize;
+      user-select: none;
+    }
+
+    body.resizing #editor {
+      pointer-events: none;
     }
   </style>
 </head>
@@ -246,11 +270,12 @@ function hello() {
       }
     }
 
-    // Configure marked with a custom renderer for highlighting
+    // Configure marked with a custom renderer for highlighting (Compatible with marked v12+)
     marked.use({
       renderer: {
-        code(code, infostring) {
-          const lang = (infostring || '').match(/\S*/)[0];
+        code(token) {
+          const code = token.text || '';
+          const lang = token.lang || '';
           const language = hljs.getLanguage(lang) ? lang : 'plaintext';
           const highlighted = hljs.highlight(code, { language }).value;
           return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
@@ -342,7 +367,8 @@ function hello() {
 
     resizer.addEventListener('mousedown', (e) => {
       isResizing = true;
-      document.body.style.cursor = 'col-resize';
+      resizer.classList.add('active');
+      document.body.classList.add('resizing');
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -357,8 +383,11 @@ function hello() {
     });
 
     document.addEventListener('mouseup', () => {
-      isResizing = false;
-      document.body.style.cursor = 'default';
+      if (isResizing) {
+        isResizing = false;
+        resizer.classList.remove('active');
+        document.body.classList.remove('resizing');
+      }
     });
   </script>
 </body>
