@@ -234,6 +234,7 @@
   </div>
 
   <script src="lib/db-manager.js"></script>
+  <script src="lib/toast-utils.js"></script>
   <script>
     let svnData = [];
     let fileMap = {};
@@ -736,7 +737,7 @@
     function generateMergeReport() {
       let report = `==================================================\n       SVN 머지 완료 보고서 (Merge Report)\n==================================================\n작성일: ${new Date().toLocaleString()}\n\n`;
       const mergedPaths = Object.keys(fileMap).filter(p => fileMap[p].revs.every(r => mergeStatus[`${r}:${p}`])).sort();
-      if (mergedPaths.length === 0) { alert('완료된 파일이 없습니다.'); return; }
+      if (mergedPaths.length === 0) { showToast('완료된 파일이 없습니다.', 'info'); return; }
       report += `[1. 통계]\n- 완료 파일: ${mergedPaths.length}개 / 전체: ${Object.keys(fileMap).length}개\n\n[2. 내역]\n--------------------------------------------------\n`;
       mergedPaths.forEach(p => {
         const lRev = fileMap[p].latestRev;
@@ -746,7 +747,7 @@
       document.getElementById('reportModal').style.display = 'flex';
     }
 
-    function copyReport() { navigator.clipboard.writeText(document.getElementById('reportArea').value).then(() => alert('복사되었습니다.')); }
+    function copyReport() { navigator.clipboard.writeText(document.getElementById('reportArea').value).then(() => showToast('복사되었습니다.', 'success')); }
 
     function copyPath(e, path, type) {
       const root = document.getElementById('localPath').value.trim();
@@ -811,7 +812,7 @@
         a.download = `svn_merge_backup_${dateStr}.json`;
         a.click();
       } catch (err) {
-        alert('내보내기 중 오류 발생: ' + err.message);
+        showToast('내보내기 중 오류 발생: ' + err.message, 'error');
       } finally {
         hideLoading();
       }
@@ -851,10 +852,10 @@
               }
             }
 
-            alert('데이터를 성공적으로 가져왔습니다. 페이지를 새로고침합니다.');
-            window.location.reload();
+            showToast('데이터를 성공적으로 가져왔습니다.', 'success');
+            setTimeout(() => window.location.reload(), 1000);
           }
-        } catch (err) { alert('오류 발생: ' + err.message); hideLoading(); }
+        } catch (err) { showToast('오류 발생: ' + err.message, 'error'); hideLoading(); }
       };
       reader.readAsText(file); input.value = '';
     }

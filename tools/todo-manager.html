@@ -333,8 +333,6 @@
           </div>
           <div id="searchResults" class="search-results-container"></div>
         </div>
-        
-        
       </div>
     </div>
 
@@ -484,6 +482,7 @@
   </main>
 
   <script src="lib/db-manager.js"></script>
+  <script src="lib/toast-utils.js"></script>
   <script id="main-script">
     /* --- State Management --- */
     let currentDate = new Date();
@@ -839,7 +838,7 @@
         stickyMemos.unshift(memo);
         input.value = '';
         if (currentView === 'memo') renderMemoBoard();
-        else alert('메모 보드(인박스)에 저장되었습니다.');
+        else showToast('메모 보드(인박스)에 저장되었습니다.', 'success');
     }
 
     function renderMemoBoard() {
@@ -910,7 +909,7 @@
         await new Promise(r => tx.oncomplete = r);
         stickyMemos = stickyMemos.filter(m => m.id !== id);
 
-        alert(`${dateStr} 일정으로 이동되었습니다.`);
+        showToast(`${dateStr} 일정으로 이동되었습니다.`, 'success');
         renderMemoBoard();
         renderCalendar();
     }
@@ -1016,7 +1015,10 @@
         const selected = Array.from(container.querySelectorAll('input[type="checkbox"].bulk-select-check:checked'))
             .map(cb => ({ id: cb.dataset.id, date: cb.dataset.date, type: cb.dataset.type }));
         
-        if (selected.length === 0) return alert('선택된 항목이 없습니다.');
+        if (selected.length === 0) {
+            showToast('선택된 항목이 없습니다.', 'warning');
+            return;
+        }
         if (!confirm(`${selected.length}개의 항목을 삭제할까요?`)) return;
 
         // 하나의 트랜잭션으로 통합 처리 (todos와 stickyMemos 동시 잠금)
@@ -1050,7 +1052,10 @@
         const selected = Array.from(container.querySelectorAll('input[type="checkbox"].bulk-select-check:checked'))
             .map(cb => ({ id: cb.dataset.id, date: cb.dataset.date, type: cb.dataset.type }));
 
-        if (selected.length === 0) return alert('선택된 항목이 없습니다.');
+        if (selected.length === 0) {
+            showToast('선택된 항목이 없습니다.', 'warning');
+            return;
+        }
 
         const tx = dbManager.db.transaction('todos', 'readwrite');
         const store = tx.objectStore('todos');
@@ -1075,7 +1080,7 @@
             refreshCurrentView();
             handleSearch();
         } else {
-            alert('완료 처리할 수 있는 일정 항목이 없습니다.');
+            showToast('완료 처리할 수 있는 일정 항목이 없습니다.', 'info');
         }
     }
 
@@ -1219,7 +1224,7 @@
 
   function copyText(t) {
     navigator.clipboard.writeText(t);
-    alert('복사되었습니다.');
+    showToast('복사되었습니다.', 'success');
   }
 
   function handleSearch() {
@@ -1229,7 +1234,7 @@
     
     if (!term) {
         document.getElementById('searchBatchBar').style.display = 'none';
-        return; // 불필요한 renderCalendar() 호출 제거
+        return;
     }
     
     let matches = [];
@@ -1259,9 +1264,8 @@
         const item = document.createElement('div');
         item.className = 'search-result-item';
         item.style.display = 'flex';
-        item.style.alignItems = 'center'; // 수직 중앙 정렬로 변경
+        item.style.alignItems = 'center';
         item.style.gap = '0.5rem';
-        // 데이터 속성 추가 (이벤트 위임용)
         item.dataset.type = m.type;
         item.dataset.id = m.data.id;
         if (m.type === 'todo') item.dataset.date = m.data.date;
@@ -1352,7 +1356,6 @@
         });
     }
 
-    // 2. 메모 보드 섹션 추가
     if (stickyMemos.length > 0) {
         md += `\n---\n\n## 📝 메모 보드 / Inbox\n\n`;
         stickyMemos.forEach(m => {
@@ -1371,7 +1374,7 @@
     a.href = URL.createObjectURL(blob);
     a.download = `${year}년_${month}월_일정계획.md`;
     a.click();
-    alert(`${year}년 ${month}월 일정을 MD 파일로 내보냈습니다.`);
+    showToast(`${year}년 ${month}월 일정을 MD 파일로 내보냈습니다.`, 'success');
   }
 
   function addToGoogleCalendar(id, dateStr) {
@@ -1380,8 +1383,6 @@
 
     const title = encodeURIComponent(task.title);
     const details = encodeURIComponent(task.content || '');
-    
-    // Google Calendar uses YYYYMMDD/YYYYMMDD for all-day events (end date is exclusive)
     const startDate = dateStr.replace(/-/g, '');
     const endDateObj = new Date(dateStr);
     endDateObj.setDate(endDateObj.getDate() + 1);
@@ -1412,7 +1413,7 @@
     });
 
     if (currentMonthTodos.length === 0) {
-      alert('이번 달에 등록된 일정이 없습니다.');
+      showToast('이번 달에 등록된 일정이 없습니다.', 'info');
       return;
     }
 
@@ -1443,7 +1444,7 @@
     a.download = `${year}년_${month}월_일정.ics`;
     a.click();
     
-    alert(`${year}년 ${month}월 일정을 ICS 파일로 생성했습니다.\n구글 캘린더의 [설정 > 가져오기]에서 이 파일을 등록하세요.`);
+    showToast(`${year}년 ${month}월 일정을 ICS 파일로 생성했습니다. 구글 캘린더의 [설정 > 가져오기]에서 이 파일을 등록하세요.`, 'success', 5000);
   }
 
   function importData(input) {
@@ -1456,12 +1457,9 @@
             let importedTodos = [];
             let importedMemos = [];
 
-            // 버전 판별 및 데이터 추출
             if (Array.isArray(imported)) {
-                // v1.0 (배열 형태)
                 importedTodos = imported;
             } else if (imported.version === '2.0') {
-                // v2.0 (객체 형태)
                 importedTodos = imported.todos || [];
                 importedMemos = imported.stickyMemos || [];
             } else {
@@ -1470,25 +1468,20 @@
 
             if (confirm('데이터를 복구할까요? 기존 데이터는 삭제됩니다.')) {
                 await dbManager.clearAll(['todos', 'stickyMemos']);
-                
-                // 하나의 트랜잭션으로 통합 처리
                 const tx = dbManager.db.transaction(['todos', 'stickyMemos'], 'readwrite');
                 const todoStore = tx.objectStore('todos');
                 const memoStore = tx.objectStore('stickyMemos');
-                
                 for (let t of importedTodos) todoStore.put(t, t.id);
                 for (let m of importedMemos) memoStore.put(m, m.id);
-
                 await new Promise((resolve, reject) => {
                     tx.oncomplete = resolve;
                     tx.onerror = (e) => reject(e.target.error);
                 });
-
-                alert('복구 완료');
-                window.location.reload();
+                showToast('복구가 완료되었습니다.', 'success');
+                setTimeout(() => window.location.reload(), 1000);
             }
         } catch (err) {
-            alert('오류: ' + err.message);
+            showToast('오류: ' + err.message, 'error');
         } finally {
             input.value = '';
         }

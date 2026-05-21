@@ -342,12 +342,16 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        showToast('다운로드가 시작됩니다.');
-      });
+        showToast('다운로드가 시작됩니다.', 'success');
+        });
       
       // Initial state
       updateOutput();
     });
+  </script>
+
+</body>
+</html>
   </script>
 
 </body>

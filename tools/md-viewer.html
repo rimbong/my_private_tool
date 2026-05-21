@@ -6,6 +6,7 @@
   <title>Markdown Viewer</title>
   <script src="lib/marked.min.js"></script>
   <script src="lib/highlight.min.js"></script>
+  <script src="lib/toast-utils.js"></script>
   <link rel="stylesheet" id="md-style" href="lib/github-markdown-light.min.css">
   <link rel="stylesheet" id="hljs-style" href="lib/github-highlight.min.css">
   <style>
@@ -340,18 +341,18 @@ function hello() {
     async function copyMarkdown() {
       try {
         await navigator.clipboard.writeText(editor.value);
-        alert('마크다운 원문이 복사되었습니다.');
+        showToast('마크다운 원문이 복사되었습니다.', 'success');
       } catch (err) {
-        alert('복사에 실패했습니다.');
+        showToast('복사에 실패했습니다.', 'error');
       }
     }
 
     async function copyHTML() {
       try {
         await navigator.clipboard.writeText(preview.innerHTML);
-        alert('변환된 HTML 코드가 복사되었습니다.');
+        showToast('변환된 HTML 코드가 복사되었습니다.', 'success');
       } catch (err) {
-        alert('복사에 실패했습니다.');
+        showToast('복사에 실패했습니다.', 'error');
       }
     }
 
