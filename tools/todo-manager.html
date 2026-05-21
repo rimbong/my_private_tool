@@ -296,6 +296,7 @@
         </div>
       </div>
       <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-outline" onclick="exportToICS()" title="구글/아웃룩 등 달력 앱에서 읽을 수 있는 표준 ICS 파일로 내보냅니다.">🗓️ ICS 내보내기</button>
           <button class="btn btn-outline" onclick="exportToMarkdown()" title="현재 월의 일정을 깔끔한 문서로 내보냅니다.">📝 MD 내보내기</button>
           <button class="btn btn-outline" onclick="exportData()">💾 백업</button>
           <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">📂 복구</button>
@@ -696,6 +697,9 @@
                         const content = card.querySelector('.todo-text')?.innerText || '';
                         copyText(`${title}\n${content}`);
                         break;
+                    case 'gcal':
+                        addToGoogleCalendar(id, date);
+                        break;
                     case 'save':
                         saveEditCard(card);
                         break;
@@ -940,6 +944,7 @@
                 ${task.content ? `<div class="todo-text">${task.content}</div>` : ''}
                 <div class="todo-card-actions">
                     <button class="btn btn-ghost" style="font-size:0.8rem;" data-action="copy">📋 복사</button>
+                    <button class="btn btn-ghost" style="font-size:0.8rem; color:var(--success);" data-action="gcal">🌐 Google 추가</button>
                     <button class="btn btn-danger" style="padding:0.4rem 0.8rem; font-size:0.8rem;" data-action="delete">🗑️ 삭제</button>
                 </div>
             </div>
@@ -1367,6 +1372,78 @@
     a.download = `${year}년_${month}월_일정계획.md`;
     a.click();
     alert(`${year}년 ${month}월 일정을 MD 파일로 내보냈습니다.`);
+  }
+
+  function addToGoogleCalendar(id, dateStr) {
+    const task = todos[dateStr]?.find(t => t.id === id);
+    if (!task) return;
+
+    const title = encodeURIComponent(task.title);
+    const details = encodeURIComponent(task.content || '');
+    
+    // Google Calendar uses YYYYMMDD/YYYYMMDD for all-day events (end date is exclusive)
+    const startDate = dateStr.replace(/-/g, '');
+    const endDateObj = new Date(dateStr);
+    endDateObj.setDate(endDateObj.getDate() + 1);
+    const endDate = formatDate(endDateObj).replace(/-/g, '');
+
+    const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${endDate}&details=${details}&sf=true&output=xml`;
+    window.open(url, '_blank');
+  }
+
+  function exportToICS() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth() + 1;
+    
+    let ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//My Private Tool//Diary Planner//KO',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH'
+    ];
+
+    const currentMonthTodos = [];
+    Object.keys(todos).forEach(d => {
+      const date = new Date(d);
+      if (date.getFullYear() === year && (date.getMonth() + 1) === month) {
+        todos[d].forEach(t => currentMonthTodos.push(t));
+      }
+    });
+
+    if (currentMonthTodos.length === 0) {
+      alert('이번 달에 등록된 일정이 없습니다.');
+      return;
+    }
+
+    currentMonthTodos.forEach(t => {
+      const startDate = t.date.replace(/-/g, '');
+      const endDateObj = new Date(t.date);
+      endDateObj.setDate(endDateObj.getDate() + 1);
+      const endDate = formatDate(endDateObj).replace(/-/g, '');
+      const timestamp = new Date(t.createdAt || Date.now()).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+      ics.push('BEGIN:VEVENT');
+      ics.push(`UID:${t.id}@my-private-tool`);
+      ics.push(`DTSTAMP:${timestamp}`);
+      ics.push(`DTSTART;VALUE=DATE:${startDate}`);
+      ics.push(`DTEND;VALUE=DATE:${endDate}`);
+      ics.push(`SUMMARY:${t.title.replace(/,/g, '\\,')}`);
+      if (t.content) {
+        ics.push(`DESCRIPTION:${t.content.replace(/\n/g, '\\n').replace(/,/g, '\\,')}`);
+      }
+      ics.push('END:VEVENT');
+    });
+
+    ics.push('END:VCALENDAR');
+
+    const blob = new Blob([ics.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${year}년_${month}월_일정.ics`;
+    a.click();
+    
+    alert(`${year}년 ${month}월 일정을 ICS 파일로 생성했습니다.\n구글 캘린더의 [설정 > 가져오기]에서 이 파일을 등록하세요.`);
   }
 
   function importData(input) {
