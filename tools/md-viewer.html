@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Markdown Viewer</title>
+  <script src="lib/marked.min.js"></script>
+  <script src="lib/highlight.min.js"></script>
+  <link rel="stylesheet" id="md-style" href="lib/github-markdown-light.min.css">
+  <link rel="stylesheet" id="hljs-style" href="lib/github-highlight.min.css">
+  <style>
+    :root {
+      --primary: #111827;
+      --bg: #f9fafb;
+      --header-bg: #ffffff;
+      --border: #e5e7eb;
+      --editor-bg: #f8fafc;
+      --text: #111827;
+      --sidebar-width: 50%;
+    }
+
+    body.dark-mode {
+      --primary: #f9fafb;
+      --bg: #0d1117;
+      --header-bg: #161b22;
+      --border: #30363d;
+      --editor-bg: #0d1117;
+      --text: #c9d1d9;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background-color: var(--bg);
+      color: var(--text);
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    header {
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+    }
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .title-group h1 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+
+    .action-group {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 0.375rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--header-bg);
+      color: var(--text);
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--bg);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--bg);
+      border-color: var(--primary);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .editor-container {
+      width: var(--sidebar-width);
+      height: 100%;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      background: var(--editor-bg);
+    }
+
+    #editor {
+      flex: 1;
+      border: none;
+      padding: 1.5rem;
+      font-family: 'Fira Code', 'Cascadia Code', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+      font-size: 14px;
+      line-height: 1.6;
+      resize: none;
+      outline: none;
+      background: transparent;
+      color: inherit;
+    }
+
+    .preview-container {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      background: var(--header-bg);
+      padding: 0;
+    }
+
+    .markdown-body {
+      box-sizing: border-box;
+      min-width: 200px;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    @media (max-width: 767px) {
+      main {
+        flex-direction: column;
+      }
+      .editor-container {
+        width: 100%;
+        height: 50%;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+      .markdown-body {
+        padding: 15px;
+      }
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .resizer {
+      width: 4px;
+      background: var(--border);
+      cursor: col-resize;
+      transition: background 0.2s;
+    }
+
+    .resizer:hover {
+      background: #3b82f6;
+    }
+  </style>
+</head>
+<body class="light-mode">
+  <header>
+    <div class="title-group">
+      <h1>📝 MD Viewer</h1>
+      <div class="action-group">
+        <button class="btn" onclick="document.getElementById('fileInput').click()">파일 열기</button>
+        <button class="btn" onclick="saveFile()">저장</button>
+        <input type="file" id="fileInput" class="file-input" accept=".md,.txt" onchange="loadFile(event)">
+      </div>
+    </div>
+    <div class="action-group">
+      <button class="btn" id="themeToggle" onclick="toggleTheme()">🌙 다크 모드</button>
+      <button class="btn" onclick="copyMarkdown()">MD 복사</button>
+      <button class="btn" onclick="copyHTML()">HTML 복사</button>
+      <button class="btn btn-primary" onclick="clearAll()">비우기</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="editor-container" id="editorContainer">
+      <textarea id="editor" placeholder="여기에 마크다운을 입력하세요..."></textarea>
+    </div>
+    <div class="resizer" id="resizer"></div>
+    <div class="preview-container">
+      <div id="preview" class="markdown-body"></div>
+    </div>
+  </main>
+
+  <script>
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+    const resizer = document.getElementById('resizer');
+    const editorContainer = document.getElementById('editorContainer');
+    const themeToggle = document.getElementById('themeToggle');
+    const hljsStyle = document.getElementById('hljs-style');
+
+    // Initial Content
+    const initialContent = `# Markdown Viewer 가이드
+
+이 도구는 실시간으로 마크다운을 렌더링합니다.
+
+## 주요 기능
+- **실시간 미리보기**: 입력하는 즉시 결과 확인
+- **테마 전환**: 라이트/다크 모드 지원
+- **파일 불러오기/저장**: Local MD 파일 편집 가능
+- **복사 기능**: 마크다운 원문 또는 변환된 HTML 복사
+- **반응형 디자인**: 화면 크기에 맞는 레이아웃
+
+### 테스트용 문법
+1. **Bold** & *Italic*
+2. [Google](https://google.com) 링크
+3. \`Inline Code\`
+
+\`\`\`javascript
+function hello() {
+  console.log("Hello, Markdown!");
+}
+\`\`\`
+
+> 인용구 테스트입니다.
+`;
+
+    // Theme Logic
+    function toggleTheme() {
+      const isDark = document.body.classList.toggle('dark-mode');
+      themeToggle.textContent = isDark ? '☀️ 라이트 모드' : '🌙 다크 모드';
+      hljsStyle.href = isDark ? 'lib/github-highlight-dark.min.css' : 'lib/github-highlight.min.css';
+      document.getElementById('md-style').href = isDark ? 'lib/github-markdown-dark.min.css' : 'lib/github-markdown-light.min.css';
+      
+      // Update github-markdown-css data-color-mode
+      if (isDark) {
+        preview.setAttribute('data-color-mode', 'dark');
+      } else {
+        preview.setAttribute('data-color-mode', 'light');
+      }
+    }
+
+    // Configure marked with a custom renderer for highlighting
+    marked.use({
+      renderer: {
+        code(code, infostring) {
+          const lang = (infostring || '').match(/\S*/)[0];
+          const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+          const highlighted = hljs.highlight(code, { language }).value;
+          return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
+        }
+      }
+    });
+
+    // Set basic options
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+      headerIds: false,
+      mangle: false
+    });
+
+    function updatePreview() {
+      const text = editor.value;
+      preview.innerHTML = marked.parse(text);
+    }
+
+    // Debounce function to limit rendering frequency
+    function debounce(func, timeout = 300) {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { func.apply(this, args); }, timeout);
+      };
+    }
+
+    const debouncedUpdate = debounce(updatePreview, 300);
+
+    editor.addEventListener('input', debouncedUpdate);
+
+    // Set initial content and update preview
+    editor.value = initialContent;
+    updatePreview();
+
+    // File Operations
+    function loadFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        editor.value = e.target.result;
+        updatePreview();
+      };
+      reader.readAsText(file);
+    }
+
+    function saveFile() {
+      const blob = new Blob([editor.value], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'document.md';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Copy Functions
+    async function copyMarkdown() {
+      try {
+        await navigator.clipboard.writeText(editor.value);
+        alert('마크다운 원문이 복사되었습니다.');
+      } catch (err) {
+        alert('복사에 실패했습니다.');
+      }
+    }
+
+    async function copyHTML() {
+      try {
+        await navigator.clipboard.writeText(preview.innerHTML);
+        alert('변환된 HTML 코드가 복사되었습니다.');
+      } catch (err) {
+        alert('복사에 실패했습니다.');
+      }
+    }
+
+    function clearAll() {
+      if (confirm('모든 내용을 비우시겠습니까?')) {
+        editor.value = '';
+        updatePreview();
+      }
+    }
+
+    // Resizer Logic
+    let isResizing = false;
+
+    resizer.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      document.body.style.cursor = 'col-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      
+      const containerWidth = document.body.clientWidth;
+      const newWidth = (e.clientX / containerWidth) * 100;
+      
+      if (newWidth > 10 && newWidth < 90) {
+        editorContainer.style.width = `${newWidth}%`;
+      }
+    });
+
+    document.addEventListener('mouseup', () => {
+      isResizing = false;
+      document.body.style.cursor = 'default';
+    });
+  </script>
+</body>
+</html>
