@@ -103,6 +103,7 @@
   </div>
 
   <script src="lib/shared-utils.js"></script>
+  <script src="lib/toast-utils.js"></script>
   <script>
     /**
      * XML을 HTML 엔티티로 변환 (Escape)
@@ -172,10 +173,10 @@
         try {
           if (!inputEl.value) return;
           outputEl.value = formatXml(inputEl.value);
-        } catch (e) {
-          alert('XML 형식이 올바르지 않습니다.');
+        } catch (err) {
+          showToast('XML 형식이 올바르지 않습니다.', 'error');
         }
-      });
+        });
 
       // Copy
       document.getElementById('btnCopy').addEventListener('click', async () => {

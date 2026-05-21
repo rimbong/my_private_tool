@@ -59,7 +59,9 @@ const dbManager = {
       };
       request.onerror = (e) => reject(e.target.error);
       request.onblocked = () => {
-        alert('데이터베이스가 이전 탭에 의해 열려있습니다. 모든 탭을 닫고 다시 시도해주세요.');
+        const msg = '데이터베이스가 이전 탭에 의해 열려있습니다. 모든 탭을 닫고 다시 시도해주세요.';
+        if (typeof showToast === 'function') showToast(msg, 'warning', 5000);
+        else alert(msg);
         reject(new Error('IDB Blocked'));
       };
     });

@@ -1,3 +1,10 @@
+/**
+ * 공통 유틸리티 함수 모음
+ */
+
+/**
+ * HTML 특수 문자를 언이스케이프합니다.
+ */
 function unescapeHTML(html) {
     if (html == null) {
         html = "";
@@ -12,74 +19,70 @@ function unescapeHTML(html) {
         '&lt;': '<',
         '&gt;': '>',
         '&quot;': '"',
-        '&#x27;': "'",
+        '&#39;': "'",
         '&#x2F;': '/',
-        '&#x60;': '`'
+        '&#x60;': '`',
+        '&#x3D;': '='
     };
 
-    return html.replace(/&amp;|&lt;|&gt;|&quot;|&#x27;|&#x2F;|&#x60;/g, function(match) {
+    return html.replace(/&amp;|&lt;|&gt;|&quot;|&#39;|&#x2F;|&#x60;|&#x3D;/g, function (match) {
         return HTML_ENTITIES[match];
     });
 }
 
-function removeCRLFStr(str) {  
-    return str.replace(/\\n/g, '').replace(/\\t/g, '').replace(/\\r/g, '')
-}
-
+/**
+ * 텍스트를 클립보드에 복사합니다.
+ */
 async function copyText(text) {
     if (!navigator.clipboard) {
         // Fallback for older browsers
         const textArea = document.createElement("textarea");
         textArea.value = text;
-        textArea.style.position = "fixed"; 
-        textArea.style.left = "-9999px";
         document.body.appendChild(textArea);
-        textArea.focus();
         textArea.select();
         try {
             document.execCommand('copy');
         } catch (err) {
-            console.error('Fallback: Oops, unable to copy', err);
+            console.error('Fallback copy failed', err);
         }
         document.body.removeChild(textArea);
         return;
     }
-    try {
-        await navigator.clipboard.writeText(text);
-    } catch (err) {
-        console.error('Async: Could not copy text: ', err);
-    }
+    await navigator.clipboard.writeText(text);
 }
 
-async function onAlert(spanEl, message = '복사 되었습니다.') {
-    if (spanEl) {
-        const originalText = spanEl.innerHTML;
-        const originalCss = spanEl.style.cssText;
-        spanEl.innerHTML = message;
-        spanEl.style.cssText = `    
-                font-size: 16px;
-                color: red;
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%);
-                background: white;
-                padding: 10px;
-                border-radius: 5px;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.2);`;
+/**
+ * 특정 엘리먼트에 알림 클래스를 추가했다가 제거합니다.
+ */
+function onAlert(el, text) {
+    return new Promise((resolve) => {
+        const originalText = el.innerText;
+        if (text) el.innerText = text;
+        el.classList.add('alert');
         setTimeout(() => {
-            spanEl.innerHTML = originalText;
-            spanEl.style.cssText = originalCss;
-        }, 2000);
-    }
+            el.classList.remove('alert');
+            if (text) el.innerText = originalText;
+            resolve();
+        }, 1000);
+    });
 }
 
+/**
+ * 복사 후 토스트 메시지와 엘리먼트 애니메이션을 함께 보여줍니다.
+ */
 async function copyAndAlert(text, spanEl) {
     try {
         await copyText(text);
-        await onAlert(spanEl);
-    } catch (e) {
-        if(spanEl) {
+        if (typeof showToast === 'function') {
+            showToast('클립보드에 복사되었습니다.', 'success');
+        }
+        if (spanEl) {
+            await onAlert(spanEl);
+        }
+    } catch (err) {
+        if (typeof showToast === 'function') {
+            showToast('복사에 실패했습니다.', 'error');
+        } else if (spanEl) {
             await onAlert(spanEl, '복사 실패');
         } else {
             alert('복사 실패');
@@ -87,10 +90,13 @@ async function copyAndAlert(text, spanEl) {
     }
 }
 
+/**
+ * 텍스트 파일로 다운로드합니다.
+ */
 function download(filename, text) {
-    const element = document.createElement("a");
-    element.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(text));
-    element.setAttribute("download", filename);
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
     element.style.display = "none";
     document.body.appendChild(element);
     element.click();
