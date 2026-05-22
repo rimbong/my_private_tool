@@ -476,13 +476,26 @@
 
     <!-- Memo Detail Modal -->
     <div id="memoDetailModal" class="modal">
-      <div class="modal-content" style="width: 800px;">
+      <div class="modal-content" style="width: 850px; max-width: 95vw;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 id="detailMemoTitle" style="margin:0; font-size:1.6rem; font-weight:800; color:var(--text-main);"></h2>
             <button class="btn btn-ghost" onclick="closeMemoDetailModal()" style="font-size: 1.5rem;">✕</button>
         </div>
         <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-top: 0.5rem;" id="detailMemoDate"></div>
-        <div id="detailMemoContent" style="margin-top: 1.5rem; background: #f8fafc; padding: 2rem; border-radius: 20px; border: 1px solid var(--border); min-height: 200px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: #334155;"></div>
+        
+        <!-- Tab Toggles -->
+        <div style="display:flex; align-items: center; gap:0.2rem; margin-top:1.5rem;">
+            <button id="viewTabPlain" class="btn btn-outline active" onclick="switchDetailView('plain')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">텍스트</button>
+            <button id="viewTabMD" class="btn btn-outline" onclick="switchDetailView('md')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">마크다운 미리보기</button>
+            <button id="themeToggle" class="btn btn-ghost" onclick="mdRenderer.toggleTheme()" title="테마 전환" style="margin-left: auto; display: none;">🌙</button>
+        </div>
+
+        <!-- Content Area -->
+        <div style="border: 1px solid var(--border); border-radius: 0 12px 12px 12px; background: #fff; overflow: hidden; position: relative;">
+            <div id="detailMemoContent" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: #334155; display: block;"></div>
+            <div id="detailMemoMD" class="markdown-body" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; display: none;"></div>
+        </div>
+
         <div style="display:flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
             <button class="btn btn-outline" id="detailEditBtn">✏️ 수정하기</button>
             <button class="btn btn-primary" onclick="closeMemoDetailModal()" style="min-width: 100px;">닫기</button>
@@ -535,7 +548,10 @@
   </main>
 
   <script src="lib/db-manager.js"></script>
+  <script src="lib/marked.min.js"></script>
+  <script src="lib/highlight.min.js"></script>
   <script src="lib/file-drop-handler.js"></script>
+  <script src="lib/md-renderer.js"></script>
   <script src="lib/toast-utils.js"></script>
   <script id="main-script">
     /* --- State Management --- */
@@ -554,6 +570,14 @@
     window.onload = async () => {
         await dbManager.init('DiaryPlannerDB', ['config', 'todos', 'stickyMemos']);
         
+        // Initialize Markdown Renderer & Theme
+        mdRenderer.init({
+            onThemeChange: (mode) => {
+                const btn = document.getElementById('themeToggle');
+                if (btn) btn.innerText = mode === 'dark' ? '☀️' : '🌙';
+            }
+        });
+
         // Apply persisted sidebar state
         const sidebarCollapsed = await dbManager.getItem('config', 'sidebar_collapsed');
         if (sidebarCollapsed) {
@@ -846,16 +870,51 @@
         const memo = stickyMemos.find(m => m.id === id);
         if (!memo) return;
 
+        const modal = document.getElementById('memoDetailModal');
+        modal.dataset.content = memo.content; // Store raw content for accurate rendering
+
         document.getElementById('detailMemoTitle').innerText = memo.title;
         document.getElementById('detailMemoDate').innerText = `📅 작성일: ${new Date(memo.createdAt).toLocaleString()}`;
         document.getElementById('detailMemoContent').innerText = memo.content;
         
+        // Reset view to Plain Text by default
+        switchDetailView('plain');
+
         document.getElementById('detailEditBtn').onclick = () => {
             closeMemoDetailModal();
             openMemoModal(id);
         };
 
         document.getElementById('memoDetailModal').style.display = 'flex';
+    }
+
+    function switchDetailView(view) {
+        const plainArea = document.getElementById('detailMemoContent');
+        const mdArea = document.getElementById('detailMemoMD');
+        const tabPlain = document.getElementById('viewTabPlain');
+        const tabMD = document.getElementById('viewTabMD');
+        const themeBtn = document.getElementById('themeToggle');
+        const modal = document.getElementById('memoDetailModal');
+
+        // Guard: Prevent redundant rendering if already in the requested view
+        if (view === 'md' && tabMD.classList.contains('active')) return;
+        if (view === 'plain' && tabPlain.classList.contains('active')) return;
+
+        if (view === 'md') {
+            const content = modal.dataset.content || ''; // Use raw content from dataset
+            mdArea.innerHTML = mdRenderer.render(content);
+            plainArea.style.display = 'none';
+            mdArea.style.display = 'block';
+            tabPlain.classList.remove('active');
+            tabMD.classList.add('active');
+            if (themeBtn) themeBtn.style.display = 'inline-flex';
+        } else {
+            plainArea.style.display = 'block';
+            mdArea.style.display = 'none';
+            tabPlain.classList.add('active');
+            tabMD.classList.remove('active');
+            if (themeBtn) themeBtn.style.display = 'none';
+        }
     }
 
     function closeMemoDetailModal() {
@@ -936,13 +995,18 @@
                     <button class="btn btn-primary" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; white-space: nowrap; border-radius: 8px;" onclick="assignMemoToCalendar('${m.id}')">📅 이동</button>
                     <div style="display:flex; gap:0.2rem; margin-left:auto; align-items:center;">
                         <button class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px;" onclick="openMemoModal('${m.id}')" title="수정">✏️</button>
-                        <button class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px;" onclick="copyText(\`${m.content.replace(/`/g,'\\`').replace(/\$/g, '\\$')}\`)" title="복사">📋</button>
+                        <button class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px;" onclick="copyMemo('${m.id}')" title="복사">📋</button>
                         <button class="btn btn-danger" style="width:30px; height:30px; padding:0; background:transparent; border:none; color:var(--danger); border-radius:6px;" onclick="deleteStickyMemo('${m.id}')" title="삭제">🗑️</button>
                     </div>
                 </div>
             `;
             grid.appendChild(card);
         });
+    }
+
+    function copyMemo(id) {
+        const memo = stickyMemos.find(m => m.id === id);
+        if (memo) copyText(memo.content);
     }
 
     async function deleteStickyMemo(id) {
