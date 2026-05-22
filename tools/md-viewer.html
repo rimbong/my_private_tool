@@ -8,9 +8,8 @@
   <script src="lib/highlight.min.js"></script>
   <script src="lib/db-manager.js"></script>
   <script src="lib/file-drop-handler.js"></script>
+  <script src="lib/md-renderer.js"></script>
   <script src="lib/toast-utils.js"></script>
-  <link rel="stylesheet" id="md-style" href="lib/github-markdown-light.min.css">
-  <link rel="stylesheet" id="hljs-style" href="lib/github-highlight.min.css">
   <style>
     :root {
       --primary: #111827;
@@ -325,44 +324,20 @@ function hello() {
 `;
 
     // Theme Logic
+    mdRenderer.init({
+      onThemeChange: (mode) => {
+        const isDark = mode === 'dark';
+        themeToggle.textContent = isDark ? '☀️ 라이트 모드' : '🌙 다크 모드';
+      }
+    });
+
     function toggleTheme() {
-      const isDark = document.body.classList.toggle('dark-mode');
-      themeToggle.textContent = isDark ? '☀️ 라이트 모드' : '🌙 다크 모드';
-      hljsStyle.href = isDark ? 'lib/github-highlight-dark.min.css' : 'lib/github-highlight.min.css';
-      document.getElementById('md-style').href = isDark ? 'lib/github-markdown-dark.min.css' : 'lib/github-markdown-light.min.css';
-      
-      // Update github-markdown-css data-color-mode
-      if (isDark) {
-        preview.setAttribute('data-color-mode', 'dark');
-      } else {
-        preview.setAttribute('data-color-mode', 'light');
-      }
+      mdRenderer.toggleTheme();
     }
-
-    // Configure marked with a custom renderer for highlighting (Compatible with marked v12+)
-    marked.use({
-      renderer: {
-        code(token) {
-          const code = token.text || '';
-          const lang = token.lang || '';
-          const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-          const highlighted = hljs.highlight(code, { language }).value;
-          return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`;
-        }
-      }
-    });
-
-    // Set basic options
-    marked.setOptions({
-      breaks: true,
-      gfm: true,
-      headerIds: false,
-      mangle: false
-    });
 
     function updatePreview() {
       const text = editor.value;
-      preview.innerHTML = marked.parse(text);
+      preview.innerHTML = mdRenderer.render(text);
     }
 
     // Debounce function to limit rendering frequency
