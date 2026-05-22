@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>URI Encoder/Decoder</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --success: #10b981;
+    }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    }
+    header {
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    h1 { margin: 0; font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
+    
+    .input-section, .output-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    label { font-size: 0.875rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    textarea {
+      width: 100%;
+      min-height: 140px;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      font-family: 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.95rem;
+      resize: vertical;
+      outline: none;
+      transition: all 0.2s;
+      background: #fff;
+    }
+    textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+    
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .btn {
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      border: 1px solid var(--border);
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: #fff;
+      color: var(--text);
+    }
+    .btn:hover { background: #f1f5f9; border-color: var(--text-muted); }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    .controls .btn {
+      flex: 1;
+    }
+
+    /* 파라미터 테이블 스타일 */
+    .param-section {
+      margin-top: 1rem;
+      padding-top: 1.5rem;
+      border-top: 2px dashed var(--border);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: #f8fafc; color: var(--text-muted); font-weight: 800; width: 30%; }
+    .val-cell { font-family: monospace; word-break: break-all; }
+
+    .badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: var(--border);
+      font-weight: 800;
+    }
+  </style>
+  <script src="lib/toast-utils.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <header>
+        <h1>🔗 URI 도구 <span class="badge">PRO</span></h1>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn" style="width: 100px; padding: 0.4rem 0.8rem; font-size:0.8rem;" onclick="loadSample()">샘플 로드</button>
+          <button class="btn" style="padding: 0.4rem 0.8rem; font-size:0.8rem;" onclick="clearAll()">비우기</button>
+        </div>
+      </header>
+
+      <div class="input-section">
+        <label>Input</label>
+        <textarea id="inputUri" placeholder="인코딩 또는 디코딩할 텍스트를 입력하세요..."></textarea>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="process('decode')">🔓 디코딩</button>
+        <button class="btn btn-primary" onclick="process('encode')">🔒 인코딩</button>
+      </div>
+
+      <div class="output-section">
+        <label>Result</label>
+        <textarea id="outputUri" readonly placeholder="결과가 여기에 표시됩니다..."></textarea>
+        <button class="btn" onclick="copyResult()">📋 결과 복사하기</button>
+      </div>
+
+      <div id="paramSection" class="param-section" style="display: none;">
+        <label>📌 Query Parameters</label>
+        <table id="paramTable">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody id="paramBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const inputEl = document.getElementById('inputUri');
+    const outputEl = document.getElementById('outputUri');
+    const paramSection = document.getElementById('paramSection');
+    const paramBody = document.getElementById('paramBody');
+
+    // 입력 시 실시간 디코딩 시도 (선택 사항)
+    inputEl.addEventListener('input', () => {
+      if (inputEl.value.includes('%')) {
+        process('decode', true); // 조용히 디코딩 시도
+      }
+    });
+
+    function process(mode, silent = false) {
+      const input = inputEl.value.trim();
+      if (!input && !silent) {
+        showToast('내용을 입력해주세요.', 'warning');
+        return;
+      }
+
+      try {
+        let result = '';
+        if (mode === 'decode') {
+          result = decodeURIComponent(input);
+        } else {
+          result = encodeURIComponent(input);
+        }
+        
+        outputEl.value = result;
+        
+        // 쿼리 파라미터 파싱 시도
+        parseQueryParams(result);
+
+        if (!silent) {
+          showToast(`${mode === 'decode' ? '디코딩' : '인코딩'} 완료`, 'success');
+        }
+      } catch (e) {
+        if (!silent) {
+          showToast('처리 중 오류가 발생했습니다. 형식을 확인해주세요.', 'error');
+          console.error(e);
+        }
+      }
+    }
+
+    function parseQueryParams(urlText) {
+      // Clear previous content securely
+      while (paramBody.firstChild) {
+        paramBody.removeChild(paramBody.firstChild);
+      }
+      
+      try {
+        // 1. Strip fragments (#) if present
+        const urlWithoutFragment = urlText.split('#')[0];
+        
+        let searchPart = '';
+        if (urlWithoutFragment.includes('?')) {
+          searchPart = urlWithoutFragment.split('?')[1];
+        } else if (urlWithoutFragment.includes('=') && !urlWithoutFragment.includes(' ')) {
+          searchPart = urlWithoutFragment;
+        }
+
+        if (!searchPart) {
+          paramSection.style.display = 'none';
+          return;
+        }
+
+        const params = new URLSearchParams(searchPart);
+        const entries = Array.from(params.entries());
+
+        if (entries.length > 0) {
+          const fragment = document.createDocumentFragment();
+          entries.forEach(([key, val]) => {
+            const tr = document.createElement('tr');
+            
+            const th = document.createElement('th');
+            th.textContent = key;
+            
+            const td = document.createElement('td');
+            td.className = 'val-cell';
+            td.textContent = val;
+            
+            tr.appendChild(th);
+            tr.appendChild(td);
+            fragment.appendChild(tr);
+          });
+          paramBody.appendChild(fragment);
+          paramSection.style.display = 'block';
+        } else {
+          paramSection.style.display = 'none';
+        }
+      } catch (e) {
+        paramSection.style.display = 'none';
+      }
+    }
+
+    async function copyResult() {
+      if (!outputEl.value) return;
+      try {
+        await navigator.clipboard.writeText(outputEl.value);
+        showToast('결과가 클립보드에 복사되었습니다.', 'success');
+      } catch (err) {
+        showToast('복사에 실패했습니다.', 'error');
+      }
+    }
+
+    function clearAll() {
+      inputEl.value = '';
+      outputEl.value = '';
+      paramSection.style.display = 'none';
+      while (paramBody.firstChild) {
+        paramBody.removeChild(paramBody.firstChild);
+      }
+      inputEl.focus();
+    }
+
+    function loadSample() {
+      inputEl.value = 'https://www.google.com/search?q=%EB%84%A4%EC%9D%B4%EB%B2%84&sourceid=chrome&ie=UTF-8';
+      process('decode');
+    }
+  </script>
+</body>
+</html>
