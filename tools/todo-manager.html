@@ -182,14 +182,52 @@
         padding: 1.5rem;
         display: flex;
         flex-direction: column;
-        gap: 1rem;
+        gap: 0.75rem;
         box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
         transition: all 0.2s;
-        height: fit-content;
+        height: 400px; /* Fixed height for consistency */
         position: relative;
     }
     .memo-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.08); border-color: var(--primary-light); }
     .memo-card-date { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
+
+    /* Limit content height in memo card */
+    .memo-card .todo-card-title {
+        flex: 0 0 auto !important;
+        margin: 0 !important;
+        font-size: 1.1rem;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        word-break: break-all;
+        color: var(--text-main);
+    }
+    .memo-card .todo-text {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        font-size: 0.9rem;
+        scrollbar-width: thin;
+        margin: 0;
+        background: #fffbeb;
+        border: 1px solid #fef3c7;
+        color: #92400e;
+        padding: 1rem;
+        border-radius: 12px;
+    }
+    .memo-card .todo-text::-webkit-scrollbar { width: 4px; }
+    .memo-card .todo-text::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+
+    .memo-card .todo-card-actions {
+        flex: 0 0 auto !important;
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding-top: 0.75rem;
+        margin-top: auto;
+        border-top: 1px solid #f1f5f9;
+    }
 
     .quick-memo-box {
         background: #f1f5f9;
@@ -274,6 +312,12 @@
     input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
 
     .highlight { background: #fde047; color: #000; border-radius: 2px; }
+
+    /* Drag & Drop Feedback */
+    .drag-hover {
+      background: var(--primary-light) !important;
+      box-shadow: inset 0 0 0 3px var(--primary) !important;
+    }
   </style>
 </head>
 <body>
@@ -491,6 +535,7 @@
   </main>
 
   <script src="lib/db-manager.js"></script>
+  <script src="lib/file-drop-handler.js"></script>
   <script src="lib/toast-utils.js"></script>
   <script id="main-script">
     /* --- State Management --- */
@@ -531,6 +576,21 @@
         renderCalendar();
         updateSelectedDateLabel();
         initEvents();
+
+        // Initialize File Drop Handler for Memo Modal
+        const memoInput = document.getElementById('memoContentInput');
+        fileDropHandler.init(memoInput, {
+            onImage: (base64, file) => {
+                const tag = `\n![${file.name}](${base64})\n`;
+                fileDropHandler.insertAtCursor(memoInput, tag);
+                showToast(`이미지 '${file.name}'가 첨부되었습니다.`, 'success');
+            },
+            onText: (content, file) => {
+                const separator = `\n\n--- [파일: ${file.name}] ---\n\n`;
+                fileDropHandler.insertAtCursor(memoInput, separator + content);
+                showToast(`파일 '${file.name}'의 내용이 삽입되었습니다.`, 'success');
+            }
+        });
     };
 
     function toggleSidebar() {
@@ -870,13 +930,15 @@
             card.ondblclick = () => openMemoDetailModal(m.id);
             card.innerHTML = `
                 <div class="memo-card-date">${new Date(m.createdAt).toLocaleString()}</div>
-                <div class="todo-card-title" style="font-size:1.1rem; color:var(--text-main);">${m.title}</div>
-                <div class="todo-text" style="background:#fffbeb; border-color:#fef3c7; color:#92400e;">${m.content}</div>
+                <div class="todo-card-title" title="${m.title}">${m.title}</div>
+                <div class="todo-text">${m.content}</div>
                 <div class="todo-card-actions">
-                    <button class="btn btn-primary" style="padding:0.4rem 0.8rem; font-size:0.75rem;" onclick="assignMemoToCalendar('${m.id}')">📅 일정으로 이동</button>
-                    <button class="btn btn-ghost" style="font-size:0.8rem;" onclick="openMemoModal('${m.id}')">✏️ 수정</button>
-                    <button class="btn btn-ghost" style="font-size:0.8rem;" onclick="copyText(\`${m.content.replace(/`/g,'\\`').replace(/\$/g, '\\$')}\`)">📋 복사</button>
-                    <button class="btn btn-danger" style="padding:0.4rem 0.8rem; font-size:0.75rem;" onclick="deleteStickyMemo('${m.id}')">🗑️ 삭제</button>
+                    <button class="btn btn-primary" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; white-space: nowrap; border-radius: 8px;" onclick="assignMemoToCalendar('${m.id}')">📅 이동</button>
+                    <div style="display:flex; gap:0.2rem; margin-left:auto; align-items:center;">
+                        <button class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px;" onclick="openMemoModal('${m.id}')" title="수정">✏️</button>
+                        <button class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px;" onclick="copyText(\`${m.content.replace(/`/g,'\\`').replace(/\$/g, '\\$')}\`)" title="복사">📋</button>
+                        <button class="btn btn-danger" style="width:30px; height:30px; padding:0; background:transparent; border:none; color:var(--danger); border-radius:6px;" onclick="deleteStickyMemo('${m.id}')" title="삭제">🗑️</button>
+                    </div>
                 </div>
             `;
             grid.appendChild(card);

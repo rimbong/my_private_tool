@@ -7,6 +7,7 @@
   <script src="lib/marked.min.js"></script>
   <script src="lib/highlight.min.js"></script>
   <script src="lib/db-manager.js"></script>
+  <script src="lib/file-drop-handler.js"></script>
   <script src="lib/toast-utils.js"></script>
   <link rel="stylesheet" id="md-style" href="lib/github-markdown-light.min.css">
   <link rel="stylesheet" id="hljs-style" href="lib/github-highlight.min.css">
@@ -235,6 +236,13 @@
     body.resizing #editor {
       pointer-events: none;
     }
+
+    /* Drag & Drop Feedback */
+    #editor.drag-hover {
+      background: var(--primary-light, #f0f7ff);
+      box-shadow: inset 0 0 0 3px #3b82f6;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body class="light-mode">
@@ -249,7 +257,7 @@
     </div>
     <div class="action-group">
       <button class="btn" id="themeToggle" onclick="toggleTheme()">🌙 다크 모드</button>
-      <button class="btn btn-primary" onclick="openModal()">🔍 크게 보기</button>
+      <button class="btn" onclick="openModal()">🔍 크게 보기</button>
       <button class="btn" onclick="copyMarkdown()">MD 복사</button>
       <button class="btn" onclick="copyHTML()">HTML 복사</button>
       <button class="btn btn-ghost" onclick="clearAll()" style="color: var(--danger);">비우기</button>
@@ -273,7 +281,7 @@
         <h2 style="margin:0; font-size:1.1rem;">🔍 전체 화면 미리보기</h2>
         <div style="display:flex; gap:0.5rem; align-items:center;">
           <span style="font-size:0.8rem; color:var(--text-muted); margin-right:1rem;">(Tip: Ctrl+A로 전체 선택 후 복사하세요)</span>
-          <button class="btn btn-primary" onclick="closeModal()">닫기 (Esc)</button>
+          <button class="btn" onclick="closeModal()">닫기 (Esc)</button>
         </div>
       </div>
       <div class="modal-body">
@@ -384,6 +392,20 @@ function hello() {
           editor.value = initialContent;
         }
         updatePreview();
+        
+        // Initialize File Drop Handler
+        fileDropHandler.init(editor, {
+          onImage: (base64, file) => {
+            const tag = `\n![${file.name}](${base64})\n`;
+            fileDropHandler.insertAtCursor(editor, tag);
+            showToast(`이미지 '${file.name}'가 첨부되었습니다.`, 'success');
+          },
+          onText: (content, file) => {
+            const separator = `\n\n--- [Dropped: ${file.name}] ---\n\n`;
+            fileDropHandler.insertAtCursor(editor, separator + content);
+            showToast(`파일 '${file.name}'의 내용이 삽입되었습니다.`, 'success');
+          }
+        });
       } catch (err) {
         console.error('Failed to init DB:', err);
         editor.value = initialContent;
