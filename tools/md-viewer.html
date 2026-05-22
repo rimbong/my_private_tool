@@ -6,6 +6,7 @@
   <title>Markdown Viewer</title>
   <script src="lib/marked.min.js"></script>
   <script src="lib/highlight.min.js"></script>
+  <script src="lib/db-manager.js"></script>
   <script src="lib/toast-utils.js"></script>
   <link rel="stylesheet" id="md-style" href="lib/github-markdown-light.min.css">
   <link rel="stylesheet" id="hljs-style" href="lib/github-highlight.min.css">
@@ -93,6 +94,48 @@
 
     .btn-primary:hover {
       opacity: 0.9;
+    }
+
+    /* Fullscreen Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+      background: var(--header-bg);
+      margin: 2vh auto;
+      width: 90%;
+      height: 96vh;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--header-bg);
+      user-select: none; /* Prevent accidental selection */
+    }
+
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 2rem;
+      background: var(--header-bg);
     }
 
     main {
@@ -206,9 +249,10 @@
     </div>
     <div class="action-group">
       <button class="btn" id="themeToggle" onclick="toggleTheme()">🌙 다크 모드</button>
+      <button class="btn btn-primary" onclick="openModal()">🔍 크게 보기</button>
       <button class="btn" onclick="copyMarkdown()">MD 복사</button>
       <button class="btn" onclick="copyHTML()">HTML 복사</button>
-      <button class="btn btn-primary" onclick="clearAll()">비우기</button>
+      <button class="btn btn-ghost" onclick="clearAll()" style="color: var(--danger);">비우기</button>
     </div>
   </header>
 
@@ -221,6 +265,22 @@
       <div id="preview" class="markdown-body"></div>
     </div>
   </main>
+
+  <!-- Fullscreen Preview Modal -->
+  <div id="previewModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 style="margin:0; font-size:1.1rem;">🔍 전체 화면 미리보기</h2>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <span style="font-size:0.8rem; color:var(--text-muted); margin-right:1rem;">(Tip: Ctrl+A로 전체 선택 후 복사하세요)</span>
+          <button class="btn btn-primary" onclick="closeModal()">닫기 (Esc)</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="modalPreview" class="markdown-body"></div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const editor = document.getElementById('editor');
@@ -306,13 +366,41 @@ function hello() {
       };
     }
 
-    const debouncedUpdate = debounce(updatePreview, 300);
+    const debouncedUpdate = debounce(() => {
+      updatePreview();
+      saveToDB();
+    }, 300);
 
     editor.addEventListener('input', debouncedUpdate);
 
-    // Set initial content and update preview
-    editor.value = initialContent;
-    updatePreview();
+    // Persistence Logic
+    async function initStorage() {
+      try {
+        await dbManager.init('MDViewerDB', ['content']);
+        const saved = await dbManager.getItem('content', 'last_content');
+        if (saved) {
+          editor.value = saved;
+        } else {
+          editor.value = initialContent;
+        }
+        updatePreview();
+      } catch (err) {
+        console.error('Failed to init DB:', err);
+        editor.value = initialContent;
+        updatePreview();
+      }
+    }
+
+    async function saveToDB() {
+      try {
+        await dbManager.setItem('content', 'last_content', editor.value);
+      } catch (err) {
+        console.error('Failed to save to DB:', err);
+      }
+    }
+
+    // Initialize on load
+    window.addEventListener('load', initStorage);
 
     // File Operations
     function loadFile(event) {
@@ -323,6 +411,7 @@ function hello() {
       reader.onload = (e) => {
         editor.value = e.target.result;
         updatePreview();
+        saveToDB();
       };
       reader.readAsText(file);
     }
@@ -349,10 +438,30 @@ function hello() {
 
     async function copyHTML() {
       try {
-        await navigator.clipboard.writeText(preview.innerHTML);
-        showToast('변환된 HTML 코드가 복사되었습니다.', 'success');
+        const html = preview.innerHTML;
+        // Wrap in a div with markdown-body class to help some targets recognize styles if they support it
+        // and to provide a consistent root.
+        const wrappedHTML = `<div class="markdown-body">${html}</div>`;
+        
+        const blob = new Blob([wrappedHTML], { type: 'text/html' });
+        const textBlob = new Blob([html], { type: 'text/plain' });
+        
+        const data = [new ClipboardItem({
+          'text/html': blob,
+          'text/plain': textBlob
+        })];
+        
+        await navigator.clipboard.write(data);
+        showToast('서식이 포함된 HTML로 복사되었습니다. (워드/메일 등에 붙여넣기 가능)', 'success');
       } catch (err) {
-        showToast('복사에 실패했습니다.', 'error');
+        console.error('Rich copy failed:', err);
+        // Fallback to plain text copy
+        try {
+          await navigator.clipboard.writeText(preview.innerHTML);
+          showToast('HTML 코드가 일반 텍스트로 복사되었습니다.', 'info');
+        } catch (fallbackErr) {
+          showToast('복사에 실패했습니다.', 'error');
+        }
       }
     }
 
@@ -360,6 +469,7 @@ function hello() {
       if (confirm('모든 내용을 비우시겠습니까?')) {
         editor.value = '';
         updatePreview();
+        saveToDB();
       }
     }
 
@@ -389,6 +499,43 @@ function hello() {
         resizer.classList.remove('active');
         document.body.classList.remove('resizing');
       }
+    });
+
+    // Modal Control
+    function openModal() {
+      const modal = document.getElementById('previewModal');
+      const modalPreview = document.getElementById('modalPreview');
+      modalPreview.innerHTML = preview.innerHTML;
+      modal.style.display = 'block';
+      document.body.style.overflow = 'hidden'; // Prevent scrolling background
+    }
+
+    function closeModal() {
+      document.getElementById('previewModal').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    // Close modal on Esc key or clicking outside
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+      
+      // Smart Ctrl+A (or Cmd+A) inside modal
+      const modal = document.getElementById('previewModal');
+      if (modal.style.display === 'block' && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault(); // Stop default "select all page"
+        const range = document.createRange();
+        range.selectNodeContents(document.getElementById('modalPreview'));
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+    });
+
+    window.addEventListener('click', (e) => {
+      const modal = document.getElementById('previewModal');
+      if (e.target === modal) closeModal();
     });
   </script>
 </body>
