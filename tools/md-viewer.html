@@ -242,6 +242,44 @@
       box-shadow: inset 0 0 0 3px #3b82f6;
       border-radius: 4px;
     }
+
+    /* Print Styles */
+    @media print {
+      header, .editor-container, .resizer, .modal-header, .action-group, .btn {
+        display: none !important;
+      }
+      
+      main {
+        display: block !important;
+        overflow: visible !important;
+      }
+
+      .preview-container {
+        display: block !important;
+        overflow: visible !important;
+        height: auto !important;
+        padding: 0 !important;
+      }
+
+      .markdown-body {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        background: white !important;
+        color: black !important;
+      }
+
+      #previewModal {
+        display: none !important;
+      }
+
+      body {
+        background: white !important;
+        color: black !important;
+        overflow: visible !important;
+        height: auto !important;
+      }
+    }
   </style>
 </head>
 <body class="light-mode">
@@ -257,6 +295,7 @@
     <div class="action-group">
       <button class="btn" id="themeToggle" onclick="toggleTheme()">🌙 다크 모드</button>
       <button class="btn" onclick="openModal()">🔍 크게 보기</button>
+      <button class="btn" onclick="printMarkdown()">🖨️ 인쇄</button>
       <button class="btn" onclick="copyMarkdown()">MD 복사</button>
       <button class="btn" onclick="copyHTML()">HTML 복사</button>
       <button class="btn btn-ghost" onclick="clearAll()" style="color: var(--danger);">비우기</button>
@@ -280,6 +319,7 @@
         <h2 style="margin:0; font-size:1.1rem;">🔍 전체 화면 미리보기</h2>
         <div style="display:flex; gap:0.5rem; align-items:center;">
           <span style="font-size:0.8rem; color:var(--text-muted); margin-right:1rem;">(Tip: Ctrl+A로 전체 선택 후 복사하세요)</span>
+          <button class="btn btn-primary" onclick="printMarkdown()">🖨️ 인쇄 / PDF 저장</button>
           <button class="btn" onclick="closeModal()">닫기 (Esc)</button>
         </div>
       </div>
@@ -510,6 +550,25 @@ function hello() {
     function closeModal() {
       document.getElementById('previewModal').style.display = 'none';
       document.body.style.overflow = '';
+    }
+
+    function printMarkdown() {
+      const currentTheme = mdRenderer.theme;
+      const isDark = currentTheme === 'dark';
+      
+      // Force light theme for printing to ensure best quality/ink usage
+      if (isDark) {
+        mdRenderer.applyTheme('light');
+      }
+      
+      window.print();
+      
+      // Restore previous theme after print dialog closes
+      if (isDark) {
+        setTimeout(() => {
+          mdRenderer.applyTheme('dark');
+        }, 100);
+      }
     }
 
     // Close modal on Esc key or clicking outside
