@@ -15,6 +15,16 @@
             --text-muted: #6b7280;
             --border: #e5e7eb;
         }
+        body.dark {
+            --primary: #e5e7eb;
+            --primary-hover: #f9fafb;
+            --bg: #0d1117;
+            --card-bg: #161b22;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --border: #30363d;
+        }
+        body.dark header, body.dark footer { background-color: #161b22; }
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -28,11 +38,12 @@
         }
 
         header {
-            background-color: #fff;
+            background-color: var(--card-bg);
             border-bottom: 1px solid var(--border);
             padding: 2rem 1rem;
             text-align: center;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            position: relative;
         }
 
         header h1 {
@@ -118,6 +129,8 @@
 </head>
 <body>
     <header>
+        <button id="themeToggle" onclick="portalTheme.toggle()" title="다크/라이트 모드 전환"
+            style="position:absolute; top:1.5rem; right:1.5rem; padding:0.5rem 0.9rem; border-radius:0.5rem; border:1px solid var(--border); background:var(--card-bg); color:var(--text-main); font-weight:700; cursor:pointer; font-size:0.85rem;">🌙</button>
         <h1>🛠️ 개발 보조 도구 포털</h1>
         <p>효율적인 개발을 위한 유용한 도구 모음</p>
     </header>
@@ -161,6 +174,24 @@
                 <p class="tool-desc">SVN 로그를 바탕으로 배포용 패치 파일 목록을 생성합니다.</p>
             </a>
 
+            <a href="tool.html?tool=json" class="tool-card">
+                <div class="tool-icon">🧩</div>
+                <h3 class="tool-name">JSON 도구</h3>
+                <p class="tool-desc">JSON 포맷·압축·트리뷰·검증과 XML↔JSON 변환을 지원합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=diff" class="tool-card">
+                <div class="tool-icon">🔍</div>
+                <h3 class="tool-name">텍스트 비교</h3>
+                <p class="tool-desc">두 텍스트/코드를 줄 단위로 비교하여 추가·삭제를 강조합니다.</p>
+            </a>
+
+            <a href="tool.html?tool=time" class="tool-card">
+                <div class="tool-icon">⏱️</div>
+                <h3 class="tool-name">타임스탬프 / Cron</h3>
+                <p class="tool-desc">Epoch↔날짜 변환과 Cron 표현식 해석·다음 실행 시각을 확인합니다.</p>
+            </a>
+
             <!-- <a href="tool.html?tool=sql" class="tool-card">
                 <div class="tool-icon">🔍</div>
                 <h3 class="tool-name">SQL문 변환</h3>
@@ -196,5 +227,13 @@
     <footer>
         <p>© 2025 Multi-purpose Development Assistant Tools. All rights reserved.</p>
     </footer>
+
+    <script src="tools/lib/portal-theme.js"></script>
+    <script>
+        portalTheme.onChange = (mode) => {
+            document.getElementById('themeToggle').textContent = mode === 'dark' ? '☀️' : '🌙';
+        };
+        portalTheme.onChange(portalTheme.get());
+    </script>
 </body>
 </html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>텍스트 비교 (Diff)</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --editor-bg: #ffffff;
+      --add-bg: #e6ffed;
+      --add-text: #046c4e;
+      --del-bg: #ffebe9;
+      --del-text: #b91c1c;
+      --gutter-bg: #f8fafc;
+      --gutter-text: #94a3b8;
+    }
+    body.dark {
+      --primary: #818cf8;
+      --primary-hover: #a5b4fc;
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --border: #30363d;
+      --editor-bg: #0d1117;
+      --add-bg: #12261e;
+      --add-text: #7ee787;
+      --del-bg: #25171c;
+      --del-text: #ff7b72;
+      --gutter-bg: #161b22;
+      --gutter-text: #6e7681;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0; background: var(--bg); color: var(--text);
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+      transition: background 0.2s, color 0.2s;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+      padding: 1rem 1.5rem; background: var(--card-bg); border-bottom: 1px solid var(--border);
+    }
+    h1 { margin: 0; font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
+    .toolbar { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .btn {
+      padding: 0.5rem 0.9rem; border-radius: 0.5rem; border: 1px solid var(--border);
+      font-weight: 700; font-size: 0.85rem; cursor: pointer; background: var(--card-bg); color: var(--text); transition: all 0.15s; white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-hover); color: #fff; }
+    label.opt { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+
+    .inputs { display: flex; gap: 0; min-height: 38%; border-bottom: 1px solid var(--border); }
+    .inputs .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .inputs .pane + .pane { border-left: 1px solid var(--border); }
+    .pane-head { padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); background: var(--card-bg); border-bottom: 1px solid var(--border); }
+    textarea {
+      flex: 1; border: none; outline: none; resize: none; padding: 0.75rem 1rem;
+      font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.85rem; line-height: 1.5;
+      background: var(--editor-bg); color: var(--text); tab-size: 2;
+    }
+
+    .result { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .result-head {
+      padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 800; color: var(--text-muted);
+      background: var(--card-bg); border-bottom: 1px solid var(--border); display: flex; gap: 1rem; align-items: center;
+    }
+    .pill { font-size: 0.75rem; padding: 0.15rem 0.6rem; border-radius: 999px; font-weight: 800; }
+    .pill.add { background: var(--add-bg); color: var(--add-text); }
+    .pill.del { background: var(--del-bg); color: var(--del-text); }
+    .diff-view {
+      flex: 1; overflow: auto; background: var(--editor-bg);
+      font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.85rem; line-height: 1.55;
+    }
+    table.diff { border-collapse: collapse; width: 100%; }
+    table.diff td { padding: 0 0.5rem; vertical-align: top; white-space: pre-wrap; word-break: break-word; }
+    td.gutter {
+      width: 1%; text-align: right; color: var(--gutter-text); background: var(--gutter-bg);
+      user-select: none; border-right: 1px solid var(--border); padding: 0 0.6rem; white-space: nowrap;
+    }
+    td.sign { width: 1%; text-align: center; user-select: none; color: var(--text-muted); padding: 0 0.4rem; }
+    tr.add td.content { background: var(--add-bg); color: var(--add-text); }
+    tr.add td.sign { color: var(--add-text); }
+    tr.del td.content { background: var(--del-bg); color: var(--del-text); }
+    tr.del td.sign { color: var(--del-text); }
+    .empty-msg { padding: 3rem; text-align: center; color: var(--text-muted); }
+  </style>
+  <script src="lib/portal-theme.js"></script>
+  <script src="lib/toast-utils.js"></script>
+</head>
+<body>
+  <header>
+    <h1>🔍 텍스트 비교</h1>
+    <div class="toolbar">
+      <label class="opt"><input type="checkbox" id="optTrim" checked> 끝 공백 무시</label>
+      <label class="opt"><input type="checkbox" id="optCase"> 대소문자 무시</label>
+      <label class="opt"><input type="checkbox" id="optBlank"> 빈 줄 무시</label>
+      <button class="btn" onclick="swap()">⇄ 좌우 교체</button>
+      <button class="btn btn-primary" onclick="runDiff()">비교 실행</button>
+      <button class="btn" onclick="loadSample()">샘플</button>
+      <button class="btn" onclick="clearAll()">비우기</button>
+    </div>
+  </header>
+
+  <div class="inputs">
+    <div class="pane">
+      <div class="pane-head">원본 (A)</div>
+      <textarea id="left" placeholder="원본 텍스트를 붙여넣으세요..." spellcheck="false"></textarea>
+    </div>
+    <div class="pane">
+      <div class="pane-head">변경본 (B)</div>
+      <textarea id="right" placeholder="비교할 텍스트를 붙여넣으세요..." spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="result-head">
+      <span>비교 결과</span>
+      <span class="pill add" id="addCount">+0</span>
+      <span class="pill del" id="delCount">-0</span>
+      <span id="sameMsg" style="color:var(--text-muted); font-weight:600;"></span>
+    </div>
+    <div class="diff-view" id="diffView">
+      <div class="empty-msg">양쪽에 텍스트를 입력하고 <b>비교 실행</b>을 누르세요.<br>입력을 바꾸면 자동으로 다시 비교합니다.</div>
+    </div>
+  </div>
+
+  <script>
+    const left = document.getElementById('left');
+    const right = document.getElementById('right');
+    const diffView = document.getElementById('diffView');
+
+    let debounceTimer;
+    [left, right].forEach(el => el.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(runDiff, 350);
+    }));
+    document.querySelectorAll('.opt input').forEach(c => c.addEventListener('change', runDiff));
+
+    function normalize(line) {
+      let s = line;
+      if (document.getElementById('optTrim').checked) s = s.replace(/\s+$/, '');
+      if (document.getElementById('optCase').checked) s = s.toLowerCase();
+      return s;
+    }
+
+    function splitLines(text) {
+      let lines = text.replace(/\r\n?/g, '\n').split('\n');
+      // 마지막 빈 줄이 1개면 제거 (편집기 개행 보정)
+      if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+      return lines;
+    }
+
+    /* LCS 기반 줄 단위 diff */
+    function computeDiff(aLines, bLines) {
+      const ignoreBlank = document.getElementById('optBlank').checked;
+      const a = aLines.map(normalize);
+      const b = bLines.map(normalize);
+      const n = a.length, m = b.length;
+
+      // LCS DP 테이블
+      const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+      for (let i = n - 1; i >= 0; i--) {
+        for (let j = m - 1; j >= 0; j--) {
+          if (a[i] === b[j]) dp[i][j] = dp[i + 1][j + 1] + 1;
+          else dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
+      const rows = [];
+      let i = 0, j = 0;
+      while (i < n && j < m) {
+        if (a[i] === b[j]) {
+          rows.push({ type: 'same', a: aLines[i], b: bLines[j], ai: i + 1, bi: j + 1 });
+          i++; j++;
+        } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+          rows.push({ type: 'del', a: aLines[i], ai: i + 1 });
+          i++;
+        } else {
+          rows.push({ type: 'add', b: bLines[j], bi: j + 1 });
+          j++;
+        }
+      }
+      while (i < n) { rows.push({ type: 'del', a: aLines[i], ai: i + 1 }); i++; }
+      while (j < m) { rows.push({ type: 'add', b: bLines[j], bi: j + 1 }); j++; }
+
+      if (ignoreBlank) {
+        return rows.filter(r => {
+          if (r.type === 'same') return true;
+          const content = r.type === 'del' ? r.a : r.b;
+          return content.trim() !== '';
+        });
+      }
+      return rows;
+    }
+
+    function esc(s) {
+      return (s == null ? '' : s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+    }
+
+    function runDiff() {
+      const aText = left.value, bText = right.value;
+      if (!aText && !bText) {
+        diffView.innerHTML = '<div class="empty-msg">양쪽에 텍스트를 입력하고 <b>비교 실행</b>을 누르세요.</div>';
+        document.getElementById('addCount').textContent = '+0';
+        document.getElementById('delCount').textContent = '-0';
+        document.getElementById('sameMsg').textContent = '';
+        return;
+      }
+      const rows = computeDiff(splitLines(aText), splitLines(bText));
+      let added = 0, deleted = 0;
+      const html = ['<table class="diff"><tbody>'];
+      rows.forEach(r => {
+        if (r.type === 'same') {
+          html.push(`<tr class="same"><td class="gutter">${r.ai}</td><td class="gutter">${r.bi}</td><td class="sign"></td><td class="content">${esc(r.a)}</td></tr>`);
+        } else if (r.type === 'del') {
+          deleted++;
+          html.push(`<tr class="del"><td class="gutter">${r.ai}</td><td class="gutter"></td><td class="sign">-</td><td class="content">${esc(r.a)}</td></tr>`);
+        } else {
+          added++;
+          html.push(`<tr class="add"><td class="gutter"></td><td class="gutter">${r.bi}</td><td class="sign">+</td><td class="content">${esc(r.b)}</td></tr>`);
+        }
+      });
+      html.push('</tbody></table>');
+      diffView.innerHTML = html.join('');
+
+      document.getElementById('addCount').textContent = '+' + added;
+      document.getElementById('delCount').textContent = '-' + deleted;
+      document.getElementById('sameMsg').textContent = (added === 0 && deleted === 0) ? '✅ 두 텍스트가 동일합니다.' : '';
+    }
+
+    function swap() {
+      const t = left.value; left.value = right.value; right.value = t;
+      runDiff();
+    }
+
+    function clearAll() {
+      left.value = ''; right.value = '';
+      runDiff();
+      left.focus();
+    }
+
+    function loadSample() {
+      left.value = `function greet(name) {\n  console.log("Hello, " + name);\n  return true;\n}\n\nconst version = 1;`;
+      right.value = `function greet(name, lang) {\n  console.log("안녕, " + name);\n  return true;\n}\n\nconst version = 2;\nconst debug = false;`;
+      runDiff();
+    }
+  </script>
+</body>
+</html>

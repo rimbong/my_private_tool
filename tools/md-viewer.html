@@ -10,6 +10,7 @@
   <script src="lib/file-drop-handler.js"></script>
   <script src="lib/md-renderer.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/portal-theme.js"></script>
   <style>
     :root {
       --primary: #111827;
@@ -93,6 +94,8 @@
     }
 
     .btn-primary:hover {
+      background: var(--primary);
+      color: var(--bg);
       opacity: 0.9;
     }
 
@@ -289,6 +292,7 @@
       <div class="action-group">
         <button class="btn" onclick="document.getElementById('fileInput').click()">파일 열기</button>
         <button class="btn" onclick="saveFile()">저장</button>
+        <button class="btn" id="dropModeToggle" onclick="toggleDropMode()" title="드래그앤드롭 시 동작 방식">📄 드롭: 새로 쓰기</button>
         <input type="file" id="fileInput" class="file-input" accept=".md,.txt" onchange="loadFile(event)">
       </div>
     </div>
@@ -337,6 +341,16 @@
     const themeToggle = document.getElementById('themeToggle');
     const hljsStyle = document.getElementById('hljs-style');
 
+    // Drop behavior: false = 새로 쓰기(덮어쓰기), true = 이어붙이기
+    let appendMode = false;
+    const dropModeToggle = document.getElementById('dropModeToggle');
+
+    function toggleDropMode() {
+      appendMode = !appendMode;
+      dropModeToggle.textContent = appendMode ? '📎 드롭: 이어붙이기' : '📄 드롭: 새로 쓰기';
+      dropModeToggle.classList.toggle('btn-primary', appendMode);
+    }
+
     // Initial Content
     const initialContent = `# Markdown Viewer 가이드
 
@@ -371,8 +385,15 @@ function hello() {
       }
     });
 
+    // 포털 전역 테마와 연동 (에디터 본문 + 미리보기 동시 적용)
+    portalTheme.onChange = (mode) => {
+      document.body.classList.toggle('dark-mode', mode === 'dark');
+      mdRenderer.applyTheme(mode);
+    };
+    portalTheme.onChange(portalTheme.get());
+
     function toggleTheme() {
-      mdRenderer.toggleTheme();
+      portalTheme.toggle();
     }
 
     function updatePreview() {
@@ -416,9 +437,18 @@ function hello() {
             showToast(`이미지 '${file.name}'가 첨부되었습니다.`, 'success');
           },
           onText: (content, file) => {
-            const separator = `\n\n--- [Dropped: ${file.name}] ---\n\n`;
-            fileDropHandler.insertAtCursor(editor, separator + content);
-            showToast(`파일 '${file.name}'의 내용이 삽입되었습니다.`, 'success');
+            if (appendMode) {
+              // 이어붙이기: 기존 내용 끝에 구분선과 함께 추가
+              const prefix = editor.value.trim() ? `${editor.value.replace(/\s+$/, '')}\n\n--- [Dropped: ${file.name}] ---\n\n` : '';
+              editor.value = prefix + content;
+              showToast(`파일 '${file.name}'의 내용이 이어붙여졌습니다.`, 'success');
+            } else {
+              // 새로 쓰기: 기존 내용을 덮어씀
+              editor.value = content;
+              showToast(`파일 '${file.name}'의 내용을 불러왔습니다.`, 'success');
+            }
+            updatePreview();
+            saveToDB();
           }
         });
       } catch (err) {
