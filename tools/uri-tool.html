@@ -15,6 +15,20 @@
       --border: #e2e8f0;
       --success: #10b981;
     }
+    body.dark {
+      --primary: #818cf8;
+      --primary-hover: #a5b4fc;
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --border: #30363d;
+    }
+    body.dark textarea { background: #0d1117; }
+    body.dark .btn { background: #161b22; color: #c9d1d9; }
+    body.dark .btn:hover { background: #21262d; }
+    body.dark th { background: #0d1117; }
+    body.dark .badge { background: #30363d; color: #c9d1d9; }
     body {
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       margin: 0;
@@ -129,6 +143,7 @@
       font-weight: 800;
     }
   </style>
+  <script src="lib/portal-theme.js"></script>
   <script src="lib/toast-utils.js"></script>
 </head>
 <body>

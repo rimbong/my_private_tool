@@ -58,6 +58,30 @@
       font-size: 0.9rem;
       color: #6b7280;
     }
+    .theme-btn {
+      margin-left: auto;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      padding: 0.5rem 0.9rem;
+      border-radius: 0.375rem;
+      cursor: pointer;
+      font-weight: 700;
+      color: #374151;
+      transition: all 0.2s;
+    }
+    .theme-btn:hover { background: #e5e7eb; }
+
+    /* --- Dark mode (chrome) --- */
+    body.dark { background-color: #0d1117; }
+    body.dark #selectViewPage { background-color: #161b22; border-bottom-color: #30363d; box-shadow: none; }
+    body.dark #selectViewPage label { color: #c9d1d9; }
+    body.dark #selectViewPage label:hover { background-color: #21262d; }
+    body.dark #selectViewPage input[type="radio"]:checked + label { background-color: #e5e7eb; color: #0d1117; }
+    body.dark .home-btn { background-color: #21262d; border-color: #30363d; color: #c9d1d9; }
+    body.dark .home-btn:hover { background-color: #30363d; color: #fff; }
+    body.dark .theme-btn { background-color: #21262d; border-color: #30363d; color: #c9d1d9; }
+    body.dark .theme-btn:hover { background-color: #30363d; }
+    body.dark footer { background-color: #161b22; border-top-color: #30363d; color: #8b949e; }
   </style>
 </head>
 
@@ -70,6 +94,10 @@
     <input type="radio" name="selectView" id="selectUri" value="./tools/uri-tool.html"><label for="selectUri">URI 도구</label>
     <input type="radio" name="selectView" id="selectXmlConvert" value="./tools/xml-converter.html"><label for="selectXmlConvert">xml 변환</label>
     <input type="radio" name="selectView" id="selectSvnLog" value="./tools/svn-log-converter.html"><label for="selectSvnLog">패치내역만들기</label>
+    <input type="radio" name="selectView" id="selectJson" value="./tools/json-tool.html"><label for="selectJson">JSON 도구</label>
+    <input type="radio" name="selectView" id="selectDiff" value="./tools/diff-tool.html"><label for="selectDiff">텍스트 비교</label>
+    <input type="radio" name="selectView" id="selectTime" value="./tools/time-tool.html"><label for="selectTime">타임스탬프/Cron</label>
+    <button class="theme-btn" id="themeToggle" onclick="portalTheme.toggle()" title="다크/라이트 모드 전환">🌙</button>
     <!-- <input type="radio" name="selectView" id="selectConfig" value="./tools/config-tool.html" checked><label for="selectConfig">Config 설정</label> -->
     <!-- <input type="radio" name="selectView" id="selectClasspath" value="./tools/classpath-tool.html"><label for="selectClasspath">Classpath 설정</label> -->
     <!-- <input type="radio" name="selectView" id="selectMaven" value="./tools/maven-tool.html"><label for="selectMaven">Maven(pom.xml) 설정</label> -->
@@ -82,11 +110,19 @@
     <p>© 2025 Multi-purpose Development Assistant Tools. All rights reserved.</p>
   </footer>
 
+<script src="./tools/lib/portal-theme.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     const frame = document.getElementById('tool-frame');
     const radios = document.querySelectorAll('input[name="selectView"]');
     let configObj = {};
+
+    // 테마 토글 버튼 아이콘 동기화
+    portalTheme.onChange = (mode) => {
+        const btn = document.getElementById('themeToggle');
+        if (btn) btn.textContent = mode === 'dark' ? '☀️' : '🌙';
+    };
+    portalTheme.onChange(portalTheme.get());
 
     function loadConfig(callback) {
         const oldScript = document.getElementById('config-script');
@@ -131,7 +167,10 @@
                     'markdown': 'selectMarkdownCleaner',
                     'md-viewer': 'selectMdViewer',
                     'svn-log': 'selectSvnLog',
-                    'svn-merge': 'selectSvnMerge',                    
+                    'svn-merge': 'selectSvnMerge',
+                    'json': 'selectJson',
+                    'diff': 'selectDiff',
+                    'time': 'selectTime',
                 };
                 
                 const radioId = toolMap[toolParam];
@@ -152,6 +191,8 @@
 
     frame.addEventListener('load', () => {
         frame.contentWindow.postMessage({ type: 'config-data', data: configObj }, '*');
+        // 새로 로드된 도구에 현재 테마를 동기화
+        frame.contentWindow.postMessage({ type: 'portal-theme', mode: portalTheme.get() }, '*');
     });
 
     radios.forEach(radio => {

@@ -318,6 +318,66 @@
       background: var(--primary-light) !important;
       box-shadow: inset 0 0 0 3px var(--primary) !important;
     }
+
+    /* ===== Dark Mode ===== */
+    body.dark {
+      color-scheme: dark;
+      --primary: #818cf8;
+      --primary-hover: #a5b4fc;
+      --primary-light: #312e81;
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --text-main: #c9d1d9;
+      --text-muted: #8b949e;
+      --border: #30363d;
+    }
+    body.dark header { background: var(--card-bg); }
+    body.dark .nav-btn { background: #21262d; color: var(--text-muted); }
+    body.dark .nav-btn:hover { background: var(--primary-light); color: #fff; }
+    body.dark .btn-outline { background: var(--card-bg); }
+    body.dark .btn-ghost:hover { background: #21262d; color: var(--text-main); }
+    body.dark .btn-danger { background: #2d1417; border-color: #4c1d24; }
+    body.dark .sidebar { background: var(--card-bg); }
+    body.dark .quick-memo-box { background: #21262d; }
+    body.dark .search-result-item { background: #0d1117; }
+    body.dark .search-result-item:hover { background: #21262d; }
+    body.dark .view-tabs { background: #21262d; }
+    body.dark .view-tab { color: var(--text-muted); }
+    body.dark .view-tab.active { background: #0d1117; color: var(--primary); }
+    body.dark .calendar-container,
+    body.dark .today-container,
+    body.dark .memo-container { background: var(--card-bg); }
+    body.dark .memo-grid { background: #0d1117; }
+    body.dark .memo-card { background: var(--card-bg); }
+    body.dark .calendar-header { background: #1c2128; }
+    body.dark .weekday { color: #6e7681; }
+    body.dark .day-cell { border-color: #21262d; }
+    body.dark .day-cell:hover { background: #1c2128; }
+    body.dark .day-cell.other-month { background: #0d1117; }
+    body.dark .day-cell.today { background: #1f1d2e; }
+    body.dark .day-cell.selected { background: #20243a; }
+    body.dark .day-num { color: #adbac7; }
+    body.dark .todo-item-mini { background: #21262d; border-color: var(--border); color: #adbac7; }
+    body.dark .todo-item-mini.completed { background: #161b22; }
+    body.dark .daily-drawer,
+    body.dark .drawer-header { background: var(--card-bg); }
+    body.dark .drawer-content { background: #0d1117; }
+    body.dark .daily-drawer > div:last-child { background: var(--card-bg) !important; }
+    body.dark .todo-card-big { background: var(--card-bg); }
+    body.dark .todo-card-title { color: var(--text-main); }
+    body.dark .todo-text { color: #adbac7; background: #0d1117; border-color: #21262d; }
+    body.dark .modal-content { background: var(--card-bg); }
+    body.dark input[type="text"],
+    body.dark input[type="date"],
+    body.dark textarea { background: #0d1117; color: var(--text-main); border-color: var(--border); }
+    /* 인라인 스타일 보정 (배치바 / 진행바 / 상세 텍스트) */
+    body.dark #searchBatchBar,
+    body.dark #todayBatchBar,
+    body.dark #drawerBatchBar,
+    body.dark #rangeBatchBar { background: #21262d !important; border-color: var(--border) !important; }
+    body.dark .progress-info > div:last-child { background: #21262d !important; }
+    body.dark #detailMemoContent,
+    body.dark #detailTaskContent { color: #adbac7 !important; }
   </style>
 </head>
 <body>
@@ -491,7 +551,7 @@
         </div>
 
         <!-- Content Area -->
-        <div style="border: 1px solid var(--border); border-radius: 0 12px 12px 12px; background: #fff; overflow: hidden; position: relative;">
+        <div style="border: 1px solid var(--border); border-radius: 0 12px 12px 12px; background: var(--card-bg); overflow: hidden; position: relative;">
             <div id="detailMemoContent" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: #334155; display: block;"></div>
             <div id="detailMemoMD" class="markdown-body" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; display: none;"></div>
         </div>
@@ -499,6 +559,36 @@
         <div style="display:flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
             <button class="btn btn-outline" id="detailEditBtn">✏️ 수정하기</button>
             <button class="btn btn-primary" onclick="closeMemoDetailModal()" style="min-width: 100px;">닫기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task Detail Modal -->
+    <div id="taskDetailModal" class="modal" onclick="if(event.target===this) closeTaskDetailModal()">
+      <div class="modal-content" style="width: 850px; max-width: 95vw;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 id="detailTaskTitle" style="margin:0; font-size:1.6rem; font-weight:800; color:var(--text-main); word-break:break-all;"></h2>
+            <button class="btn btn-ghost" onclick="closeTaskDetailModal()" style="font-size: 1.5rem;">✕</button>
+        </div>
+        <div id="detailTaskMeta" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-top: 0.5rem; display:flex; align-items:center; gap:0.5rem;"></div>
+
+        <!-- Tab Toggles -->
+        <div style="display:flex; align-items: center; gap:0.2rem; margin-top:1.5rem;">
+            <button id="viewTaskTabPlain" class="btn btn-outline active" onclick="switchTaskDetailView('plain')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">텍스트</button>
+            <button id="viewTaskTabMD" class="btn btn-outline" onclick="switchTaskDetailView('md')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">마크다운 미리보기</button>
+            <button id="taskThemeToggle" class="btn btn-ghost" onclick="mdRenderer.toggleTheme()" title="테마 전환" style="margin-left: auto; display: none;">🌙</button>
+        </div>
+
+        <!-- Content Area -->
+        <div style="border: 1px solid var(--border); border-radius: 0 12px 12px 12px; background: var(--card-bg); overflow: hidden; position: relative;">
+            <div id="detailTaskContent" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: #334155; display: block;"></div>
+            <div id="detailTaskMD" class="markdown-body" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; display: none;"></div>
+        </div>
+
+        <div style="display:flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+            <button class="btn btn-ghost" onclick="copyTaskFromDetail()">📋 복사</button>
+            <button class="btn btn-outline" onclick="editTaskFromDetail()">✏️ 수정하기</button>
+            <button class="btn btn-primary" onclick="closeTaskDetailModal()" style="min-width: 100px;">닫기</button>
         </div>
       </div>
     </div>
@@ -516,7 +606,7 @@
             <div id="mTabManage" class="view-tab" onclick="switchModalTab('manage')">🔍 기간 내 일정</div>
         </div>
         
-        <div style="background:#f1f5f9; padding:1.5rem; border-radius:24px; display:flex; gap:1rem; align-items:center;">
+        <div style="background:var(--bg); padding:1.5rem; border-radius:24px; display:flex; gap:1rem; align-items:center;">
             <input type="date" id="mStart" style="flex:1;">
             <span style="font-weight:800; color:#94a3b8;">~</span>
             <input type="date" id="mEnd" style="flex:1;">
@@ -553,6 +643,7 @@
   <script src="lib/file-drop-handler.js"></script>
   <script src="lib/md-renderer.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/portal-theme.js"></script>
   <script id="main-script">
     /* --- State Management --- */
     let currentDate = new Date();
@@ -573,10 +664,20 @@
         // Initialize Markdown Renderer & Theme
         mdRenderer.init({
             onThemeChange: (mode) => {
+                const icon = mode === 'dark' ? '☀️' : '🌙';
                 const btn = document.getElementById('themeToggle');
-                if (btn) btn.innerText = mode === 'dark' ? '☀️' : '🌙';
+                if (btn) btn.innerText = icon;
+                const taskBtn = document.getElementById('taskThemeToggle');
+                if (taskBtn) taskBtn.innerText = icon;
             }
         });
+
+        // 포털 전역 라이트/다크 테마와 연동 (앱 전체 + 마크다운 미리보기)
+        portalTheme.onChange = (mode) => {
+            document.body.classList.toggle('dark', mode === 'dark');
+            mdRenderer.applyTheme(mode);
+        };
+        portalTheme.onChange(portalTheme.get());
 
         // Apply persisted sidebar state
         const sidebarCollapsed = await dbManager.getItem('config', 'sidebar_collapsed');
@@ -763,7 +864,8 @@
             const modal = document.getElementById('rangeModal');
             const memoModal = document.getElementById('memoModal');
             const memoDetailModal = document.getElementById('memoDetailModal');
-            if (drawer.classList.contains('open') && !drawer.contains(e.target) && !e.target.closest('.day-cell') && !e.target.closest('.search-result-item') && modal.style.display !== 'flex' && memoModal.style.display !== 'flex' && memoDetailModal.style.display !== 'flex') {
+            const taskDetailModal = document.getElementById('taskDetailModal');
+            if (drawer.classList.contains('open') && !drawer.contains(e.target) && !e.target.closest('.day-cell') && !e.target.closest('.search-result-item') && modal.style.display !== 'flex' && memoModal.style.display !== 'flex' && memoDetailModal.style.display !== 'flex' && taskDetailModal.style.display !== 'flex') {
                 closeDrawer();
             }
         });
@@ -781,6 +883,9 @@
             if (actionBtn) {
                 const action = actionBtn.dataset.action;
                 switch (action) {
+                    case 'expand':
+                        openTaskDetailModal(id, date);
+                        break;
                     case 'edit':
                         startEditCard(card);
                         break;
@@ -815,6 +920,19 @@
         document.getElementById('todayTasksList').addEventListener('click', handleCardAction);
         document.getElementById('rangeTasksList').addEventListener('click', handleCardAction);
 
+        // 카드 더블클릭 시 상세(크게 보기) 모달 열기
+        const handleCardDblClick = (e) => {
+            const card = e.target.closest('.todo-card-big');
+            if (!card) return;
+            // 편집 중이거나 버튼/입력 요소를 더블클릭한 경우는 무시
+            if (card.classList.contains('editing')) return;
+            if (e.target.closest('button, input, textarea, [data-action]')) return;
+            openTaskDetailModal(card.dataset.id, card.dataset.date);
+        };
+        document.getElementById('drawerContent').addEventListener('dblclick', handleCardDblClick);
+        document.getElementById('todayTasksList').addEventListener('dblclick', handleCardDblClick);
+        document.getElementById('rangeTasksList').addEventListener('dblclick', handleCardDblClick);
+
         // Event Delegation for Search Results
         document.getElementById('searchResults').addEventListener('click', e => {
             const item = e.target.closest('.search-result-item');
@@ -833,7 +951,7 @@
             }
         });
 
-        window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); } });
+        window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); closeTaskDetailModal(); } });
     }
 
     /* --- Quick Memo Logic --- */
@@ -919,6 +1037,87 @@
 
     function closeMemoDetailModal() {
         document.getElementById('memoDetailModal').style.display = 'none';
+    }
+
+    /* --- Task Detail (크게 보기) Modal --- */
+    function openTaskDetailModal(id, date) {
+        const task = (todos[date] || []).find(t => t.id === id);
+        if (!task) return;
+
+        const modal = document.getElementById('taskDetailModal');
+        modal.dataset.content = task.content || ''; // 마크다운 렌더링용 원본 저장
+        modal.dataset.taskId = id;
+        modal.dataset.taskDate = date;
+
+        const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+        const wd = weekdays[new Date(date).getDay()];
+
+        document.getElementById('detailTaskTitle').innerText = task.title;
+        document.getElementById('detailTaskMeta').innerHTML =
+            `<span>📅 ${date} (${wd})</span><span class="status-badge ${task.completed ? 'status-done' : 'status-pending'}">${task.completed ? 'Done' : 'Todo'}</span>`;
+        document.getElementById('detailTaskContent').innerText = task.content || '(내용 없음)';
+
+        // 기본은 텍스트 보기로 초기화
+        switchTaskDetailView('plain');
+
+        modal.style.display = 'flex';
+    }
+
+    function switchTaskDetailView(view) {
+        const plainArea = document.getElementById('detailTaskContent');
+        const mdArea = document.getElementById('detailTaskMD');
+        const tabPlain = document.getElementById('viewTaskTabPlain');
+        const tabMD = document.getElementById('viewTaskTabMD');
+        const themeBtn = document.getElementById('taskThemeToggle');
+        const modal = document.getElementById('taskDetailModal');
+
+        if (view === 'md' && tabMD.classList.contains('active')) return;
+        if (view === 'plain' && tabPlain.classList.contains('active')) return;
+
+        if (view === 'md') {
+            const content = modal.dataset.content || '';
+            mdArea.innerHTML = mdRenderer.render(content);
+            plainArea.style.display = 'none';
+            mdArea.style.display = 'block';
+            tabPlain.classList.remove('active');
+            tabMD.classList.add('active');
+            if (themeBtn) themeBtn.style.display = 'inline-flex';
+        } else {
+            plainArea.style.display = 'block';
+            mdArea.style.display = 'none';
+            tabPlain.classList.add('active');
+            tabMD.classList.remove('active');
+            if (themeBtn) themeBtn.style.display = 'none';
+        }
+    }
+
+    function copyTaskFromDetail() {
+        const modal = document.getElementById('taskDetailModal');
+        const task = (todos[modal.dataset.taskDate] || []).find(t => t.id === modal.dataset.taskId);
+        if (task) copyText(`${task.title}\n${task.content || ''}`);
+    }
+
+    function editTaskFromDetail() {
+        const modal = document.getElementById('taskDetailModal');
+        const id = modal.dataset.taskId, date = modal.dataset.taskDate;
+        closeTaskDetailModal();
+        selectedDate = new Date(date);
+        currentDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+        renderCalendar();
+        updateSelectedDateLabel();
+        openDrawer();
+        // 드로어 렌더링 후 해당 카드를 편집 모드로 전환
+        setTimeout(() => {
+            const card = document.querySelector(`#drawerContent .todo-card-big[data-id="${id}"]`);
+            if (card) {
+                startEditCard(card);
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 50);
+    }
+
+    function closeTaskDetailModal() {
+        document.getElementById('taskDetailModal').style.display = 'none';
     }
 
     async function saveMemo() {
@@ -1077,6 +1276,7 @@
                 </div>
                 ${task.content ? `<div class="todo-text">${task.content}</div>` : ''}
                 <div class="todo-card-actions">
+                    <button class="btn btn-ghost" style="font-size:0.8rem;" data-action="expand">🔍 크게 보기</button>
                     <button class="btn btn-ghost" style="font-size:0.8rem;" data-action="copy">📋 복사</button>
                     <button class="btn btn-ghost" style="font-size:0.8rem; color:var(--success);" data-action="gcal">🌐 Google 추가</button>
                     <button class="btn btn-danger" style="padding:0.4rem 0.8rem; font-size:0.8rem;" data-action="delete">🗑️ 삭제</button>
@@ -1315,7 +1515,7 @@
 
     function addTaskRow(t='', c='') {
         const row = document.createElement('div');
-        row.style = "display:flex; gap:0.75rem; align-items:flex-start; background:#f8fafc; padding:1.25rem; border-radius:20px; border:1px solid #e2e8f0;";
+        row.style = "display:flex; gap:0.75rem; align-items:flex-start; background:var(--bg); padding:1.25rem; border-radius:20px; border:1px solid var(--border);";
         row.innerHTML = `<div style="flex:1; display:flex; flex-direction:column; gap:0.75rem;"><input type="text" class="t-title" placeholder="일정 제목" value="${t}" style="font-weight:800;"><textarea class="t-content" placeholder="상세 내용" style="min-height:80px;">${c}</textarea></div><button class="btn btn-danger" onclick="this.parentElement.remove()" style="padding:0.6rem; min-width:40px;">✕</button>`;
         document.getElementById('taskInputList').appendChild(row);
         row.querySelector('input').focus();
