@@ -261,6 +261,7 @@
 
     .todo-item-mini { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #fff; border: 1px solid #e2e8f0; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(0,0,0,0.02); pointer-events: none; flex-shrink: 0; line-height: 1.2; }
     .todo-item-mini.completed { opacity: 0.5; text-decoration: line-through; background: #f1f5f9; }
+    .todo-item-mini.span { border-left: 3px solid var(--primary); padding-left: 4px; }
 
     /* --- Drawer Styles --- */
     .daily-drawer { 
@@ -613,6 +614,10 @@
         </div>
 
         <div id="mContentAdd" style="display:flex; flex-direction:column; gap:1rem;">
+            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:700; color:var(--text-muted); cursor:pointer; padding:0 0.25rem;">
+                <input type="checkbox" id="spanToggle" checked style="width:16px; height:16px; cursor:pointer;">
+                기간을 <b style="color:var(--text-main)">하나의 연속 일정</b>으로 등록 <span style="font-weight:600;">(끄면 매일 개별 등록 · 시작일과 종료일이 같으면 영향 없음)</span>
+            </label>
             <div id="taskInputList" style="display:flex; flex-direction:column; gap:1.25rem; max-height:350px; overflow-y:auto; padding-right:10px;"></div>
             <button class="btn btn-outline" style="width:100%; padding:1.2rem; border-style:dashed;" onclick="addTaskRow()">+ 항목 추가 (Enter)</button>
             <div style="display:flex; gap:1.25rem; margin-top:0.5rem;">
@@ -782,10 +787,11 @@
             cell.className = `day-cell ${d === todayStr ? 'today' : ''}`;
             cell.dataset.date = d;
             let html = `<span class="day-num" style="pointer-events:none;">${i}</span>`;
-            (todos[d] || []).slice(0, 3).forEach(t => { 
-                html += `<div class="todo-item-mini ${t.completed ? 'completed' : ''}">${t.title}</div>`; 
+            const dayItems = todosOnDate(d);
+            dayItems.slice(0, 3).forEach(t => {
+                html += `<div class="todo-item-mini ${t.completed ? 'completed' : ''} ${isSpan(t) ? 'span' : ''}">${t.title}</div>`;
             });
-            if ((todos[d] || []).length > 3) html += `<div style="font-size:9px; color:#94a3b8; padding-left:4px; pointer-events:none;">+ more</div>`;
+            if (dayItems.length > 3) html += `<div style="font-size:9px; color:#94a3b8; padding-left:4px; pointer-events:none;">+ more</div>`;
             cell.innerHTML = html; 
             grid.appendChild(cell);
         }
@@ -1050,11 +1056,14 @@
         modal.dataset.taskDate = date;
 
         const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-        const wd = weekdays[new Date(date).getDay()];
+        const wd = weekdays[new Date(task.date).getDay()];
+        const dateLabel = isSpan(task)
+            ? `📅 ${task.date} ~ ${task.endDate} (기간 일정)`
+            : `📅 ${task.date} (${wd})`;
 
         document.getElementById('detailTaskTitle').innerText = task.title;
         document.getElementById('detailTaskMeta').innerHTML =
-            `<span>📅 ${date} (${wd})</span><span class="status-badge ${task.completed ? 'status-done' : 'status-pending'}">${task.completed ? 'Done' : 'Todo'}</span>`;
+            `<span>${dateLabel}</span><span class="status-badge ${task.completed ? 'status-done' : 'status-pending'}">${task.completed ? 'Done' : 'Todo'}</span>`;
         document.getElementById('detailTaskContent').innerText = task.content || '(내용 없음)';
 
         // 기본은 텍스트 보기로 초기화
@@ -1257,17 +1266,42 @@
         }
     }
 
+    /* --- 연속(기간) 일정 헬퍼 --- */
+    // 기간 일정 여부 (endDate가 있고 시작일과 다른 경우)
+    function isSpan(t) { return !!(t.endDate && t.endDate !== t.date); }
+    // M/D 형태의 짧은 기간 라벨
+    function rangeLabel(t) {
+        const f = s => { const p = s.split('-'); return `${+p[1]}/${+p[2]}`; };
+        return `${f(t.date)}~${f(t.endDate)}`;
+    }
+    // 특정 날짜(dStr)에 걸쳐 있는 모든 일정 반환 (시작일 버킷 + 기간 일정 확장)
+    function todosOnDate(dStr) {
+        const out = [];
+        Object.keys(todos).forEach(startStr => {
+            todos[startStr].forEach(t => {
+                const end = t.endDate || t.date;
+                if (t.date <= dStr && dStr <= end) out.push(t);
+            });
+        });
+        return out;
+    }
+
     /* --- Task Card Component --- */
     function createTaskCard(task, date) {
         const card = document.createElement('div');
         card.className = 'todo-card-big';
         card.dataset.id = task.id;
-        card.dataset.date = date;
+        // 기간 일정은 어느 날짜 칸에서 열어도 항상 '시작일' 버킷을 기준으로 동작
+        card.dataset.date = task.date;
+        const spanBadge = isSpan(task)
+            ? `<span class="status-badge" style="background:var(--primary-light); color:var(--primary); border:none;">📆 ${rangeLabel(task)}</span>`
+            : '';
         card.innerHTML = `
             <div class="view-mode">
                 <div class="todo-card-header">
-                    <input type="checkbox" class="bulk-select-check" data-id="${task.id}" data-date="${date}" data-type="todo" style="width:18px; height:18px; cursor:pointer;">
+                    <input type="checkbox" class="bulk-select-check" data-id="${task.id}" data-date="${task.date}" data-type="todo" style="width:18px; height:18px; cursor:pointer;">
                     <span class="status-badge ${task.completed ? 'status-done' : 'status-pending'}">${task.completed ? 'Done' : 'Todo'}</span>
+                    ${spanBadge}
                     <div class="todo-card-title">${task.title}</div>
                     <div style="display:flex; gap:0.4rem; align-items:center;">
                         <button class="btn btn-ghost" data-action="edit">✏️</button>
@@ -1298,51 +1332,53 @@
         const d = formatDate(selectedDate), cont = document.getElementById('drawerContent');
         document.getElementById('drawerTitle').innerText = `${d} 상세`;
         cont.innerHTML = '';
-        const day = todos[d] || [];
-        
+        const day = todosOnDate(d);
+
         // Show/hide batch bar based on items
         document.getElementById('drawerBatchBar').style.display = day.length > 0 ? 'flex' : 'none';
         const selectAll = document.getElementById('drawerSelectAll');
         if (selectAll) selectAll.checked = false;
-        
+
         if (!day.length) { cont.innerHTML = '<div style="text-align:center; padding:3rem; color:#94a3b8;">일정이 없습니다.</div>'; return; }
-        day.sort((a,b) => a.createdAt - b.createdAt).forEach(t => cont.appendChild(createTaskCard(t, d)));
+        day.sort((a,b) => a.createdAt - b.createdAt).forEach(t => cont.appendChild(createTaskCard(t)));
     }
 
     function renderTodayView() {
         const d = formatDate(new Date()), cont = document.getElementById('todayTasksList');
         cont.innerHTML = '';
-        const day = todos[d] || [];
-        
+        const day = todosOnDate(d);
+
         // Show/hide batch bar
         document.getElementById('todayBatchBar').style.display = day.length > 0 ? 'flex' : 'none';
         document.getElementById('todaySelectAll').checked = false;
-        
+
         if (!day.length) { cont.innerHTML = '<div style="text-align:center; padding:5rem; color:#94a3b8;">오늘 일정이 없습니다.</div>'; return; }
-        day.sort((a,b) => a.createdAt - b.createdAt).forEach(t => cont.appendChild(createTaskCard(t, d)));
+        day.sort((a,b) => a.createdAt - b.createdAt).forEach(t => cont.appendChild(createTaskCard(t)));
     }
 
     function renderRangeManageList() {
         const s = document.getElementById('mStart').value, e = document.getElementById('mEnd').value, cont = document.getElementById('rangeTasksList');
         cont.innerHTML = '';
-        let curr = new Date(s), end = new Date(e), list = [];
-        while (curr <= end) {
-            const d = formatDate(curr);
-            (todos[d] || []).forEach(t => list.push({task: t, date: d}));
-            curr.setDate(curr.getDate() + 1);
-        }
+        // 기간 [s,e]와 겹치는 일정을 중복 없이 수집 (기간 일정은 한 번만)
+        const seen = new Set(), list = [];
+        Object.keys(todos).forEach(startStr => {
+            todos[startStr].forEach(t => {
+                const end = t.endDate || t.date;
+                if (t.date <= e && end >= s && !seen.has(t.id)) { seen.add(t.id); list.push(t); }
+            });
+        });
 
         document.getElementById('rangeBatchBar').style.display = list.length > 0 ? 'flex' : 'none';
         const selectAll = document.getElementById('rangeSelectAll');
         if (selectAll) selectAll.checked = false;
 
         if (!list.length) { cont.innerHTML = '<div style="text-align:center; padding:3rem;">일정이 없습니다.</div>'; return; }
-        list.sort((a,b) => a.date.localeCompare(b.date)).forEach(item => {
+        list.sort((a,b) => a.date.localeCompare(b.date)).forEach(t => {
             const label = document.createElement('div');
             label.style = "font-size:0.75rem; font-weight:800; color:var(--primary); margin:0.5rem 0 -0.5rem 0.5rem; padding-top:0.5rem;";
-            label.innerText = item.date;
+            label.innerText = isSpan(t) ? `${t.date} ~ ${t.endDate}` : t.date;
             cont.appendChild(label);
-            cont.appendChild(createTaskCard(item.task, item.date));
+            cont.appendChild(createTaskCard(t));
         });
     }
 
@@ -1470,13 +1506,15 @@
         }
     }
     async function clearDayTasks() {
-        if (confirm('이 날의 모든 기록을 삭제할까요?')) {
-            const d = formatDate(selectedDate), tasks = todos[d] || [];
-            if (!tasks.length) return;
+        const d = formatDate(selectedDate), tasks = todosOnDate(d);
+        if (!tasks.length) return;
+        if (confirm('이 날에 걸친 모든 일정을 삭제할까요? (해당 날짜를 포함하는 기간 일정도 함께 삭제됩니다)')) {
             const tx = dbManager.db.transaction('todos', 'readwrite');
             tasks.forEach(t => tx.objectStore('todos').delete(t.id));
             await new Promise(r => tx.oncomplete = r);
-            delete todos[d]; closeDrawer(); refreshCurrentView(); handleSearch();
+            // 각 레코드를 자신의 시작일 버킷에서 제거
+            tasks.forEach(t => { todos[t.date] = (todos[t.date] || []).filter(x => x.id !== t.id); });
+            closeDrawer(); refreshCurrentView(); handleSearch();
         }
     }
 
@@ -1526,14 +1564,27 @@
         const s = document.getElementById('mStart').value, e = document.getElementById('mEnd').value;
         const data = Array.from(document.querySelectorAll('#taskInputList > div')).map(r => ({ t: r.querySelector('.t-title').value.trim(), c: r.querySelector('.t-content').value.trim() })).filter(x => x.t);
         if (!data.length) return;
-        let curr = new Date(s);
-        while (curr <= new Date(e)) {
-            const d = formatDate(curr); if (!todos[d]) todos[d] = [];
+
+        // 여러 날짜이고 토글이 켜져 있으면 '연속(기간) 일정' 1건으로 저장
+        const asSpan = document.getElementById('spanToggle')?.checked && s !== e;
+
+        if (asSpan) {
+            if (!todos[s]) todos[s] = [];
             for (let item of data) {
-                const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: d, title: item.t, content: item.c, completed: false, createdAt: Date.now() };
-                todos[d].push(obj); await dbManager.setItem('todos', obj.id, obj);
+                const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: s, endDate: e, title: item.t, content: item.c, completed: false, createdAt: Date.now() };
+                todos[s].push(obj); await dbManager.setItem('todos', obj.id, obj);
             }
-            curr.setDate(curr.getDate() + 1);
+        } else {
+            // 매일 개별 등록 (기존 방식)
+            let curr = new Date(s);
+            while (curr <= new Date(e)) {
+                const d = formatDate(curr); if (!todos[d]) todos[d] = [];
+                for (let item of data) {
+                    const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: d, title: item.t, content: item.c, completed: false, createdAt: Date.now() };
+                    todos[d].push(obj); await dbManager.setItem('todos', obj.id, obj);
+                }
+                curr.setDate(curr.getDate() + 1);
+            }
         }
         closeRangeModal(); refreshCurrentView(); handleSearch();
     }
@@ -1702,7 +1753,8 @@
             
             dayTasks.sort((a,b) => a.createdAt - b.createdAt).forEach(t => {
                 const status = t.completed ? "✅" : "⬜";
-                md += `- ${status} **${t.title}**\n`;
+                const span = isSpan(t) ? ` _(${t.date} ~ ${t.endDate})_` : '';
+                md += `- ${status} **${t.title}**${span}\n`;
                 if (t.content) {
                     const indentedContent = t.content.split('\n').map(line => `  > ${line}`).join('\n');
                     md += `${indentedContent}\n`;
@@ -1739,8 +1791,9 @@
 
     const title = encodeURIComponent(task.title);
     const details = encodeURIComponent(task.content || '');
-    const startDate = dateStr.replace(/-/g, '');
-    const endDateObj = new Date(dateStr);
+    const startDate = task.date.replace(/-/g, '');
+    // 기간 일정이면 종료일 기준, 종일 이벤트는 종료일 + 1일
+    const endDateObj = new Date(task.endDate || task.date);
     endDateObj.setDate(endDateObj.getDate() + 1);
     const endDate = formatDate(endDateObj).replace(/-/g, '');
 
@@ -1775,7 +1828,8 @@
 
     currentMonthTodos.forEach(t => {
       const startDate = t.date.replace(/-/g, '');
-      const endDateObj = new Date(t.date);
+      // 종일 이벤트의 DTEND는 '배타적'이므로 종료일 + 1일 (기간 일정이면 endDate 기준)
+      const endDateObj = new Date(t.endDate || t.date);
       endDateObj.setDate(endDateObj.getDate() + 1);
       const endDate = formatDate(endDateObj).replace(/-/g, '');
       const timestamp = new Date(t.createdAt || Date.now()).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
@@ -1789,6 +1843,10 @@
       if (t.content) {
         ics.push(`DESCRIPTION:${t.content.replace(/\n/g, '\\n').replace(/,/g, '\\,')}`);
       }
+      // 완료 일정은 '취소(CANCELLED)'로 표기 → 같은 캘린더에 재가져오기 시 해당 일정이 제거됨.
+      // SEQUENCE를 올려 구글이 이를 '갱신'으로 인식하도록 유도.
+      ics.push(`STATUS:${t.completed ? 'CANCELLED' : 'CONFIRMED'}`);
+      ics.push(`SEQUENCE:${t.completed ? 1 : 0}`);
       ics.push('END:VEVENT');
     });
 
@@ -1800,7 +1858,7 @@
     a.download = `${year}년_${month}월_일정.ics`;
     a.click();
     
-    showToast(`${year}년 ${month}월 일정을 ICS 파일로 생성했습니다. 구글 캘린더의 [설정 > 가져오기]에서 이 파일을 등록하세요.`, 'success', 5000);
+    showToast(`${year}년 ${month}월 일정을 ICS로 생성했습니다. [설정 > 가져오기]에서 등록하세요. 완료된 일정은 '취소'로 표기되어, 같은 캘린더에 다시 가져오면 제거됩니다. (이 도구 전용 캘린더 사용 권장)`, 'success', 7000);
   }
 
   function importData(input) {
