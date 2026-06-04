@@ -478,32 +478,106 @@ function hello() {
     const plainOutput = document.getElementById('plainOutput');
     let previewMode = 'preview';
 
-    function removeMarkdown(markdown) {
-      if (!markdown) return '';
-      let text = markdown;
-      text = text.replace(/```[\s\S]*?```/g, '');        // 코드 블록
-      text = text.replace(/`([^`]+)`/g, '$1');            // 인라인 코드
-      text = text.replace(/^#{1,6}\s+(.+)$/gm, '$1');     // 헤더
-      text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1'); // 이미지
-      text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');  // 링크
-      text = text.replace(/\*\*([^*]+)\*\*/g, '$1');      // 굵게
-      text = text.replace(/__([^_]+)__/g, '$1');
-      text = text.replace(/\*([^*]+)\*/g, '$1');          // 기울임
-      text = text.replace(/_([^_]+)_/g, '$1');
-      text = text.replace(/~~([^~]+)~~/g, '$1');          // 취소선
-      text = text.replace(/^>\s+(.+)$/gm, '$1');          // 인용구
-      text = text.replace(/^[-*_]{3,}$/gm, '');           // 구분선
-      text = text.replace(/^\s*[-*+]\s+(.+)$/gm, '$1');   // 불릿 리스트
-      text = text.replace(/^\s*\d+\.\s+(.+)$/gm, '$1');   // 번호 리스트
-      text = text.replace(/\|/g, '');                     // 테이블 구분
-      text = text.replace(/^[-\s]+$/gm, '');              // 테이블 정렬줄
-      text = text.replace(/<[^>]+>/g, '');                // HTML 태그
-      text = text.replace(/\n{3,}/g, '\n\n');             // 과도한 빈 줄
-      return text.trim();
+    // 인라인 마크다운(굵게/기울임/링크/이미지/코드 등)을 읽기 좋은 평문으로 변환
+    function inlineToText(s) {
+      if (!s) return '';
+      let t = s;
+      t = t.replace(/!\[([^\]]*)\]\([^)]*\)/g, (m, alt) => alt ? `[이미지: ${alt}]` : '[이미지]');
+      t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, txt, url) => {
+        const u = (url || '').trim();
+        return (u && u !== txt) ? `${txt} (${u})` : txt;   // 링크는 '텍스트 (URL)' 형태로 보존
+      });
+      t = t.replace(/\*\*([^*]+)\*\*/g, '$1');             // **굵게**
+      t = t.replace(/__([^_]+)__/g, '$1');
+      t = t.replace(/\*([^*]+)\*/g, '$1');                 // *기울임*
+      t = t.replace(/(^|[^\w])_([^_]+)_(?=[^\w]|$)/g, '$1$2'); // _기울임_ (단어 내부 _ 는 제외)
+      t = t.replace(/~~([^~]+)~~/g, '$1');                 // ~~취소선~~
+      t = t.replace(/`([^`]+)`/g, '$1');                   // `인라인 코드`
+      t = t.replace(/<[^>]+>/g, '');                       // HTML 태그
+      return t;
+    }
+
+    // 마크다운 전체를 가독성 있는 평문으로 변환 (표 → 리스트, 헤더 → 구분선 등)
+    function markdownToText(md) {
+      if (!md) return '';
+      const lines = md.replace(/\r\n?/g, '\n').split('\n');
+      const out = [];
+      let i = 0;
+
+      const isTableSep = (line) => line.includes('-') &&
+        /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/.test(line);
+      const splitRow = (line) => line.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(c => c.trim());
+
+      while (i < lines.length) {
+        const line = lines[i];
+
+        // 코드 블록(펜스): 내용은 그대로 보존
+        const fence = line.match(/^\s*(```|~~~)/);
+        if (fence) {
+          const token = fence[1];
+          const code = [];
+          i++;
+          while (i < lines.length && !lines[i].trim().startsWith(token)) { code.push(lines[i]); i++; }
+          i++; // 닫는 펜스 건너뜀
+          if (code.length) out.push(code.join('\n'));
+          continue;
+        }
+
+        // 표: 헤더 + 구분선 패턴이면 행마다 'key: value' 리스트로 변환
+        if (line.includes('|') && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+          const headers = splitRow(line);
+          const hasHeader = headers.some(h => h);
+          i += 2; // 헤더행 + 구분선
+          while (i < lines.length && lines[i].includes('|') && lines[i].trim() !== '') {
+            const cells = splitRow(lines[i]);
+            const rowText = hasHeader
+              ? cells.map((c, idx) => headers[idx] ? `${inlineToText(headers[idx])}: ${inlineToText(c)}` : inlineToText(c)).join(' | ')
+              : cells.map(inlineToText).join(' | ');
+            out.push(`- ${rowText}`);
+            i++;
+          }
+          continue;
+        }
+
+        // 헤더(ATX): H1/H2는 밑줄, H3+는 ▶ 표시
+        const h = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+        if (h) {
+          const level = h[1].length;
+          const text = inlineToText(h[2]);
+          out.push('');
+          if (level <= 2) {
+            out.push(text);
+            out.push((level === 1 ? '═' : '─').repeat(Math.min(Math.max(text.length, 3), 40)));
+          } else {
+            out.push(`▶ ${text}`);
+          }
+          i++;
+          continue;
+        }
+
+        // 수평선
+        if (/^\s{0,3}([-*_])\s*(\1\s*){2,}$/.test(line)) { out.push('─'.repeat(40)); i++; continue; }
+
+        // 인용구
+        const q = line.match(/^\s*>\s?(.*)$/);
+        if (q) { out.push(`│ ${inlineToText(q[1])}`); i++; continue; }
+
+        // 불릿/번호 리스트 (들여쓰기 보존, 불릿은 • 로 통일)
+        const ul = line.match(/^(\s*)[-*+]\s+(.+)$/);
+        if (ul) { out.push(`${ul[1]}• ${inlineToText(ul[2])}`); i++; continue; }
+        const ol = line.match(/^(\s*)(\d+)\.\s+(.+)$/);
+        if (ol) { out.push(`${ol[1]}${ol[2]}. ${inlineToText(ol[3])}`); i++; continue; }
+
+        // 일반 문단
+        out.push(inlineToText(line));
+        i++;
+      }
+
+      return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
     }
 
     function updatePlain() {
-      const cleaned = removeMarkdown(editor.value);
+      const cleaned = markdownToText(editor.value);
       plainOutput.value = cleaned;
       const words = cleaned.trim() ? cleaned.trim().split(/\s+/).filter(Boolean).length : 0;
       const chars = cleaned.length;
