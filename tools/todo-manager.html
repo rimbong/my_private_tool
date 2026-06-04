@@ -259,9 +259,11 @@
     .day-cell:nth-child(7n+1) .day-num { color: var(--sunday); }
     .day-cell:nth-child(7n) .day-num { color: var(--saturday); }
 
-    .todo-item-mini { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #fff; border: 1px solid #e2e8f0; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(0,0,0,0.02); pointer-events: none; flex-shrink: 0; line-height: 1.2; }
+    .todo-item-mini { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #fff; border: 1px solid #e2e8f0; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(0,0,0,0.02); cursor: grab; flex-shrink: 0; line-height: 1.2; }
+    .todo-item-mini:active { cursor: grabbing; }
     .todo-item-mini.completed { opacity: 0.5; text-decoration: line-through; background: #f1f5f9; }
     .todo-item-mini.span { border-left: 3px solid var(--primary); padding-left: 4px; }
+    .day-cell.drop-target { box-shadow: inset 0 0 0 2px var(--primary); background: var(--primary-light); border-radius: 8px; }
 
     /* --- Drawer Styles --- */
     .daily-drawer { 
@@ -445,6 +447,7 @@
       <div class="view-tabs">
           <div class="view-tab active" id="tab-calendar" onclick="switchView('calendar')">📅 월간 달력</div>
           <div class="view-tab" id="tab-today" onclick="switchView('today')">📌 오늘 할 일</div>
+          <div class="view-tab" id="tab-agenda" onclick="switchView('agenda')">📋 다가오는 일정</div>
           <div class="view-tab" id="tab-memo" onclick="switchView('memo')">📝 메모 보드</div>
       </div>
 
@@ -472,6 +475,14 @@
               </div>
           </div>
           <div id="todayTasksList" class="drawer-content"></div>
+      </div>
+
+      <div id="agendaView" class="today-container">
+          <div style="padding: 2rem; border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+              <h2 style="margin:0; font-size:1.6rem; font-weight:800;">📋 다가오는 일정</h2>
+              <button class="btn btn-primary" onclick="openRangeModal()">+ 추가하기</button>
+          </div>
+          <div id="agendaList" class="drawer-content"></div>
       </div>
 
       <div id="memoView" class="memo-container">
@@ -524,8 +535,11 @@
                 <input type="text" id="memoTitleInput" placeholder="메모의 제목을 입력하세요 (선택 사항)" style="width:100%; box-sizing:border-box;">
             </div>
             <div style="display:flex; flex-direction:column; gap:0.5rem;">
-                <label style="font-size:0.85rem; font-weight:800; color:var(--text-muted);">내용</label>
-                <textarea id="memoContentInput" placeholder="자세한 내용을 입력하세요..." style="min-height:300px; width:100%; box-sizing:border-box; font-size:1rem; line-height:1.6;"></textarea>
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+                    <label style="font-size:0.85rem; font-weight:800; color:var(--text-muted);">내용 <span style="font-weight:600;">(파일을 끌어다 놓을 수 있어요)</span></label>
+                    <button type="button" class="btn btn-ghost" id="memoDropModeToggle" onclick="toggleMemoDropMode()" title="파일 드래그앤드롭 시 동작 방식" style="font-size:0.72rem; padding:0.3rem 0.6rem;">📄 드롭: 새로 쓰기</button>
+                </div>
+                <textarea id="memoContentInput" placeholder="자세한 내용을 입력하세요... (.md/.txt 파일을 끌어다 놓으면 내용을 불러옵니다)" style="min-height:300px; width:100%; box-sizing:border-box; font-size:1rem; line-height:1.6;"></textarea>
             </div>
             <div style="display:flex; gap:1.25rem; margin-top:0.5rem;">
                 <button class="btn btn-outline" style="flex:1;" onclick="closeMemoModal()">취소</button>
@@ -560,6 +574,22 @@
         <div style="display:flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
             <button class="btn btn-outline" id="detailEditBtn">✏️ 수정하기</button>
             <button class="btn btn-primary" onclick="closeMemoDetailModal()" style="min-width: 100px;">닫기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assign Memo To Calendar Modal -->
+    <div id="assignMemoModal" class="modal" onclick="if(event.target===this) closeAssignMemoModal()">
+      <div class="modal-content" style="width: 420px; max-width: 92vw;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 style="margin:0; font-size:1.25rem; font-weight:800;">📅 달력으로 이동</h2>
+          <button class="btn btn-ghost" onclick="closeAssignMemoModal()" style="font-size:1.3rem;">✕</button>
+        </div>
+        <p style="margin:0; color:var(--text-muted); font-size:0.9rem;">이 메모를 일정으로 등록할 날짜를 선택하세요.</p>
+        <input type="date" id="assignMemoDate" style="width:100%; box-sizing:border-box;">
+        <div style="display:flex; gap:1rem; margin-top:0.25rem;">
+          <button class="btn btn-outline" style="flex:1;" onclick="closeAssignMemoModal()">취소</button>
+          <button class="btn btn-primary" style="flex:2;" onclick="confirmAssignMemo()">📅 이동</button>
         </div>
       </div>
     </div>
@@ -614,7 +644,17 @@
         </div>
 
         <div id="mContentAdd" style="display:flex; flex-direction:column; gap:1rem;">
-            <label style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:700; color:var(--text-muted); cursor:pointer; padding:0 0.25rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:700; color:var(--text-muted); padding:0 0.25rem;">
+                <span>🔁 반복</span>
+                <select id="repeatSelect" onchange="onRepeatChange()" style="padding:0.45rem 0.6rem; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); color:var(--text-main); font-weight:700;">
+                    <option value="">없음</option>
+                    <option value="daily">매일</option>
+                    <option value="weekly">매주</option>
+                    <option value="monthly">매월</option>
+                </select>
+                <span id="repeatHint" style="font-weight:600; display:none;">시작일~종료일 기간 동안 반복 생성됩니다</span>
+            </div>
+            <label id="spanToggleWrap" style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:700; color:var(--text-muted); cursor:pointer; padding:0 0.25rem;">
                 <input type="checkbox" id="spanToggle" checked style="width:16px; height:16px; cursor:pointer;">
                 기간을 <b style="color:var(--text-main)">하나의 연속 일정</b>으로 등록 <span style="font-weight:600;">(끄면 매일 개별 등록 · 시작일과 종료일이 같으면 영향 없음)</span>
             </label>
@@ -656,12 +696,116 @@
     let todos = {}; // Grouped by YYYY-MM-DD
     let stickyMemos = []; // Unassigned notes
     let currentView = 'calendar';
+    let memoAppendMode = false; // 메모 파일 드롭: false=새로 쓰기(덮어쓰기), true=이어붙이기
+
+    /* --- 카테고리(색상 라벨) --- */
+    const CATEGORIES = [
+        { id: '',         name: '없음', color: '#94a3b8' },
+        { id: 'work',     name: '업무', color: '#6366f1' },
+        { id: 'personal', name: '개인', color: '#10b981' },
+        { id: 'urgent',   name: '중요', color: '#f43f5e' },
+        { id: 'meeting',  name: '미팅', color: '#f59e0b' },
+        { id: 'etc',      name: '기타', color: '#0ea5e9' },
+    ];
+    function getCategory(id) { return CATEGORIES.find(c => c.id === (id || '')) || CATEGORIES[0]; }
+    function categoryOptionsHtml(selected) {
+        return CATEGORIES.map(c => `<option value="${c.id}" ${c.id === (selected || '') ? 'selected' : ''}>${c.name}</option>`).join('');
+    }
+
+    /* --- 시간(시작/종료) --- */
+    function timeLabel(t) { return t.startTime ? (t.endTime ? `${t.startTime}~${t.endTime}` : t.startTime) : ''; }
+    // 시간 우선 정렬(시간 있는 일정 먼저, 같으면 생성순)
+    function compareTasks(a, b) {
+        const ta = a.startTime || '99:99', tb = b.startTime || '99:99';
+        if (ta !== tb) return ta < tb ? -1 : 1;
+        return (a.createdAt || 0) - (b.createdAt || 0);
+    }
+    // 내보내기용 시작/종료 시점 계산. 시간 있으면 'YYYYMMDDTHHMMSS'(로컬), 없으면 종일 'YYYYMMDD'(종료 배타적).
+    function eventDateTimes(t) {
+        const startDateStr = t.date.replace(/-/g, '');
+        const endBase = t.endDate || t.date;
+        const p = n => String(n).padStart(2, '0');
+        if (t.startTime) {
+            const start = startDateStr + 'T' + t.startTime.replace(':', '') + '00';
+            let end;
+            if (t.endTime) {
+                end = endBase.replace(/-/g, '') + 'T' + t.endTime.replace(':', '') + '00';
+            } else {
+                const d = new Date(`${t.date}T${t.startTime}`); // 종료 미지정 → 시작 +1시간
+                d.setHours(d.getHours() + 1);
+                end = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}T${p(d.getHours())}${p(d.getMinutes())}00`;
+            }
+            return { allDay: false, start, end };
+        }
+        const endObj = new Date(endBase); // 종일 DTEND는 배타적 → +1일
+        endObj.setDate(endObj.getDate() + 1);
+        return { allDay: true, start: startDateStr, end: formatDate(endObj).replace(/-/g, '') };
+    }
+
+    /* --- 반복 일정: 시작~종료 기간 동안 반복 발생일 계산 (최대 366개) --- */
+    function computeRecurrenceDates(start, end, repeat) {
+        const dates = [];
+        // 'YYYY-MM-DD' 를 로컬 자정으로 파싱(UTC 파싱과 혼용 시 경계 오류 방지)
+        const parseLocal = (str) => { const p = str.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); };
+        const s = parseLocal(start), e = parseLocal(end);
+        if (isNaN(s) || isNaN(e) || e < s) return dates;
+        if (repeat === 'daily') {
+            for (let d = new Date(s); d <= e && dates.length < 366; d.setDate(d.getDate() + 1)) dates.push(formatDate(d));
+        } else if (repeat === 'weekly') {
+            for (let d = new Date(s); d <= e && dates.length < 366; d.setDate(d.getDate() + 7)) dates.push(formatDate(d));
+        } else if (repeat === 'monthly') {
+            const dom = s.getDate();
+            let y = s.getFullYear(), m = s.getMonth();
+            for (let guard = 0; guard < 400 && dates.length < 366; guard++) {
+                if (new Date(y, m, 1) > e) break;
+                const d = new Date(y, m, dom);
+                if (d.getMonth() === m && d >= s && d <= e) dates.push(formatDate(d)); // getMonth 일치 = 해당 월에 그 일자가 존재
+                m++; if (m > 11) { m = 0; y++; }
+            }
+        }
+        return dates;
+    }
 
     // Drag selection state
     let isDragging = false;
     let dragStart = null;
     let dragEnd = null;
-    let wasDragged = false; 
+    let wasDragged = false;
+    let dropTargetCell = null; // 일정 이동 시 드롭 대상 셀
+
+    function clearDropTarget() {
+        if (dropTargetCell) { dropTargetCell.classList.remove('drop-target'); dropTargetCell = null; }
+    }
+
+    // 일정 이동(리스케줄): from→target 만큼 날짜 이동 (기간 일정은 길이 유지)
+    async function rescheduleTask(id, startBucket, fromDay, targetDay) {
+        if (!targetDay || fromDay === targetDay) return;
+        const arr = todos[startBucket] || [];
+        const idx = arr.findIndex(t => t.id === id);
+        if (idx === -1) return;
+        const task = arr[idx];
+
+        const deltaDays = Math.round((new Date(targetDay) - new Date(fromDay)) / 86400000);
+        if (deltaDays === 0) return;
+        const shift = (dateStr) => { const d = new Date(dateStr); d.setDate(d.getDate() + deltaDays); return formatDate(d); };
+
+        const newStart = shift(task.date);
+        const newEnd = task.endDate ? shift(task.endDate) : undefined;
+
+        // 메모리상 버킷 이동 (DB는 키가 id라 재키 불필요)
+        arr.splice(idx, 1);
+        if (arr.length === 0) delete todos[startBucket]; else todos[startBucket] = arr;
+        task.date = newStart;
+        if (newEnd) task.endDate = newEnd;
+        if (!todos[newStart]) todos[newStart] = [];
+        todos[newStart].push(task);
+
+        await dbManager.setItem('todos', id, task);
+        // 드로어가 열려 있으면 이동한 날짜로 따라가기
+        if (document.getElementById('dailyDrawer').classList.contains('open')) selectedDate = new Date(newStart);
+        refreshCurrentView(); handleSearch();
+        showToast(`'${task.title}' 일정을 ${newStart}${newEnd ? ` ~ ${newEnd}` : ''}(으)로 옮겼습니다.`, 'success');
+    }
 
     window.onload = async () => {
         await dbManager.init('DiaryPlannerDB', ['config', 'todos', 'stickyMemos']);
@@ -716,9 +860,20 @@
                 showToast(`이미지 '${file.name}'가 첨부되었습니다.`, 'success');
             },
             onText: (content, file) => {
-                const separator = `\n\n--- [파일: ${file.name}] ---\n\n`;
-                fileDropHandler.insertAtCursor(memoInput, separator + content);
-                showToast(`파일 '${file.name}'의 내용이 삽입되었습니다.`, 'success');
+                if (memoAppendMode) {
+                    // 이어붙이기: 기존 내용 끝에 구분선과 함께 추가
+                    const prefix = memoInput.value.trim() ? `${memoInput.value.replace(/\s+$/, '')}\n\n--- [파일: ${file.name}] ---\n\n` : '';
+                    memoInput.value = prefix + content;
+                    showToast(`파일 '${file.name}'의 내용이 이어붙여졌습니다.`, 'success');
+                } else {
+                    // 새로 쓰기: 기존 내용을 덮어쓰고, 제목이 비어 있으면 파일명으로 채움
+                    memoInput.value = content;
+                    const titleInput = document.getElementById('memoTitleInput');
+                    if (titleInput && !titleInput.value.trim()) {
+                        titleInput.value = file.name.replace(/\.[^.]+$/, '');
+                    }
+                    showToast(`파일 '${file.name}'의 내용을 불러왔습니다.`, 'success');
+                }
             }
         });
     };
@@ -731,10 +886,26 @@
         dbManager.setItem('config', 'sidebar_collapsed', isCollapsed);
     }
 
+    // 메모 파일 드롭 모드 전환 (새로 쓰기 ↔ 이어붙이기)
+    function toggleMemoDropMode() {
+        memoAppendMode = !memoAppendMode;
+        const btn = document.getElementById('memoDropModeToggle');
+        if (memoAppendMode) {
+            btn.textContent = '📎 드롭: 이어붙이기';
+            btn.style.background = 'var(--primary)';
+            btn.style.color = '#fff';
+        } else {
+            btn.textContent = '📄 드롭: 새로 쓰기';
+            btn.style.background = '';
+            btn.style.color = '';
+        }
+    }
+
     /* --- Core UI Refresh Logic --- */
     function refreshCurrentView() {
         renderCalendar();
         if (currentView === 'today') renderTodayView();
+        if (currentView === 'agenda') renderAgenda();
         if (currentView === 'memo') renderMemoBoard();
         
         if (document.getElementById('dailyDrawer').classList.contains('open')) {
@@ -789,7 +960,10 @@
             let html = `<span class="day-num" style="pointer-events:none;">${i}</span>`;
             const dayItems = todosOnDate(d);
             dayItems.slice(0, 3).forEach(t => {
-                html += `<div class="todo-item-mini ${t.completed ? 'completed' : ''} ${isSpan(t) ? 'span' : ''}">${t.title}</div>`;
+                const cat = getCategory(t.category);
+                const catStyle = cat.id ? ` style="border-left:3px solid ${cat.color}; padding-left:4px;"` : '';
+                const timePrefix = t.startTime ? `<b style="font-weight:700;">${t.startTime}</b> ` : '';
+                html += `<div class="todo-item-mini ${t.completed ? 'completed' : ''} ${isSpan(t) ? 'span' : ''}" draggable="true" data-id="${t.id}" data-start="${t.date}" data-from="${d}"${catStyle}>${timePrefix}${t.title}</div>`;
             });
             if (dayItems.length > 3) html += `<div style="font-size:9px; color:#94a3b8; padding-left:4px; pointer-events:none;">+ more</div>`;
             cell.innerHTML = html; 
@@ -821,6 +995,8 @@
     function initEvents() {
         const grid = document.getElementById('calendarGrid');
         grid.addEventListener('mousedown', e => {
+            // 미니 일정 위에서 시작한 건 '일정 이동(드래그)'이므로 범위 선택을 시작하지 않음
+            if (e.target.closest('.todo-item-mini')) return;
             const cell = e.target.closest('.day-cell:not(.other-month)');
             if (!cell) return;
             isDragging = true; wasDragged = false; dragStart = dragEnd = cell.dataset.date;
@@ -845,23 +1021,52 @@
             setTimeout(() => { wasDragged = false; dragStart = dragEnd = null; updateCalendarClasses(); }, 150);
         });
 
+        // --- 일정 이동(드래그 앤 드롭으로 날짜 변경) ---
+        grid.addEventListener('dragstart', e => {
+            const mini = e.target.closest('.todo-item-mini');
+            if (!mini || !mini.dataset.id) return;
+            isDragging = false; // 범위 선택 상태 방지
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', JSON.stringify({ id: mini.dataset.id, start: mini.dataset.start, from: mini.dataset.from }));
+            mini.style.opacity = '0.4';
+        });
+        grid.addEventListener('dragover', e => {
+            const cell = e.target.closest('.day-cell:not(.other-month)');
+            if (!cell) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            if (dropTargetCell && dropTargetCell !== cell) dropTargetCell.classList.remove('drop-target');
+            cell.classList.add('drop-target'); dropTargetCell = cell;
+        });
+        grid.addEventListener('drop', async e => {
+            const cell = e.target.closest('.day-cell:not(.other-month)');
+            clearDropTarget();
+            if (!cell) return;
+            e.preventDefault();
+            let payload;
+            try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
+            if (!payload || !payload.id) return;
+            await rescheduleTask(payload.id, payload.start, payload.from, cell.dataset.date);
+        });
+        grid.addEventListener('dragend', () => {
+            isDragging = false;
+            clearDropTarget();
+            grid.querySelectorAll('.todo-item-mini').forEach(el => el.style.opacity = '');
+        });
+
         // Event Delegation for Calendar Grid
         grid.addEventListener('click', e => {
             if (wasDragged) return;
             const cell = e.target.closest('.day-cell:not(.other-month)');
-            if (!cell) { closeDrawer(); return; }
-            const oldD = formatDate(selectedDate), newD = cell.dataset.date;
+            if (!cell) return; // 바깥 클릭은 전역 핸들러가 닫기 처리
+            const newD = cell.dataset.date;
+            const drawerOpen = document.getElementById('dailyDrawer').classList.contains('open');
+            const sameDay = formatDate(selectedDate) === newD;
             selectedDate = new Date(newD);
-            if (document.getElementById('dailyDrawer').classList.contains('open')) {
-                if (oldD === newD) closeDrawer(); else renderDrawerContent();
-            }
             updateCalendarClasses(); updateSelectedDateLabel();
-        });
-
-        grid.addEventListener('dblclick', e => {
-            if (wasDragged) return;
-            const cell = e.target.closest('.day-cell:not(.other-month)');
-            if (cell) { selectedDate = new Date(cell.dataset.date); updateCalendarClasses(); updateSelectedDateLabel(); openDrawer(); }
+            // 단일 클릭으로 해당 날짜 열기. 이미 열린 같은 날을 다시 클릭하면 닫기(토글).
+            if (drawerOpen && sameDay) closeDrawer();
+            else openDrawer();
         });
 
         // Global Click Delegation for Drawer/Modal outside-click closing
@@ -925,6 +1130,7 @@
         document.getElementById('drawerContent').addEventListener('click', handleCardAction);
         document.getElementById('todayTasksList').addEventListener('click', handleCardAction);
         document.getElementById('rangeTasksList').addEventListener('click', handleCardAction);
+        document.getElementById('agendaList').addEventListener('click', handleCardAction);
 
         // 카드 더블클릭 시 상세(크게 보기) 모달 열기
         const handleCardDblClick = (e) => {
@@ -938,6 +1144,7 @@
         document.getElementById('drawerContent').addEventListener('dblclick', handleCardDblClick);
         document.getElementById('todayTasksList').addEventListener('dblclick', handleCardDblClick);
         document.getElementById('rangeTasksList').addEventListener('dblclick', handleCardDblClick);
+        document.getElementById('agendaList').addEventListener('dblclick', handleCardDblClick);
 
         // Event Delegation for Search Results
         document.getElementById('searchResults').addEventListener('click', e => {
@@ -957,7 +1164,7 @@
             }
         });
 
-        window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); closeTaskDetailModal(); } });
+        window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); closeTaskDetailModal(); closeAssignMemoModal(); } });
     }
 
     /* --- Quick Memo Logic --- */
@@ -1062,8 +1269,12 @@
             : `📅 ${task.date} (${wd})`;
 
         document.getElementById('detailTaskTitle').innerText = task.title;
+        const dcat = getCategory(task.category);
+        const dCatChip = dcat.id ? `<span class="status-badge" style="background:${dcat.color}1a; color:${dcat.color}; border:1px solid ${dcat.color}55;">● ${dcat.name}</span>` : '';
+        const dtl = timeLabel(task);
+        const dTimeChip = dtl ? `<span class="status-badge" style="background:#0ea5e91a; color:#0284c7; border:1px solid #0ea5e955;">⏰ ${dtl}</span>` : '';
         document.getElementById('detailTaskMeta').innerHTML =
-            `<span>${dateLabel}</span><span class="status-badge ${task.completed ? 'status-done' : 'status-pending'}">${task.completed ? 'Done' : 'Todo'}</span>`;
+            `<span>${dateLabel}</span><span class="status-badge ${task.completed ? 'status-done' : 'status-pending'}">${task.completed ? 'Done' : 'Todo'}</span>${dTimeChip}${dCatChip}`;
         document.getElementById('detailTaskContent').innerText = task.content || '(내용 없음)';
 
         // 기본은 텍스트 보기로 초기화
@@ -1227,12 +1438,26 @@
         }
     }
 
-    async function assignMemoToCalendar(id) {
+    function assignMemoToCalendar(id) {
         const memo = stickyMemos.find(m => m.id === id);
         if (!memo) return;
+        const modal = document.getElementById('assignMemoModal');
+        modal.dataset.memoId = id;
+        document.getElementById('assignMemoDate').value = formatDate(selectedDate);
+        modal.style.display = 'flex';
+    }
 
-        const dateStr = prompt('등록할 날짜를 입력하세요 (YYYY-MM-DD)', formatDate(selectedDate));
-        if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
+    function closeAssignMemoModal() {
+        document.getElementById('assignMemoModal').style.display = 'none';
+    }
+
+    async function confirmAssignMemo() {
+        const modal = document.getElementById('assignMemoModal');
+        const id = modal.dataset.memoId;
+        const dateStr = document.getElementById('assignMemoDate').value;
+        if (!dateStr) { showToast('날짜를 선택하세요.', 'warning'); return; }
+        const memo = stickyMemos.find(m => m.id === id);
+        if (!memo) { closeAssignMemoModal(); return; }
 
         const newTodo = {
             id: 'todo-' + Date.now(),
@@ -1252,6 +1477,7 @@
         await new Promise(r => tx.oncomplete = r);
         stickyMemos = stickyMemos.filter(m => m.id !== id);
 
+        closeAssignMemoModal();
         showToast(`${dateStr} 일정으로 이동되었습니다.`, 'success');
         renderMemoBoard();
         renderCalendar();
@@ -1296,11 +1522,22 @@
         const spanBadge = isSpan(task)
             ? `<span class="status-badge" style="background:var(--primary-light); color:var(--primary); border:none;">📆 ${rangeLabel(task)}</span>`
             : '';
+        const cat = getCategory(task.category);
+        const catChip = cat.id
+            ? `<span class="status-badge" style="background:${cat.color}1a; color:${cat.color}; border:1px solid ${cat.color}55;">● ${cat.name}</span>`
+            : '';
+        const tl = timeLabel(task);
+        const timeChip = tl
+            ? `<span class="status-badge" style="background:#0ea5e91a; color:#0284c7; border:1px solid #0ea5e955;">⏰ ${tl}</span>`
+            : '';
+        if (cat.id) card.style.borderLeft = `4px solid ${cat.color}`;
         card.innerHTML = `
             <div class="view-mode">
                 <div class="todo-card-header">
                     <input type="checkbox" class="bulk-select-check" data-id="${task.id}" data-date="${task.date}" data-type="todo" style="width:18px; height:18px; cursor:pointer;">
                     <span class="status-badge ${task.completed ? 'status-done' : 'status-pending'}">${task.completed ? 'Done' : 'Todo'}</span>
+                    ${timeChip}
+                    ${catChip}
                     ${spanBadge}
                     <div class="todo-card-title">${task.title}</div>
                     <div style="display:flex; gap:0.4rem; align-items:center;">
@@ -1317,7 +1554,17 @@
                 </div>
             </div>
             <div class="edit-mode" style="display:none; flex-direction:column; gap:1rem;">
-                <input type="text" class="edit-title" value="${task.title}" style="font-weight:800; width:100%; box-sizing:border-box;">
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <input type="text" class="edit-title" value="${task.title}" style="font-weight:800; flex:1; box-sizing:border-box;">
+                    <select class="edit-category" title="카테고리" style="padding:0.5rem 0.6rem; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); color:var(--text-main); font-weight:700;">${categoryOptionsHtml(task.category)}</select>
+                </div>
+                <div style="display:flex; gap:0.4rem; align-items:center; font-size:0.85rem;">
+                    <span style="color:var(--text-muted);">⏰</span>
+                    <input type="time" class="edit-start" value="${task.startTime || ''}" style="padding:0.35rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text-main);">
+                    <span style="color:var(--text-muted);">~</span>
+                    <input type="time" class="edit-end" value="${task.endTime || ''}" style="padding:0.35rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text-main);">
+                    <span style="color:var(--text-muted); font-size:0.72rem;">(비우면 종일)</span>
+                </div>
                 <textarea class="edit-content" style="min-height:100px; width:100%; box-sizing:border-box;">${task.content || ''}</textarea>
                 <div style="display:flex; gap:0.5rem;">
                     <button class="btn btn-primary" data-action="save">💾 저장</button>
@@ -1340,7 +1587,7 @@
         if (selectAll) selectAll.checked = false;
 
         if (!day.length) { cont.innerHTML = '<div style="text-align:center; padding:3rem; color:#94a3b8;">일정이 없습니다.</div>'; return; }
-        day.sort((a,b) => a.createdAt - b.createdAt).forEach(t => cont.appendChild(createTaskCard(t)));
+        day.sort(compareTasks).forEach(t => cont.appendChild(createTaskCard(t)));
     }
 
     function renderTodayView() {
@@ -1353,7 +1600,38 @@
         document.getElementById('todaySelectAll').checked = false;
 
         if (!day.length) { cont.innerHTML = '<div style="text-align:center; padding:5rem; color:#94a3b8;">오늘 일정이 없습니다.</div>'; return; }
-        day.sort((a,b) => a.createdAt - b.createdAt).forEach(t => cont.appendChild(createTaskCard(t)));
+        day.sort(compareTasks).forEach(t => cont.appendChild(createTaskCard(t)));
+    }
+
+    // 다가오는 일정(아젠다): 오늘 이후의 모든 일정을 날짜별로 묶어 표시
+    function renderAgenda() {
+        const cont = document.getElementById('agendaList');
+        cont.innerHTML = '';
+        const todayStr = formatDate(new Date());
+        const items = [];
+        Object.keys(todos).forEach(b => todos[b].forEach(t => {
+            const end = t.endDate || t.date;
+            if (end >= todayStr) items.push(t);
+        }));
+        if (!items.length) { cont.innerHTML = '<div style="text-align:center; padding:5rem; color:#94a3b8;">다가오는 일정이 없습니다.</div>'; return; }
+
+        const displayDate = t => (t.date < todayStr ? todayStr : t.date); // 진행 중인 과거 시작 일정은 오늘로 묶음
+        items.sort((a, b) => displayDate(a).localeCompare(displayDate(b)) || compareTasks(a, b));
+
+        const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+        let last = null;
+        items.forEach(t => {
+            const dd = displayDate(t);
+            if (dd !== last) {
+                last = dd;
+                const wd = weekdays[new Date(dd).getDay()];
+                const label = document.createElement('div');
+                label.style = "font-size:0.85rem; font-weight:800; color:var(--primary); margin:0.75rem 0 -0.25rem 0.25rem; padding-top:0.5rem;";
+                label.innerText = `${dd} (${wd})${dd === todayStr ? ' · 오늘' : ''}`;
+                cont.appendChild(label);
+            }
+            cont.appendChild(createTaskCard(t));
+        });
     }
 
     function renderRangeManageList() {
@@ -1373,7 +1651,7 @@
         if (selectAll) selectAll.checked = false;
 
         if (!list.length) { cont.innerHTML = '<div style="text-align:center; padding:3rem;">일정이 없습니다.</div>'; return; }
-        list.sort((a,b) => a.date.localeCompare(b.date)).forEach(t => {
+        list.sort((a,b) => a.date.localeCompare(b.date) || compareTasks(a,b)).forEach(t => {
             const label = document.createElement('div');
             label.style = "font-size:0.75rem; font-weight:800; color:var(--primary); margin:0.5rem 0 -0.5rem 0.5rem; padding-top:0.5rem;";
             label.innerText = isSpan(t) ? `${t.date} ~ ${t.endDate}` : t.date;
@@ -1489,8 +1767,12 @@
         const id = card.dataset.id, dateStr = card.dataset.date;
         const title = card.querySelector('.edit-title').value.trim(), content = card.querySelector('.edit-content').value.trim();
         if (!title) return;
+        const category = card.querySelector('.edit-category')?.value || '';
+        const startTime = card.querySelector('.edit-start')?.value || '';
+        const endTime = card.querySelector('.edit-end')?.value || '';
         const task = todos[dateStr].find(t => t.id === id);
-        task.title = title; task.content = content;
+        task.title = title; task.content = content; task.category = category;
+        task.startTime = startTime; task.endTime = endTime;
         await dbManager.setItem('todos', id, task);
         refreshCurrentView();
     }
@@ -1525,8 +1807,22 @@
       document.getElementById('mEnd').value = endD || d;
       switchModalTab('add');
       document.getElementById('taskInputList').innerHTML = '';
+      // 반복/연속 토글 초기화
+      const repSel = document.getElementById('repeatSelect');
+      if (repSel) repSel.value = '';
+      const spanT = document.getElementById('spanToggle');
+      if (spanT) spanT.checked = true;
+      onRepeatChange();
       addTaskRow();
       document.getElementById('rangeModal').style.display = 'flex';
+    }
+
+    function onRepeatChange() {
+      const rep = document.getElementById('repeatSelect')?.value || '';
+      const hint = document.getElementById('repeatHint');
+      if (hint) hint.style.display = rep ? 'inline' : 'none';
+      const wrap = document.getElementById('spanToggleWrap');
+      if (wrap) wrap.style.display = rep ? 'none' : 'flex'; // 반복이면 '연속 일정' 옵션 숨김
     }
 
     function closeRangeModal() {
@@ -1551,10 +1847,11 @@
       if (tab === 'manage') renderRangeManageList();
     }
 
-    function addTaskRow(t='', c='') {
+    function addTaskRow(t='', c='', cat='', st='', et='') {
         const row = document.createElement('div');
         row.style = "display:flex; gap:0.75rem; align-items:flex-start; background:var(--bg); padding:1.25rem; border-radius:20px; border:1px solid var(--border);";
-        row.innerHTML = `<div style="flex:1; display:flex; flex-direction:column; gap:0.75rem;"><input type="text" class="t-title" placeholder="일정 제목" value="${t}" style="font-weight:800;"><textarea class="t-content" placeholder="상세 내용" style="min-height:80px;">${c}</textarea></div><button class="btn btn-danger" onclick="this.parentElement.remove()" style="padding:0.6rem; min-width:40px;">✕</button>`;
+        const timeInputStyle = "padding:0.35rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text-main);";
+        row.innerHTML = `<div style="flex:1; display:flex; flex-direction:column; gap:0.75rem;"><div style="display:flex; gap:0.5rem; align-items:center;"><input type="text" class="t-title" placeholder="일정 제목" value="${t}" style="font-weight:800; flex:1;"><select class="t-category" title="카테고리" style="padding:0.5rem 0.6rem; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); color:var(--text-main); font-weight:700;">${categoryOptionsHtml(cat)}</select></div><div style="display:flex; gap:0.4rem; align-items:center; font-size:0.85rem;"><span style="color:var(--text-muted);">⏰</span><input type="time" class="t-start" value="${st}" style="${timeInputStyle}"><span style="color:var(--text-muted);">~</span><input type="time" class="t-end" value="${et}" style="${timeInputStyle}"><span style="color:var(--text-muted); font-size:0.72rem;">(비우면 종일)</span></div><textarea class="t-content" placeholder="상세 내용" style="min-height:80px;">${c}</textarea></div><button class="btn btn-danger" onclick="this.parentElement.remove()" style="padding:0.6rem; min-width:40px;">✕</button>`;
         document.getElementById('taskInputList').appendChild(row);
         row.querySelector('input').focus();
         row.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTaskRow(); } });
@@ -1562,16 +1859,34 @@
 
     async function saveRangeTasks() {
         const s = document.getElementById('mStart').value, e = document.getElementById('mEnd').value;
-        const data = Array.from(document.querySelectorAll('#taskInputList > div')).map(r => ({ t: r.querySelector('.t-title').value.trim(), c: r.querySelector('.t-content').value.trim() })).filter(x => x.t);
+        const data = Array.from(document.querySelectorAll('#taskInputList > div')).map(r => ({ t: r.querySelector('.t-title').value.trim(), c: r.querySelector('.t-content').value.trim(), cat: r.querySelector('.t-category')?.value || '', st: r.querySelector('.t-start')?.value || '', et: r.querySelector('.t-end')?.value || '' })).filter(x => x.t);
         if (!data.length) return;
 
+        const repeat = document.getElementById('repeatSelect')?.value || '';
         // 여러 날짜이고 토글이 켜져 있으면 '연속(기간) 일정' 1건으로 저장
-        const asSpan = document.getElementById('spanToggle')?.checked && s !== e;
+        const asSpan = !repeat && document.getElementById('spanToggle')?.checked && s !== e;
+
+        if (repeat) {
+            // 반복 일정: 발생일마다 단일 일정으로 생성(각 건은 독립 → 개별 완료/이동 가능)
+            const dates = computeRecurrenceDates(s, e, repeat);
+            if (!dates.length) { showToast('반복 발생일이 없습니다. 기간을 확인하세요.', 'warning'); return; }
+            const seriesId = 'series-' + Date.now() + Math.random().toString(36).substr(2,6);
+            for (const dd of dates) {
+                if (!todos[dd]) todos[dd] = [];
+                for (let item of data) {
+                    const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: dd, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, repeat, seriesId, completed: false, createdAt: Date.now() };
+                    todos[dd].push(obj); await dbManager.setItem('todos', obj.id, obj);
+                }
+            }
+            showToast(`반복 일정 ${dates.length}일분을 생성했습니다.`, 'success');
+            closeRangeModal(); refreshCurrentView(); handleSearch();
+            return;
+        }
 
         if (asSpan) {
             if (!todos[s]) todos[s] = [];
             for (let item of data) {
-                const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: s, endDate: e, title: item.t, content: item.c, completed: false, createdAt: Date.now() };
+                const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: s, endDate: e, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, completed: false, createdAt: Date.now() };
                 todos[s].push(obj); await dbManager.setItem('todos', obj.id, obj);
             }
         } else {
@@ -1580,7 +1895,7 @@
             while (curr <= new Date(e)) {
                 const d = formatDate(curr); if (!todos[d]) todos[d] = [];
                 for (let item of data) {
-                    const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: d, title: item.t, content: item.c, completed: false, createdAt: Date.now() };
+                    const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: d, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, completed: false, createdAt: Date.now() };
                     todos[d].push(obj); await dbManager.setItem('todos', obj.id, obj);
                 }
                 curr.setDate(curr.getDate() + 1);
@@ -1754,7 +2069,8 @@
             dayTasks.sort((a,b) => a.createdAt - b.createdAt).forEach(t => {
                 const status = t.completed ? "✅" : "⬜";
                 const span = isSpan(t) ? ` _(${t.date} ~ ${t.endDate})_` : '';
-                md += `- ${status} **${t.title}**${span}\n`;
+                const tprefix = t.startTime ? `\`${timeLabel(t)}\` ` : '';
+                md += `- ${status} ${tprefix}**${t.title}**${span}\n`;
                 if (t.content) {
                     const indentedContent = t.content.split('\n').map(line => `  > ${line}`).join('\n');
                     md += `${indentedContent}\n`;
@@ -1791,13 +2107,10 @@
 
     const title = encodeURIComponent(task.title);
     const details = encodeURIComponent(task.content || '');
-    const startDate = task.date.replace(/-/g, '');
-    // 기간 일정이면 종료일 기준, 종일 이벤트는 종료일 + 1일
-    const endDateObj = new Date(task.endDate || task.date);
-    endDateObj.setDate(endDateObj.getDate() + 1);
-    const endDate = formatDate(endDateObj).replace(/-/g, '');
+    // 시간이 있으면 시각 포함, 없으면 종일(종료 배타적)
+    const dt = eventDateTimes(task);
 
-    const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${endDate}&details=${details}&sf=true&output=xml`;
+    const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dt.start}/${dt.end}&details=${details}&sf=true&output=xml`;
     window.open(url, '_blank');
   }
 
@@ -1827,18 +2140,19 @@
     }
 
     currentMonthTodos.forEach(t => {
-      const startDate = t.date.replace(/-/g, '');
-      // 종일 이벤트의 DTEND는 '배타적'이므로 종료일 + 1일 (기간 일정이면 endDate 기준)
-      const endDateObj = new Date(t.endDate || t.date);
-      endDateObj.setDate(endDateObj.getDate() + 1);
-      const endDate = formatDate(endDateObj).replace(/-/g, '');
+      const dt = eventDateTimes(t);
       const timestamp = new Date(t.createdAt || Date.now()).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
       ics.push('BEGIN:VEVENT');
       ics.push(`UID:${t.id}@my-private-tool`);
       ics.push(`DTSTAMP:${timestamp}`);
-      ics.push(`DTSTART;VALUE=DATE:${startDate}`);
-      ics.push(`DTEND;VALUE=DATE:${endDate}`);
+      if (dt.allDay) {
+        ics.push(`DTSTART;VALUE=DATE:${dt.start}`);
+        ics.push(`DTEND;VALUE=DATE:${dt.end}`);
+      } else {
+        ics.push(`DTSTART:${dt.start}`);
+        ics.push(`DTEND:${dt.end}`);
+      }
       ics.push(`SUMMARY:${t.title.replace(/,/g, '\\,')}`);
       if (t.content) {
         ics.push(`DESCRIPTION:${t.content.replace(/\n/g, '\\n').replace(/,/g, '\\,')}`);
