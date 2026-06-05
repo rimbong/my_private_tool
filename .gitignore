@@ -1,2 +1,4 @@
 config*.js
 /.gemini/**
+/.claude/**
+/screenshot/**
