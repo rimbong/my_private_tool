@@ -119,32 +119,65 @@
         <div class="lbl">ISO 8601</div><div class="val" id="rIso"></div><button class="btn copy-mini" onclick="copyVal(document.getElementById('rIso').textContent)">복사</button>
         <div class="lbl">상대 시간</div><div class="val" id="rRel"></div><div></div>
       </div>
+      <div id="tzList" style="display:none; margin-top:1.25rem; border-top:1px solid var(--border); padding-top:1rem;">
+        <label style="display:block; margin-bottom:0.6rem;">🌍 세계 시간</label>
+        <div id="tzGrid" style="display:grid; grid-template-columns: 90px 1fr; gap:0.35rem 1rem; font-size:0.9rem;"></div>
+      </div>
       <div class="err" id="tsErr" style="display:none;"></div>
+    </div>
+
+    <!-- 날짜 계산기 -->
+    <div class="card">
+      <h2>🧮 날짜 계산기</h2>
+
+      <label>두 날짜 차이</label>
+      <div class="row" style="margin-top:0.3rem; flex-wrap:wrap;">
+        <input type="datetime-local" id="diffA" step="1" style="flex:1; min-width:200px;">
+        <span style="font-weight:800; color:var(--text-muted);">~</span>
+        <input type="datetime-local" id="diffB" step="1" style="flex:1; min-width:200px;">
+        <button class="btn btn-primary" onclick="calcDiff()">계산</button>
+      </div>
+      <div class="cron-desc" id="diffResult" style="display:none;"></div>
+
+      <label style="display:block; margin-top:1.25rem;">날짜 ± 기간</label>
+      <div class="row" style="margin-top:0.3rem; flex-wrap:wrap;">
+        <input type="datetime-local" id="addBase" step="1" style="flex:1; min-width:200px;">
+        <input type="number" id="addAmount" value="1" style="width:90px;">
+        <select id="addUnit" style="padding:0.6rem; border:1px solid var(--border); border-radius:0.5rem; background:var(--card-bg); color:var(--text);">
+          <option value="minutes">분</option><option value="hours">시간</option>
+          <option value="days" selected>일</option><option value="weeks">주</option><option value="months">개월</option>
+        </select>
+        <button class="btn" onclick="calcAdd(1)">＋ 더하기</button>
+        <button class="btn" onclick="calcAdd(-1)">－ 빼기</button>
+      </div>
+      <div class="cron-desc" id="addResult" style="display:none;"></div>
+
+      <label style="display:block; margin-top:1.25rem;">D-day</label>
+      <div class="row" style="margin-top:0.3rem;">
+        <input type="date" id="ddayTarget" style="flex:1;">
+        <button class="btn btn-primary" onclick="calcDday()">계산</button>
+      </div>
+      <div class="cron-desc" id="ddayResult" style="display:none;"></div>
     </div>
 
     <!-- Cron -->
     <div class="card">
-      <h2>📅 Cron 표현식 (분 시 일 월 요일)</h2>
+      <h2>📅 Cron 표현식 <span style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">(5필드 · 6필드[초 포함, Spring] · @daily 등 별칭 지원)</span></h2>
       <div class="row">
-        <input type="text" class="mono" id="cronInput" placeholder="*/15 9-18 * * 1-5" style="flex:1; min-width:240px; font-size:1.05rem;" oninput="parseCron()">
+        <input type="text" class="mono" id="cronInput" placeholder="*/15 9-18 * * 1-5  또는  0 0 9 * * 1-5  또는  @daily" style="flex:1; min-width:240px; font-size:1.05rem;" oninput="parseCron()">
         <input type="number" id="cronCount" value="5" min="1" max="20" style="width:80px;" onchange="parseCron()" title="다음 실행 개수">
       </div>
       <div class="presets">
         <button class="btn preset" onclick="setCron('* * * * *')">매분</button>
-        <button class="btn preset" onclick="setCron('0 * * * *')">매시 정각</button>
         <button class="btn preset" onclick="setCron('0 9 * * *')">매일 09:00</button>
         <button class="btn preset" onclick="setCron('*/15 9-18 * * 1-5')">평일 업무시간 15분마다</button>
         <button class="btn preset" onclick="setCron('0 0 1 * *')">매월 1일 자정</button>
-        <button class="btn preset" onclick="setCron('30 2 * * 0')">매주 일요일 02:30</button>
+        <button class="btn preset" onclick="setCron('0 0 9 * * 1-5')">[6필드] 평일 09:00:00</button>
+        <button class="btn preset" onclick="setCron('@daily')">@daily</button>
+        <button class="btn preset" onclick="setCron('@hourly')">@hourly</button>
       </div>
 
-      <div class="cron-fields" id="cronFields" style="display:none;">
-        <div class="cf"><small>분 (0-59)</small><div class="box" id="cf0"></div></div>
-        <div class="cf"><small>시 (0-23)</small><div class="box" id="cf1"></div></div>
-        <div class="cf"><small>일 (1-31)</small><div class="box" id="cf2"></div></div>
-        <div class="cf"><small>월 (1-12)</small><div class="box" id="cf3"></div></div>
-        <div class="cf"><small>요일 (0-6)</small><div class="box" id="cf4"></div></div>
-      </div>
+      <div class="cron-fields" id="cronFields" style="display:none;"></div>
 
       <div class="cron-desc" id="cronDesc" style="display:none;"></div>
       <div class="err" id="cronErr" style="display:none;"></div>
@@ -194,6 +227,22 @@
       return '방금';
     }
 
+    /* 세계 시간 */
+    const TIMEZONES = [
+      { tz: 'UTC', label: 'UTC' },
+      { tz: 'Asia/Seoul', label: '서울' },
+      { tz: 'Asia/Tokyo', label: '도쿄' },
+      { tz: 'Asia/Shanghai', label: '상하이' },
+      { tz: 'Europe/London', label: '런던' },
+      { tz: 'America/New_York', label: '뉴욕' },
+      { tz: 'America/Los_Angeles', label: 'LA' },
+    ];
+    function fmtInTz(d, tz) {
+      try {
+        return new Intl.DateTimeFormat('ko-KR', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(d);
+      } catch (e) { return '-'; }
+    }
+
     function showResult(d) {
       const grid = document.getElementById('resultGrid');
       document.getElementById('tsErr').style.display = 'none';
@@ -205,17 +254,55 @@
       document.getElementById('rUtc').textContent = fmtUtc(d);
       document.getElementById('rIso').textContent = d.toISOString();
       document.getElementById('rRel').textContent = relTime(d);
+      document.getElementById('tzGrid').innerHTML = TIMEZONES.map(z => `<div style="color:var(--text-muted); font-weight:700;">${z.label}</div><div class="mono">${fmtInTz(d, z.tz)}</div>`).join('');
+      document.getElementById('tzList').style.display = 'block';
     }
 
     function showTsError(msg) {
       document.getElementById('resultGrid').style.display = 'none';
+      document.getElementById('tzList').style.display = 'none';
       const el = document.getElementById('tsErr');
       el.textContent = '⚠ ' + msg; el.style.display = 'block';
     }
 
+    /* ===== 날짜 계산기 ===== */
+    function showCalc(id, text) { const el = document.getElementById(id); el.textContent = text; el.style.display = 'block'; }
+    function calcDiff() {
+      const a = new Date(document.getElementById('diffA').value), b = new Date(document.getElementById('diffB').value);
+      if (isNaN(a) || isNaN(b)) { showToast('두 날짜를 모두 입력하세요.', 'warning'); return; }
+      const totalMs = Math.abs(b - a);
+      let ms = totalMs;
+      const days = Math.floor(ms / 86400000); ms -= days * 86400000;
+      const hours = Math.floor(ms / 3600000); ms -= hours * 3600000;
+      const mins = Math.floor(ms / 60000);
+      showCalc('diffResult', `📏 ${days}일 ${hours}시간 ${mins}분  ·  총 ${(totalMs / 86400000).toFixed(2)}일 / ${Math.round(totalMs / 3600000)}시간 / ${Math.round(totalMs / 60000)}분`);
+    }
+    function calcAdd(sign) {
+      const base = new Date(document.getElementById('addBase').value);
+      if (isNaN(base)) { showToast('기준 날짜를 입력하세요.', 'warning'); return; }
+      const amt = sign * (parseInt(document.getElementById('addAmount').value, 10) || 0);
+      const unit = document.getElementById('addUnit').value;
+      const d = new Date(base);
+      if (unit === 'minutes') d.setMinutes(d.getMinutes() + amt);
+      else if (unit === 'hours') d.setHours(d.getHours() + amt);
+      else if (unit === 'days') d.setDate(d.getDate() + amt);
+      else if (unit === 'weeks') d.setDate(d.getDate() + amt * 7);
+      else if (unit === 'months') d.setMonth(d.getMonth() + amt);
+      showCalc('addResult', `📅 ${fmtLocal(d)} (${DOW_NAMES[d.getDay()]})  ·  epoch ${Math.floor(d.getTime() / 1000)}`);
+    }
+    function calcDday() {
+      const t = document.getElementById('ddayTarget').value;
+      if (!t) { showToast('목표 날짜를 선택하세요.', 'warning'); return; }
+      const target = new Date(t + 'T00:00:00');
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const diff = Math.round((target - today) / 86400000);
+      const txt = diff === 0 ? '🎯 D-DAY (오늘)' : diff > 0 ? `🎯 D-${diff} (${diff}일 남음)` : `🎯 D+${-diff} (${-diff}일 지남)`;
+      showCalc('ddayResult', txt);
+    }
+
     function fromEpoch() {
       const raw = document.getElementById('epochInput').value.trim();
-      if (!raw) { document.getElementById('resultGrid').style.display = 'none'; document.getElementById('tsErr').style.display='none'; return; }
+      if (!raw) { document.getElementById('resultGrid').style.display = 'none'; document.getElementById('tzList').style.display = 'none'; document.getElementById('tsErr').style.display='none'; return; }
       if (!/^-?\d+$/.test(raw)) { showTsError('숫자만 입력하세요.'); return; }
       let num = Number(raw);
       // 13자리 이상이면 밀리초로 간주
@@ -246,10 +333,13 @@
       fromEpoch();
     }
 
-    /* ===== Cron 파서 ===== */
-    const FIELD_RANGES = [[0, 59], [0, 23], [1, 31], [1, 12], [0, 6]];
+    /* ===== Cron 파서 (5/6필드 + 별칭) ===== */
     const MONTH_NAMES = ['', '1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
     const DOW_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+    const CRON_ALIASES = {
+      '@yearly': '0 0 1 1 *', '@annually': '0 0 1 1 *', '@monthly': '0 0 1 * *',
+      '@weekly': '0 0 * * 0', '@daily': '0 0 * * *', '@midnight': '0 0 * * *', '@hourly': '0 * * * *'
+    };
 
     function parseField(expr, min, max) {
       // 반환: 허용 값 Set. 오류 시 throw.
@@ -278,130 +368,115 @@
       return allowed;
     }
 
-    function describeField(expr, idx) {
-      const [min, max] = FIELD_RANGES[idx];
-      if (expr === '*') return null; // "매~" 는 상위에서 처리
-      const names = idx === 3 ? MONTH_NAMES : (idx === 4 ? DOW_NAMES : null);
+    function describeSet(expr, min, max, names) {
+      if (expr === '*') return null;
       const set = [...parseField(expr, min, max)].sort((a, b) => a - b);
-      const labels = set.map(v => names ? names[v] : v);
-      return labels.join(', ');
+      return set.map(v => names ? names[v] : v).join(', ');
     }
 
-    function humanize(fields) {
-      const [mi, hh, dom, mon, dow] = fields;
+    // exprs: 필드 표현식 배열, hasSec: 6필드(초 포함) 여부
+    function humanize(exprs, hasSec) {
+      const e = {};
+      (hasSec ? ['sec', 'min', 'hour', 'dom', 'mon', 'dow'] : ['min', 'hour', 'dom', 'mon', 'dow']).forEach((k, i) => e[k] = exprs[i]);
+      if (!hasSec) e.sec = '0';
       const parts = [];
-      // 시:분
-      if (mi === '*' && hh === '*') parts.push('매분');
+      if (e.min === '*' && e.hour === '*') parts.push('매분');
       else {
-        const minD = mi === '*' ? '매분' : describeField(mi, 0) + '분';
-        const hrD = hh === '*' ? '매시' : describeField(hh, 1) + '시';
-        if (mi !== '*' && hh !== '*') parts.push(`${hrD} ${minD}`);
-        else parts.push(`${hrD} ${minD}`);
+        const minD = e.min === '*' ? '매분' : describeSet(e.min, 0, 59) + '분';
+        const hrD = e.hour === '*' ? '매시' : describeSet(e.hour, 0, 23) + '시';
+        parts.push(`${hrD} ${minD}`);
       }
-      // 요일/일
-      if (dow !== '*') parts.push(`${describeField(dow, 4)}요일`);
-      if (dom !== '*') parts.push(`${describeField(dom, 2)}일`);
-      if (mon !== '*') parts.push(`${describeField(mon, 3)}`);
-      if (dow === '*' && dom === '*' && mon === '*') parts.push('매일');
+      if (hasSec && e.sec !== '0') parts.push(e.sec === '*' ? '매초' : describeSet(e.sec, 0, 59) + '초');
+      if (e.dow !== '*') parts.push(`${describeSet(e.dow, 0, 6, DOW_NAMES)}요일`);
+      if (e.dom !== '*') parts.push(`${describeSet(e.dom, 1, 31)}일`);
+      if (e.mon !== '*') parts.push(`${describeSet(e.mon, 1, 12, MONTH_NAMES)}`);
+      if (e.dow === '*' && e.dom === '*' && e.mon === '*') parts.push('매일');
       return parts.join(' · ') + ' 에 실행';
     }
 
     function setCron(v) { document.getElementById('cronInput').value = v; parseCron(); }
 
     function parseCron() {
-      const raw = document.getElementById('cronInput').value.trim();
       const fieldsBox = document.getElementById('cronFields');
       const descBox = document.getElementById('cronDesc');
       const errBox = document.getElementById('cronErr');
       const nextWrap = document.getElementById('cronNextWrap');
       errBox.style.display = 'none';
 
+      let raw = document.getElementById('cronInput').value.trim();
       if (!raw) { fieldsBox.style.display = 'none'; descBox.style.display = 'none'; nextWrap.style.display = 'none'; return; }
 
-      const fields = raw.split(/\s+/);
-      if (fields.length !== 5) {
-        fieldsBox.style.display = 'none'; descBox.style.display = 'none'; nextWrap.style.display = 'none';
-        errBox.textContent = `⚠ 5개 필드가 필요합니다 (현재 ${fields.length}개). 형식: 분 시 일 월 요일`;
-        errBox.style.display = 'block';
+      // 별칭(@daily 등) 확장
+      const alias = CRON_ALIASES[raw.toLowerCase()];
+      const expanded = alias || raw;
+      const fields = expanded.split(/\s+/);
+      const hasSec = fields.length === 6;
+      const failMsg = (m) => { fieldsBox.style.display = 'none'; descBox.style.display = 'none'; nextWrap.style.display = 'none'; errBox.textContent = '⚠ ' + m; errBox.style.display = 'block'; };
+
+      if (fields.length !== 5 && fields.length !== 6) {
+        failMsg(`5개(분 시 일 월 요일) 또는 6개(초 분 시 일 월 요일) 필드가 필요합니다. 현재 ${fields.length}개`);
         return;
       }
 
-      let sets;
-      try {
-        sets = fields.map((f, i) => parseField(f, FIELD_RANGES[i][0], FIELD_RANGES[i][1]));
-      } catch (e) {
-        fieldsBox.style.display = 'none'; descBox.style.display = 'none'; nextWrap.style.display = 'none';
-        errBox.textContent = '⚠ ' + e.message;
-        errBox.style.display = 'block';
-        return;
-      }
+      // 필드 범위/라벨 (6필드면 맨 앞이 초)
+      const ranges = hasSec ? [[0,59],[0,59],[0,23],[1,31],[1,12],[0,6]] : [[0,59],[0,23],[1,31],[1,12],[0,6]];
+      const labels = hasSec ? ['초 (0-59)','분 (0-59)','시 (0-23)','일 (1-31)','월 (1-12)','요일 (0-6)'] : ['분 (0-59)','시 (0-23)','일 (1-31)','월 (1-12)','요일 (0-6)'];
 
-      // 필드 박스 표시
-      fields.forEach((f, i) => document.getElementById('cf' + i).textContent = f);
+      let parsed;
+      try { parsed = fields.map((f, i) => parseField(f, ranges[i][0], ranges[i][1])); }
+      catch (e) { failMsg(e.message); return; }
+
+      const sets = hasSec
+        ? { sec: parsed[0], min: parsed[1], hour: parsed[2], dom: parsed[3], mon: parsed[4], dow: parsed[5] }
+        : { sec: new Set([0]), min: parsed[0], hour: parsed[1], dom: parsed[2], mon: parsed[3], dow: parsed[4] };
+
+      // 필드 박스(개수 가변) 렌더
+      fieldsBox.innerHTML = fields.map((f, i) => `<div class="cf"><small>${labels[i]}</small><div class="box">${f}</div></div>`).join('');
       fieldsBox.style.display = 'grid';
 
-      try {
-        descBox.textContent = '🗣️ ' + humanize(fields);
-        descBox.style.display = 'block';
-      } catch (e) { descBox.style.display = 'none'; }
+      try { descBox.textContent = '🗣️ ' + humanize(fields, hasSec) + (alias ? ` (${raw} → ${expanded})` : ''); descBox.style.display = 'block'; }
+      catch (e) { descBox.style.display = 'none'; }
 
-      // 다음 실행 시각 계산
       const count = Math.min(20, Math.max(1, parseInt(document.getElementById('cronCount').value, 10) || 5));
       const occurrences = nextOccurrences(sets, count);
       const nextBox = document.getElementById('cronNext');
       nextBox.innerHTML = '';
       if (occurrences.length === 0) {
-        nextWrap.style.display = 'block';
         nextBox.innerHTML = '<div class="item">향후 4년 내 실행 시각을 찾지 못했습니다.</div>';
       } else {
         occurrences.forEach(d => {
           const div = document.createElement('div');
           div.className = 'item';
-          const wd = DOW_NAMES[d.getDay()];
-          div.innerHTML = `<span>${fmtLocal(d)} (${wd})</span><span class="rel">${relTime(d)}</span>`;
+          div.innerHTML = `<span>${fmtLocal(d)} (${DOW_NAMES[d.getDay()]})</span><span class="rel">${relTime(d)}</span>`;
           nextBox.appendChild(div);
         });
-        nextWrap.style.display = 'block';
       }
+      nextWrap.style.display = 'block';
     }
 
+    // 다음 실행 시각 (초 단위 인식)
     function nextOccurrences(sets, count) {
-      const [minS, hourS, domS, monS, dowS] = sets;
+      const { sec, min, hour, dom, mon, dow } = sets;
       const results = [];
       const d = new Date();
-      d.setSeconds(0, 0);
-      d.setMinutes(d.getMinutes() + 1); // 다음 분부터
-      const limit = new Date();
-      limit.setFullYear(limit.getFullYear() + 4);
+      d.setMilliseconds(0);
+      d.setSeconds(d.getSeconds() + 1); // 다음 초부터
+      const limit = new Date(); limit.setFullYear(limit.getFullYear() + 4);
 
+      const domFull = dom.size === 31, dowFull = dow.size === 7;
       while (results.length < count && d <= limit) {
-        const monthOk = monS.has(d.getMonth() + 1);
-        if (!monthOk) {
-          // 다음 달 1일 00:00 으로 점프
-          d.setMonth(d.getMonth() + 1, 1);
-          d.setHours(0, 0, 0, 0);
-          continue;
-        }
-        // cron 규칙: 일(dom)과 요일(dow) 중 하나라도 '*'가 아니면 OR 결합
-        const domRestricted = !isFullField(domS, 2);
-        const dowRestricted = !isFullField(dowS, 4);
+        if (!mon.has(d.getMonth() + 1)) { d.setMonth(d.getMonth() + 1, 1); d.setHours(0, 0, 0, 0); continue; }
         let dayOk;
-        if (domRestricted && dowRestricted) dayOk = domS.has(d.getDate()) || dowS.has(d.getDay());
-        else dayOk = (!domRestricted || domS.has(d.getDate())) && (!dowRestricted || dowS.has(d.getDay()));
-
+        if (!domFull && !dowFull) dayOk = dom.has(d.getDate()) || dow.has(d.getDay()); // 둘 다 제한 시 OR
+        else dayOk = (domFull || dom.has(d.getDate())) && (dowFull || dow.has(d.getDay()));
         if (!dayOk) { d.setDate(d.getDate() + 1); d.setHours(0, 0, 0, 0); continue; }
-        if (!hourS.has(d.getHours())) { d.setHours(d.getHours() + 1, 0, 0, 0); continue; }
-        if (!minS.has(d.getMinutes())) { d.setMinutes(d.getMinutes() + 1, 0, 0); continue; }
-
+        if (!hour.has(d.getHours())) { d.setHours(d.getHours() + 1, 0, 0, 0); continue; }
+        if (!min.has(d.getMinutes())) { d.setMinutes(d.getMinutes() + 1, 0); continue; }
+        if (!sec.has(d.getSeconds())) { d.setSeconds(d.getSeconds() + 1); continue; }
         results.push(new Date(d));
-        d.setMinutes(d.getMinutes() + 1);
+        d.setSeconds(d.getSeconds() + 1);
       }
       return results;
-    }
-
-    function isFullField(set, idx) {
-      const [min, max] = FIELD_RANGES[idx];
-      return set.size === (max - min + 1);
     }
 
     // 초기값
