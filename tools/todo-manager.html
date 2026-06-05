@@ -322,6 +322,28 @@
       box-shadow: inset 0 0 0 3px var(--primary) !important;
     }
 
+    /* --- Header Search --- */
+    .header-search { position: relative; flex: 1; max-width: 380px; margin: 0 1.5rem; }
+    .header-search > input { width: 100%; box-sizing: border-box; padding: 0.65rem 1rem; border: 1px solid var(--border); border-radius: 12px; font-size: 0.9rem; font-family: inherit; outline: none; transition: all 0.2s; background: var(--card-bg); color: var(--text-main); }
+    .header-search > input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
+    .search-panel { display: none; position: absolute; top: calc(100% + 10px); left: 0; right: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 20px 30px -8px rgba(0,0,0,0.18); z-index: 300; max-height: 65vh; flex-direction: column; overflow: hidden; }
+    .search-panel.open { display: flex; }
+    .search-batch-bar { align-items: center; justify-content: space-between; padding: 0.6rem 0.9rem; background: #f1f5f9; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .search-panel .search-results-container { margin: 0; padding: 0.6rem; overflow-y: auto; }
+
+    /* --- Floating Action Button --- */
+    .fab-btn { position: fixed; right: 2rem; bottom: 2rem; width: 60px; height: 60px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 1.9rem; line-height: 1; cursor: pointer; box-shadow: 0 10px 24px rgba(99,102,241,0.45); z-index: 600; transition: transform 0.15s, background 0.2s; }
+    .fab-btn:hover { transform: scale(1.06); background: var(--primary-hover); }
+    .fab-menu { position: fixed; right: 2rem; bottom: 5.5rem; display: none; flex-direction: column; gap: 0.6rem; align-items: flex-end; z-index: 600; }
+    .fab-menu.open { display: flex; }
+    .fab-action { box-shadow: 0 6px 16px rgba(0,0,0,0.18); white-space: nowrap; }
+    .quick-memo-pop { position: fixed; right: 2rem; bottom: 5.5rem; width: 320px; max-width: 88vw; background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 20px 30px -8px rgba(0,0,0,0.2); padding: 1.25rem; z-index: 600; display: none; flex-direction: column; gap: 0.8rem; }
+    .quick-memo-pop.open { display: flex; }
+
+    @media (max-width: 640px) {
+      .header-search { margin: 0 0.5rem; }
+    }
+
     /* ===== Dark Mode ===== */
     body.dark {
       color-scheme: dark;
@@ -392,6 +414,23 @@
       <button class="nav-btn" onclick="changeMonth(1)">▶</button>
       <button class="btn btn-outline" style="margin-left: 0.5rem;" onclick="goToday()">오늘</button>
     </div>
+
+    <div class="header-search">
+      <input type="text" id="searchInput" placeholder="🔍 전체 일정·메모 검색..." autocomplete="off" oninput="handleSearch()" onfocus="handleSearch()">
+      <div id="searchPanel" class="search-panel">
+        <div id="searchBatchBar" class="search-batch-bar" style="display:none;">
+          <label style="font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:0.3rem;">
+            <input type="checkbox" id="searchSelectAll" onchange="toggleSelectAll('searchResults', this.checked)"> 전체
+          </label>
+          <div style="display:flex; gap:0.3rem;">
+            <button class="btn btn-ghost" style="padding:0.2rem 0.5rem; font-size:0.7rem;" onclick="batchToggleStatus('searchResults')">전환</button>
+            <button class="btn btn-danger" style="padding:0.2rem 0.5rem; font-size:0.7rem;" onclick="batchDelete('searchResults')">삭제</button>
+          </div>
+        </div>
+        <div id="searchResults" class="search-results-container"></div>
+      </div>
+    </div>
+
     <div style="display:flex; align-items:center; gap:2rem;">
       <div class="progress-info" style="min-width: 180px;">
         <div style="display:flex; justify-content:space-between; font-size:0.75rem; font-weight:800; color:var(--text-muted); margin-bottom: 6px;">
@@ -413,36 +452,6 @@
   </header>
 
   <main>
-    <div class="sidebar" id="sidebar">
-      <button class="toggle-sidebar-btn" onclick="toggleSidebar()" id="toggleBtn" title="사이드바 접기/펴기">◀</button>
-      <div class="sidebar-inner">
-        <div class="quick-memo-box">
-          <h4><span>📝</span> 빠른 메모 / Inbox</h4>
-          <textarea id="quickMemoInput" placeholder="나중에 할 일이나 아이디어를 여기에 바로 적어두세요..." style="min-height: 80px; font-size: 0.85rem;"></textarea>
-          <button class="btn btn-primary" style="padding: 0.5rem; width:100%;" onclick="addQuickMemo()">보드로 보내기</button>
-        </div>
-
-        <button class="btn btn-outline" style="padding:1.1rem; border-style:dashed; width:100%;" onclick="openRangeModal()">
-          <span>➕</span> 신규 일정 등록하기
-        </button>
-
-        <div style="margin-top:1rem; flex:1; display:flex; flex-direction:column; min-height:0;">
-          <h3>🔍 검색 및 필터</h3>
-          <input type="text" id="searchInput" placeholder="전체 일정 검색..." style="width:100%; margin-top:0.5rem; box-sizing: border-box;" oninput="handleSearch()">
-          <div id="searchBatchBar" style="display:none; align-items:center; justify-content:space-between; padding:0.5rem; background:#f1f5f9; border-radius:10px; margin-top:0.5rem;">
-              <label style="font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:0.3rem;">
-                  <input type="checkbox" id="searchSelectAll" onchange="toggleSelectAll('searchResults', this.checked)"> 전체
-              </label>
-              <div style="display:flex; gap:0.3rem;">
-                  <button class="btn btn-ghost" style="padding:0.2rem 0.5rem; font-size:0.7rem;" onclick="batchToggleStatus('searchResults')">전환</button>
-                  <button class="btn btn-danger" style="padding:0.2rem 0.5rem; font-size:0.7rem;" onclick="batchDelete('searchResults')">삭제</button>
-              </div>
-          </div>
-          <div id="searchResults" class="search-results-container"></div>
-        </div>
-      </div>
-    </div>
-
     <div class="content">
       <div class="view-tabs">
           <div class="view-tab active" id="tab-calendar" onclick="switchView('calendar')">📅 월간 달력</div>
@@ -680,6 +689,18 @@
         </div>
       </div>
     </div>
+
+    <!-- Floating Action Button (신규 일정 / 빠른 메모) -->
+    <button id="fabBtn" class="fab-btn" onclick="toggleFab()" title="추가">＋</button>
+    <div id="fabMenu" class="fab-menu">
+      <button class="btn btn-primary fab-action" onclick="fabNewSchedule()">📅 새 일정</button>
+      <button class="btn btn-primary fab-action" onclick="fabQuickMemo()">📝 빠른 메모</button>
+    </div>
+    <div id="quickMemoPop" class="quick-memo-pop">
+      <h4 style="margin:0; font-size:0.95rem; display:flex; align-items:center; gap:0.5rem;"><span>📝</span> 빠른 메모 / Inbox</h4>
+      <textarea id="quickMemoInput" placeholder="나중에 할 일이나 아이디어를 여기에 바로 적어두세요..." style="min-height:90px; font-size:0.9rem; width:100%; box-sizing:border-box;"></textarea>
+      <button class="btn btn-primary" style="padding:0.6rem; width:100%;" onclick="addQuickMemo()">보드로 보내기</button>
+    </div>
   </main>
 
   <script src="lib/db-manager.js"></script>
@@ -828,13 +849,6 @@
         };
         portalTheme.onChange(portalTheme.get());
 
-        // Apply persisted sidebar state
-        const sidebarCollapsed = await dbManager.getItem('config', 'sidebar_collapsed');
-        if (sidebarCollapsed) {
-            document.getElementById('sidebar').classList.add('collapsed');
-            document.getElementById('toggleBtn').innerText = '▶';
-        }
-
         // Load scheduled tasks
         const allTodos = await dbManager.getAll('todos');
         Object.values(allTodos).forEach(t => { 
@@ -878,13 +892,26 @@
         });
     };
 
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const btn = document.getElementById('toggleBtn');
-        const isCollapsed = sidebar.classList.toggle('collapsed');
-        btn.innerText = isCollapsed ? '▶' : '◀';
-        dbManager.setItem('config', 'sidebar_collapsed', isCollapsed);
+    /* --- 플로팅 액션 버튼(FAB) / 빠른 메모 / 검색 패널 제어 --- */
+    function toggleFab() {
+        const menu = document.getElementById('fabMenu');
+        closeQuickMemoPop();
+        const willOpen = !menu.classList.contains('open');
+        menu.classList.toggle('open', willOpen);
+        document.getElementById('fabBtn').textContent = willOpen ? '✕' : '＋';
     }
+    function closeFab() {
+        document.getElementById('fabMenu').classList.remove('open');
+        document.getElementById('fabBtn').textContent = '＋';
+    }
+    function fabNewSchedule() { closeFab(); openRangeModal(); }
+    function fabQuickMemo() {
+        closeFab();
+        document.getElementById('quickMemoPop').classList.add('open');
+        document.getElementById('quickMemoInput').focus();
+    }
+    function closeQuickMemoPop() { document.getElementById('quickMemoPop').classList.remove('open'); }
+    function closeSearchPanel() { document.getElementById('searchPanel').classList.remove('open'); }
 
     // 메모 파일 드롭 모드 전환 (새로 쓰기 ↔ 이어붙이기)
     function toggleMemoDropMode() {
@@ -1152,6 +1179,7 @@
             if (!item || e.target.type === 'checkbox') return;
 
             const { type, id, date } = item.dataset;
+            closeSearchPanel();
             if (type === 'todo') {
                 selectedDate = new Date(date);
                 currentDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
@@ -1164,7 +1192,14 @@
             }
         });
 
-        window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); closeTaskDetailModal(); closeAssignMemoModal(); } });
+        // 바깥 클릭 시 FAB 메뉴 / 빠른 메모 / 검색 패널 닫기
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#fabBtn') && !e.target.closest('#fabMenu')) closeFab();
+            if (!e.target.closest('#quickMemoPop') && !e.target.closest('#fabBtn') && !e.target.closest('#fabMenu')) closeQuickMemoPop();
+            if (!e.target.closest('.header-search')) closeSearchPanel();
+        });
+
+        window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); closeTaskDetailModal(); closeAssignMemoModal(); closeFab(); closeQuickMemoPop(); closeSearchPanel(); } });
     }
 
     /* --- Quick Memo Logic --- */
@@ -1384,6 +1419,7 @@
         await dbManager.setItem('stickyMemos', memo.id, memo);
         stickyMemos.unshift(memo);
         input.value = '';
+        closeQuickMemoPop();
         if (currentView === 'memo') renderMemoBoard();
         else showToast('메모 보드(인박스)에 저장되었습니다.', 'success');
     }
@@ -1484,12 +1520,7 @@
     }
 
     function focusQuickMemo() {
-        if (!document.getElementById('sidebar').classList.contains('collapsed')) {
-            document.getElementById('quickMemoInput').focus();
-        } else {
-            toggleSidebar();
-            setTimeout(() => document.getElementById('quickMemoInput').focus(), 300);
-        }
+        fabQuickMemo();
     }
 
     /* --- 연속(기간) 일정 헬퍼 --- */
@@ -1832,12 +1863,15 @@
 
     function openDrawer() {
       closeRangeModal();
+      closeFab(); closeQuickMemoPop();
       document.getElementById('dailyDrawer').classList.add('open');
+      document.getElementById('fabBtn').style.display = 'none'; // 드로어와 겹치지 않게 숨김
       renderDrawerContent();
     }
 
     function closeDrawer() {
       document.getElementById('dailyDrawer').classList.remove('open');
+      document.getElementById('fabBtn').style.display = '';
     }
     function switchModalTab(tab) {
       document.getElementById('mTabAdd').classList.toggle('active', tab === 'add');
@@ -1952,12 +1986,14 @@
     const term = document.getElementById('searchInput').value.toLowerCase(),
         res = document.getElementById('searchResults');
     res.innerHTML = '';
-    
+
     if (!term) {
         document.getElementById('searchBatchBar').style.display = 'none';
+        closeSearchPanel();
         return;
     }
-    
+    document.getElementById('searchPanel').classList.add('open');
+
     let matches = [];
     
     // 1. Search Todos
