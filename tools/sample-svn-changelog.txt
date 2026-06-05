@@ -1,0 +1,100 @@
+----------------------------------------------------------------------------
+r10523 | kim.minsu | 2026-05-28 09:14:22 +0900 (Thu, 28 May 2026) | 1 line
+Changed paths:
+   M /trunk/myproject/src/main/java/com/example/order/OrderService.java
+   M /trunk/myproject/src/main/java/com/example/order/OrderController.java
+   A /trunk/myproject/src/main/java/com/example/order/dto/OrderRequest.java
+
+[ORDER-1023] 주문 생성 API 신규 추가 및 검증 로직 보강
+----------------------------------------------------------------------------
+r10524 | lee.jihye | 2026-05-28 11:42:05 +0900 (Thu, 28 May 2026) | 2 lines
+Changed paths:
+   M /trunk/myproject/src/main/resources/mapper/OrderMapper.xml
+   M /trunk/myproject/src/main/java/com/example/order/OrderService.java
+
+[ORDER-1023] 주문 매퍼 쿼리 수정 - 중복 주문 방지 조건 추가
+JIRA 이슈 연동 확인 완료
+----------------------------------------------------------------------------
+r10525 | park.changho | 2026-05-29 14:03:51 +0900 (Fri, 29 May 2026) | 1 line
+Changed paths:
+   A /trunk/myproject/src/main/webapp/WEB-INF/views/order/list.jsp
+   A /trunk/myproject/src/main/webapp/resources/js/order-list.js
+   M /trunk/myproject/src/main/webapp/resources/css/common.css
+
+[ORDER-1031] 주문 목록 화면 UI 구현
+----------------------------------------------------------------------------
+r10526 | kim.minsu | 2026-05-29 16:20:18 +0900 (Fri, 29 May 2026) | 1 line
+Changed paths:
+   M /trunk/myproject/src/main/java/com/example/common/util/DateUtil.java
+
+공통 날짜 유틸 버그 수정 - 월말 계산 오류 처리
+----------------------------------------------------------------------------
+r10527 | choi.yuna | 2026-06-01 10:08:33 +0900 (Mon, 01 Jun 2026) | 3 lines
+Changed paths:
+   M /trunk/myproject/src/main/java/com/example/order/OrderService.java
+   M /trunk/myproject/src/main/java/com/example/payment/PaymentService.java
+   A /trunk/myproject/src/main/java/com/example/payment/PaymentGateway.java
+   D /trunk/myproject/src/main/java/com/example/payment/LegacyPayment.java
+
+[PAY-2050] 결제 모듈 리팩토링
+- 레거시 결제 클래스 제거
+- 신규 게이트웨이 연동
+----------------------------------------------------------------------------
+r10528 | lee.jihye | 2026-06-01 13:55:47 +0900 (Mon, 01 Jun 2026) | 1 line
+Changed paths:
+   M /trunk/myproject/src/main/resources/config/application.properties
+
+운영 DB 커넥션 풀 설정값 조정
+----------------------------------------------------------------------------
+r10529 | park.changho | 2026-06-02 09:31:12 +0900 (Tue, 02 Jun 2026) | 1 line
+Changed paths:
+   M /trunk/myproject/src/main/webapp/resources/js/order-list.js
+   M /trunk/myproject/src/main/webapp/WEB-INF/views/order/list.jsp
+
+[ORDER-1031] 주문 목록 페이징 처리 추가
+----------------------------------------------------------------------------
+r10530 | jung.daeun | 2026-06-02 15:47:29 +0900 (Tue, 02 Jun 2026) | 2 lines
+Changed paths:
+   A /trunk/myproject/src/main/java/com/example/notification/NotificationService.java
+   A /trunk/myproject/src/main/java/com/example/notification/EmailSender.java
+   M /trunk/myproject/src/main/resources/config/application.properties
+
+[NOTI-3001] 알림 발송 서비스 신규 개발
+SMTP 설정 추가
+----------------------------------------------------------------------------
+r10531 | kim.minsu | 2026-06-03 11:18:04 +0900 (Wed, 03 Jun 2026) | 1 line
+Changed paths:
+   M /trunk/myproject/src/main/java/com/example/order/OrderController.java
+   M /trunk/myproject/src/main/java/com/example/order/dto/OrderRequest.java
+
+[ORDER-1023] 주문 요청 DTO 필드 검증 어노테이션 추가
+----------------------------------------------------------------------------
+r10532 | choi.yuna | 2026-06-03 17:02:56 +0900 (Wed, 03 Jun 2026) | 1 line
+Changed paths:
+   M /trunk/myproject/src/main/java/com/example/payment/PaymentService.java
+   M /trunk/myproject/src/main/resources/mapper/PaymentMapper.xml
+
+[PAY-2050] 결제 내역 조회 쿼리 인덱스 최적화
+----------------------------------------------------------------------------
+r10533 | park.changho | 2026-06-04 10:40:21 +0900 (Thu, 04 Jun 2026) | 1 line
+Changed paths:
+   M /trunk/myproject/src/main/webapp/resources/css/common.css
+
+전체 화면 반응형 레이아웃 미세 조정
+----------------------------------------------------------------------------
+r10534 | jung.daeun | 2026-06-04 14:25:38 +0900 (Thu, 04 Jun 2026) | 1 line
+Changed paths:
+   M /trunk/myproject/src/main/java/com/example/notification/EmailSender.java
+   M /trunk/myproject/src/main/java/com/example/common/util/DateUtil.java
+
+[NOTI-3001] 이메일 발송 시 전송 시각 포맷 적용
+----------------------------------------------------------------------------
+r10535 | lee.jihye | 2026-06-05 09:12:47 +0900 (Fri, 05 Jun 2026) | 2 lines
+Changed paths:
+   M /trunk/myproject/src/main/java/com/example/order/OrderService.java
+   R /trunk/myproject/src/main/java/com/example/order/OrderValidator.java
+   M /trunk/myproject/src/test/java/com/example/order/OrderServiceTest.java
+
+[ORDER-1045] 주문 검증기 클래스 교체 및 테스트 보강
+hotfix 대상 리비전
+----------------------------------------------------------------------------
