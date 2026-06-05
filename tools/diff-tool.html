@@ -93,8 +93,16 @@
     tr.del td.content { background: var(--del-bg); color: var(--del-text); }
     tr.del td.sign { color: var(--del-text); }
     .empty-msg { padding: 3rem; text-align: center; color: var(--text-muted); }
+    /* 줄 내 변경 강조 (word diff) */
+    .diff td.content .wd { border-radius: 2px; padding: 0 1px; }
+    tr.del td.content .wd { background: rgba(244,63,94,0.40); }
+    tr.add td.content .wd { background: rgba(16,185,129,0.40); }
+    body.dark tr.del td.content .wd { background: rgba(255,123,114,0.38); }
+    body.dark tr.add td.content .wd { background: rgba(126,231,135,0.30); }
+    textarea.drag-hover { box-shadow: inset 0 0 0 3px var(--primary); }
   </style>
   <script src="lib/portal-theme.js"></script>
+  <script src="lib/file-drop-handler.js"></script>
   <script src="lib/toast-utils.js"></script>
 </head>
 <body>
@@ -104,8 +112,10 @@
       <label class="opt"><input type="checkbox" id="optTrim" checked> 끝 공백 무시</label>
       <label class="opt"><input type="checkbox" id="optCase"> 대소문자 무시</label>
       <label class="opt"><input type="checkbox" id="optBlank"> 빈 줄 무시</label>
+      <label class="opt"><input type="checkbox" id="optWS"> 공백 전체 무시</label>
       <button class="btn" onclick="swap()">⇄ 좌우 교체</button>
       <button class="btn btn-primary" onclick="runDiff()">비교 실행</button>
+      <button class="btn" onclick="copyDiff()">📋 결과 복사</button>
       <button class="btn" onclick="loadSample()">샘플</button>
       <button class="btn" onclick="clearAll()">비우기</button>
     </div>
@@ -146,9 +156,12 @@
     }));
     document.querySelectorAll('.opt input').forEach(c => c.addEventListener('change', runDiff));
 
+    let lastDiffText = '';
+
     function normalize(line) {
       let s = line;
-      if (document.getElementById('optTrim').checked) s = s.replace(/\s+$/, '');
+      if (document.getElementById('optWS').checked) s = s.replace(/\s+/g, '');
+      else if (document.getElementById('optTrim').checked) s = s.replace(/\s+$/, '');
       if (document.getElementById('optCase').checked) s = s.toLowerCase();
       return s;
     }
@@ -206,6 +219,24 @@
       return (s == null ? '' : s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
     }
 
+    /* 두 줄 사이의 바뀐 토큰만 강조 (단어 단위 LCS) */
+    function inlineDiff(a, b) {
+      const ta = a.match(/\s+|\S+/g) || [];
+      const tb = b.match(/\s+|\S+/g) || [];
+      const n = ta.length, m = tb.length;
+      const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
+      for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = ta[i] === tb[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      let i = 0, j = 0, aOut = '', bOut = '';
+      while (i < n && j < m) {
+        if (ta[i] === tb[j]) { aOut += esc(ta[i]); bOut += esc(tb[j]); i++; j++; }
+        else if (dp[i + 1][j] >= dp[i][j + 1]) { aOut += `<span class="wd">${esc(ta[i])}</span>`; i++; }
+        else { bOut += `<span class="wd">${esc(tb[j])}</span>`; j++; }
+      }
+      while (i < n) { aOut += `<span class="wd">${esc(ta[i])}</span>`; i++; }
+      while (j < m) { bOut += `<span class="wd">${esc(tb[j])}</span>`; j++; }
+      return { a: aOut, b: bOut };
+    }
+
     function runDiff() {
       const aText = left.value, bText = right.value;
       if (!aText && !bText) {
@@ -213,24 +244,46 @@
         document.getElementById('addCount').textContent = '+0';
         document.getElementById('delCount').textContent = '-0';
         document.getElementById('sameMsg').textContent = '';
+        lastDiffText = '';
         return;
       }
       const rows = computeDiff(splitLines(aText), splitLines(bText));
+
+      // 인접한 del/add 블록을 짝지어 줄 내 변경 토큰만 강조
+      const rendered = [];
+      let idx = 0;
+      while (idx < rows.length) {
+        if (rows[idx].type === 'del') {
+          const dels = []; while (idx < rows.length && rows[idx].type === 'del') { dels.push(rows[idx]); idx++; }
+          const adds = []; while (idx < rows.length && rows[idx].type === 'add') { adds.push(rows[idx]); idx++; }
+          const pairs = Math.min(dels.length, adds.length);
+          const wd = [];
+          for (let k = 0; k < pairs; k++) wd.push(inlineDiff(dels[k].a, adds[k].b));
+          dels.forEach((d, k) => rendered.push({ ...d, html: k < pairs ? wd[k].a : null }));
+          adds.forEach((ad, k) => rendered.push({ ...ad, html: k < pairs ? wd[k].b : null }));
+        } else { rendered.push(rows[idx]); idx++; }
+      }
+
       let added = 0, deleted = 0;
       const html = ['<table class="diff"><tbody>'];
-      rows.forEach(r => {
+      const copyLines = [];
+      rendered.forEach(r => {
         if (r.type === 'same') {
           html.push(`<tr class="same"><td class="gutter">${r.ai}</td><td class="gutter">${r.bi}</td><td class="sign"></td><td class="content">${esc(r.a)}</td></tr>`);
+          copyLines.push('  ' + r.a);
         } else if (r.type === 'del') {
           deleted++;
-          html.push(`<tr class="del"><td class="gutter">${r.ai}</td><td class="gutter"></td><td class="sign">-</td><td class="content">${esc(r.a)}</td></tr>`);
+          html.push(`<tr class="del"><td class="gutter">${r.ai}</td><td class="gutter"></td><td class="sign">-</td><td class="content">${r.html != null ? r.html : esc(r.a)}</td></tr>`);
+          copyLines.push('- ' + r.a);
         } else {
           added++;
-          html.push(`<tr class="add"><td class="gutter"></td><td class="gutter">${r.bi}</td><td class="sign">+</td><td class="content">${esc(r.b)}</td></tr>`);
+          html.push(`<tr class="add"><td class="gutter"></td><td class="gutter">${r.bi}</td><td class="sign">+</td><td class="content">${r.html != null ? r.html : esc(r.b)}</td></tr>`);
+          copyLines.push('+ ' + r.b);
         }
       });
       html.push('</tbody></table>');
       diffView.innerHTML = html.join('');
+      lastDiffText = copyLines.join('\n');
 
       document.getElementById('addCount').textContent = '+' + added;
       document.getElementById('delCount').textContent = '-' + deleted;
@@ -253,6 +306,20 @@
       right.value = `function greet(name, lang) {\n  console.log("안녕, " + name);\n  return true;\n}\n\nconst version = 2;\nconst debug = false;`;
       runDiff();
     }
+
+    function copyDiff() {
+      if (!lastDiffText) { showToast('복사할 비교 결과가 없습니다.', 'warning'); return; }
+      navigator.clipboard.writeText(lastDiffText).then(
+        () => showToast('비교 결과를 복사했습니다. (+/- 형식)', 'success'),
+        () => showToast('복사에 실패했습니다.', 'error')
+      );
+    }
+
+    // 파일 드래그앤드롭으로 양쪽 불러오기
+    [left, right].forEach(el => fileDropHandler.init(el, {
+      onText: (content) => { el.value = content; runDiff(); },
+      onImage: () => showToast('이미지는 지원하지 않습니다.', 'warning')
+    }));
   </script>
 </body>
 </html>

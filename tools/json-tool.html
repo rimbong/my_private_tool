@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JSON 도구</title>
+  <title>JSON / XML 도구</title>
   <style>
     :root {
       --primary: #4f46e5;
@@ -21,6 +21,7 @@
       --code-number: #b45309;
       --code-bool: #9333ea;
       --code-null: #94a3b8;
+      --hl: #fde047;
     }
     body.dark {
       --primary: #818cf8;
@@ -36,30 +37,42 @@
       --code-number: #ffa657;
       --code-bool: #d2a8ff;
       --code-null: #8b949e;
+      --hl: #9a6700;
     }
     * { box-sizing: border-box; }
     body {
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      margin: 0; background: var(--bg); color: var(--text);
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
       transition: background 0.2s, color 0.2s;
     }
     header {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 1rem; flex-wrap: wrap;
-      padding: 1rem 1.5rem; background: var(--card-bg);
+      display: flex; flex-direction: column; align-items: stretch;
+      gap: 0.7rem;
+      padding: 0.75rem 1.25rem; background: var(--card-bg);
       border-bottom: 1px solid var(--border);
     }
-    h1 { margin: 0; font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
-    .toolbar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+    .head-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    h1 { margin: 0; font-size: 1.15rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+    /* 형식 탭 토글 */
+    .fmt-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .fmt-toggle button { border: none; background: var(--card-bg); color: var(--text-muted); padding: 0.45rem 1.2rem; font-weight: 800; font-size: 0.85rem; cursor: pointer; transition: all 0.15s; }
+    .fmt-toggle button.active { background: var(--primary); color: #fff; }
+    /* 툴바 */
+    .toolbar { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+    .action-set { display: inline-flex; gap: 0.4rem; }
+    .divider { width: 1px; align-self: stretch; background: var(--border); margin: 0 0.3rem; }
+    .spacer { flex: 1; }
+    .btn-lg { padding: 0.5rem 0.9rem; font-size: 0.85rem; }
+    /* 변환 드롭다운 */
+    .convert-dd { position: relative; display: inline-block; }
+    .dd-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 24px rgba(0,0,0,0.16); z-index: 50; min-width: 180px; overflow: hidden; padding: 0.3rem; }
+    .dd-menu.open { display: block; }
+    .dd-menu button { display: block; width: 100%; text-align: left; border: none; background: transparent; color: var(--text); padding: 0.5rem 0.7rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; border-radius: 7px; }
+    .dd-menu button:hover { background: var(--bg); color: var(--primary); }
     .btn {
-      padding: 0.5rem 0.9rem; border-radius: 0.5rem; border: 1px solid var(--border);
-      font-weight: 700; font-size: 0.85rem; cursor: pointer; background: var(--card-bg);
+      padding: 0.4rem 0.7rem; border-radius: 0.5rem; border: 1px solid var(--border);
+      font-weight: 700; font-size: 0.8rem; cursor: pointer; background: var(--card-bg);
       color: var(--text); transition: all 0.15s; white-space: nowrap;
     }
     .btn:hover { border-color: var(--primary); color: var(--primary); }
@@ -72,38 +85,42 @@
     .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     .pane + .pane { border-left: 1px solid var(--border); }
     .pane-head {
-      padding: 0.6rem 1rem; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
+      padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
       letter-spacing: 0.05em; color: var(--text-muted); background: var(--card-bg);
       border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
     }
+    .pane-head .right { display: flex; align-items: center; gap: 0.4rem; }
     textarea {
       flex: 1; border: none; outline: none; resize: none; padding: 1rem 1.25rem;
       font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.9rem;
       line-height: 1.6; background: var(--editor-bg); color: var(--text); tab-size: 2;
     }
+    textarea.drag-hover { box-shadow: inset 0 0 0 3px var(--primary); }
     .output {
       flex: 1; overflow: auto; padding: 1rem 1.25rem; background: var(--editor-bg);
       font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.9rem; line-height: 1.6;
     }
-    /* JSON tree */
     .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
     .tree ul { padding-left: 1.25rem; border-left: 1px dashed var(--border); margin-left: 0.35rem; }
     .tree li { white-space: nowrap; }
     .tree .row { display: inline-flex; align-items: baseline; gap: 0.35rem; padding: 1px 0; }
-    .toggle {
-      cursor: pointer; user-select: none; color: var(--text-muted);
-      display: inline-block; width: 1rem; text-align: center; font-size: 0.7rem;
-    }
+    .toggle { cursor: pointer; user-select: none; color: var(--text-muted); display: inline-block; width: 1rem; text-align: center; font-size: 0.7rem; }
     .collapsed > ul { display: none; }
     .collapsed > .row .preview { display: inline; }
     .preview { display: none; color: var(--text-muted); font-style: italic; }
-    .k-key { color: var(--code-key); font-weight: 600; }
+    .k-key { color: var(--code-key); font-weight: 600; cursor: pointer; }
+    .k-key:hover { text-decoration: underline; }
     .k-string { color: var(--code-string); }
     .k-number { color: var(--code-number); }
     .k-bool { color: var(--code-bool); }
     .k-null { color: var(--code-null); }
     .k-punc { color: var(--text-muted); }
+    .hl { background: var(--hl); border-radius: 2px; color: inherit; }
     .badge { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 999px; background: var(--border); color: var(--text-muted); font-weight: 800; }
+    .badge.json { background: #6366f11a; color: var(--primary); }
+    .badge.xml { background: #0ea5e91a; color: #0284c7; }
+    .tree-search { padding: 0.3rem 0.6rem; border: 1px solid var(--border); border-radius: 0.5rem; font-size: 0.8rem; background: var(--editor-bg); color: var(--text); outline: none; width: 160px; }
+    .tree-search:focus { border-color: var(--primary); }
 
     .status-bar {
       padding: 0.5rem 1.25rem; font-size: 0.8rem; border-top: 1px solid var(--border);
@@ -112,354 +129,462 @@
     .status-bar.ok { color: var(--success); }
     .status-bar.err { color: var(--danger); font-weight: 700; }
     .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; }
-    .seg button {
-      border: none; background: var(--card-bg); color: var(--text-muted); padding: 0.4rem 0.8rem;
-      font-weight: 800; font-size: 0.8rem; cursor: pointer;
-    }
+    .seg button { border: none; background: var(--card-bg); color: var(--text-muted); padding: 0.4rem 0.7rem; font-weight: 800; font-size: 0.78rem; cursor: pointer; }
     .seg button.active { background: var(--primary); color: #fff; }
-    @media (max-width: 760px) { main { flex-direction: column; } .pane + .pane { border-left: none; border-top: 1px solid var(--border); } }
+    @media (max-width: 820px) { main { flex-direction: column; } .pane + .pane { border-left: none; border-top: 1px solid var(--border); } }
   </style>
   <script src="lib/portal-theme.js"></script>
+  <script src="lib/file-drop-handler.js"></script>
   <script src="lib/toast-utils.js"></script>
 </head>
 <body>
   <header>
-    <h1>🧩 JSON 도구</h1>
-    <div class="toolbar">
-      <div class="seg" id="viewSeg">
-        <button class="active" data-view="formatted" onclick="setView('formatted')">정렬</button>
-        <button data-view="tree" onclick="setView('tree')">트리</button>
+    <div class="head-top">
+      <h1>🧩 JSON / XML</h1>
+      <div class="fmt-toggle" title="입력 형식 (입력에 따라 자동 전환)">
+        <button id="fmtJson" class="active" onclick="setFormat('json', true)">JSON</button>
+        <button id="fmtXml" onclick="setFormat('xml', true)">XML</button>
       </div>
-      <button class="btn btn-primary" onclick="formatJson()">✨ 포맷</button>
-      <button class="btn" onclick="minifyJson()">🗜️ 압축</button>
-      <button class="btn" onclick="convert('toXml')">→ XML</button>
-      <button class="btn" onclick="convert('fromXml')">XML →</button>
-      <button class="btn" onclick="copyOutput()">📋 복사</button>
-      <button class="btn" onclick="loadSample()">샘플</button>
-      <button class="btn btn-danger" onclick="clearAll()">비우기</button>
+    </div>
+    <div class="toolbar">
+      <!-- JSON 액션 -->
+      <div id="jsonActions" class="action-set">
+        <button class="btn btn-primary btn-lg" onclick="formatJson()" title="Ctrl+Enter">✨ 정렬</button>
+        <button class="btn btn-lg" onclick="minifyJson()">🗜️ 압축</button>
+        <button class="btn btn-lg" onclick="setView('tree')">🌳 트리</button>
+        <button class="btn btn-lg" onclick="sortKeys()">🔤 키정렬</button>
+      </div>
+      <!-- XML 액션 -->
+      <div id="xmlActions" class="action-set" style="display:none;">
+        <button class="btn btn-primary btn-lg" onclick="prettyXmlAction()" title="Ctrl+Enter">✨ 정렬</button>
+        <button class="btn btn-lg" onclick="escapeXmlAction()">Escape</button>
+        <button class="btn btn-lg" onclick="unescapeXmlAction()">Unescape</button>
+        <button class="btn btn-lg" onclick="validateXmlAction()">검증</button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="convert-dd">
+        <button class="btn btn-lg" onclick="toggleConvertMenu(event)">🔄 변환 ▾</button>
+        <div id="convertMenu" class="dd-menu">
+          <button onclick="convert('toXml'); closeConvertMenu()">JSON → XML</button>
+          <button onclick="convert('fromXml'); closeConvertMenu()">XML → JSON</button>
+          <button onclick="jsonToCsv(); closeConvertMenu()">JSON → CSV</button>
+          <button onclick="unescapeJsonString(); closeConvertMenu()">escape 문자열 풀기</button>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <button class="btn btn-lg" onclick="copyOutput()">📋 복사</button>
+      <button class="btn btn-lg" onclick="downloadOutput()">💾 저장</button>
+      <button class="btn btn-lg" onclick="loadSample()">샘플</button>
+      <button class="btn btn-lg btn-danger" onclick="clearAll()">비우기</button>
     </div>
   </header>
 
   <main>
     <div class="pane">
-      <div class="pane-head"><span>입력</span><span class="badge" id="inSize">0 B</span></div>
-      <textarea id="input" placeholder="여기에 JSON(또는 XML→ 변환 시 XML)을 붙여넣으세요..." spellcheck="false"></textarea>
+      <div class="pane-head">
+        <span>입력 <span class="badge" id="fmtBadge">-</span></span>
+        <span class="badge" id="inSize">0 B</span>
+      </div>
+      <textarea id="input" placeholder="JSON 또는 XML을 붙여넣으세요. (.json/.xml/.txt 파일을 끌어다 놓아도 됩니다)" spellcheck="false"></textarea>
     </div>
     <div class="pane">
-      <div class="pane-head"><span>결과</span><span class="badge" id="outInfo"></span></div>
+      <div class="pane-head">
+        <span>결과</span>
+        <div class="right">
+          <input type="text" id="treeSearch" class="tree-search" placeholder="🔎 트리 검색..." oninput="onTreeSearch()" style="display:none;">
+          <div class="seg" id="viewSeg">
+            <button class="active" data-view="formatted" onclick="setView('formatted')">텍스트</button>
+            <button data-view="tree" onclick="setView('tree')">트리</button>
+          </div>
+        </div>
+      </div>
       <textarea id="outputText" class="output" readonly placeholder="결과가 여기에 표시됩니다..." spellcheck="false" style="display:block;"></textarea>
       <div id="outputTree" class="output" style="display:none;"></div>
     </div>
   </main>
 
-  <div class="status-bar" id="status">준비됨 · 입력 후 [포맷]을 누르거나 자동 검증됩니다.</div>
+  <div class="status-bar" id="status">준비됨 · 입력하면 형식(JSON/XML)을 자동 감지하고 검증합니다. · Ctrl+Enter로 정렬</div>
 
   <script>
     const input = document.getElementById('input');
     const outputText = document.getElementById('outputText');
     const outputTree = document.getElementById('outputTree');
     const statusEl = document.getElementById('status');
+    const fmtBadge = document.getElementById('fmtBadge');
+    const treeSearch = document.getElementById('treeSearch');
     let currentView = 'formatted';
-    let lastValue = undefined; // 마지막으로 파싱 성공한 값
+    let lastValue = undefined; // 마지막으로 파싱 성공한 JSON 값
+    const STORAGE_KEY = 'json-xml-tool-input';
 
-    function setStatus(msg, kind) {
-      statusEl.textContent = msg;
-      statusEl.className = 'status-bar' + (kind ? ' ' + kind : '');
+    /* ---- 상태/유틸 ---- */
+    function setStatus(msg, kind) { statusEl.textContent = msg; statusEl.className = 'status-bar' + (kind ? ' ' + kind : ''); }
+    function fmtBytes(n) { return n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB'; }
+    function describe(v) {
+      if (Array.isArray(v)) return `배열 (${v.length}개)`;
+      if (v && typeof v === 'object') return `객체 (키 ${Object.keys(v).length}개)`;
+      return typeof v;
+    }
+    function detectFormat(text) {
+      const t = text.trim();
+      if (!t) return null;
+      if (t[0] === '<') return 'xml';
+      if (t[0] === '{' || t[0] === '[') return 'json';
+      try { JSON.parse(t); return 'json'; } catch (e) {}
+      return 'xml';
+    }
+    function setBadge(fmt) {
+      fmtBadge.textContent = fmt ? fmt.toUpperCase() : '-';
+      fmtBadge.className = 'badge' + (fmt ? ' ' + fmt : '');
     }
 
-    function fmtBytes(n) {
-      if (n < 1024) return n + ' B';
-      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
-      return (n / 1024 / 1024).toFixed(2) + ' MB';
+    /* 형식 탭: 해당 형식 액션만 노출 */
+    let activeFormat = 'json';
+    function setFormat(fmt) {
+      if (!fmt) return;
+      activeFormat = fmt;
+      document.getElementById('fmtJson').classList.toggle('active', fmt === 'json');
+      document.getElementById('fmtXml').classList.toggle('active', fmt === 'xml');
+      document.getElementById('jsonActions').style.display = fmt === 'json' ? 'inline-flex' : 'none';
+      document.getElementById('xmlActions').style.display = fmt === 'xml' ? 'inline-flex' : 'none';
     }
+    function toggleConvertMenu(e) { if (e) e.stopPropagation(); document.getElementById('convertMenu').classList.toggle('open'); }
+    function closeConvertMenu() { document.getElementById('convertMenu').classList.remove('open'); }
+    document.addEventListener('click', (e) => { if (!e.target.closest('.convert-dd')) closeConvertMenu(); });
 
     input.addEventListener('input', () => {
       document.getElementById('inSize').textContent = fmtBytes(new Blob([input.value]).size);
+      try { localStorage.setItem(STORAGE_KEY, input.value); } catch (e) {}
       autoValidate();
     });
 
     function autoValidate() {
       const txt = input.value.trim();
-      if (!txt) { setStatus('준비됨'); return; }
-      try {
-        lastValue = JSON.parse(txt);
-        const info = describe(lastValue);
-        setStatus('✅ 유효한 JSON · ' + info, 'ok');
-      } catch (e) {
+      if (!txt) { setBadge(null); setStatus('준비됨'); return; }
+      const fmt = detectFormat(txt);
+      setBadge(fmt);
+      setFormat(fmt); // 입력 형식에 맞춰 탭/버튼 자동 전환
+      if (fmt === 'json') {
+        try { lastValue = JSON.parse(txt); setStatus('✅ 유효한 JSON · ' + describe(lastValue), 'ok'); }
+        catch (e) { lastValue = undefined; setStatus('⚠ ' + jsonError(e, txt), 'err'); }
+      } else {
         lastValue = undefined;
-        setStatus('⚠ ' + friendlyError(e, txt), 'err');
+        const err = xmlParseError(txt);
+        if (err) setStatus('⚠ ' + err, 'err');
+        else setStatus('✅ 유효한 XML', 'ok');
       }
     }
 
-    function describe(v) {
-      if (Array.isArray(v)) return `배열 (${v.length}개 항목)`;
-      if (v && typeof v === 'object') return `객체 (키 ${Object.keys(v).length}개)`;
-      return typeof v;
-    }
-
-    function friendlyError(e, txt) {
-      // JSON.parse 메시지에서 position 추출해 줄/열 안내
+    function jsonError(e, txt) {
       const m = /position (\d+)/.exec(e.message);
       if (m) {
-        const pos = +m[1];
-        const before = txt.slice(0, pos);
-        const line = before.split('\n').length;
-        const col = pos - before.lastIndexOf('\n');
-        return `JSON 구문 오류 (${line}행 ${col}열 근처): ${e.message}`;
+        const pos = +m[1], before = txt.slice(0, pos);
+        return `JSON 구문 오류 (${before.split('\n').length}행 ${pos - before.lastIndexOf('\n')}열 근처): ${e.message}`;
       }
       return 'JSON 구문 오류: ' + e.message;
     }
+    function xmlParseError(txt) {
+      const doc = new DOMParser().parseFromString(txt, 'application/xml');
+      const err = doc.querySelector('parsererror');
+      return err ? ('XML 파싱 오류: ' + (err.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120)) : null;
+    }
 
-    function requireParsed() {
+    function requireJson() {
       const txt = input.value.trim();
       if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return undefined; }
-      try {
-        return JSON.parse(txt);
-      } catch (e) {
-        setStatus('⚠ ' + friendlyError(e, txt), 'err');
-        showToast('JSON 파싱 실패 — 하단 상태바를 확인하세요.', 'error');
-        return undefined;
-      }
+      try { return JSON.parse(txt); }
+      catch (e) { setStatus('⚠ ' + jsonError(e, txt), 'err'); showToast('JSON 파싱 실패 — 상태바를 확인하세요.', 'error'); return undefined; }
+    }
+    function requireXmlDoc() {
+      const txt = input.value.trim();
+      if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return undefined; }
+      const doc = new DOMParser().parseFromString(txt, 'application/xml');
+      const err = doc.querySelector('parsererror');
+      if (err) { setStatus('⚠ XML 파싱 오류', 'err'); showToast('XML 파싱 실패', 'error'); return undefined; }
+      return doc;
     }
 
+    /* ---- JSON 액션 ---- */
     function formatJson() {
-      const v = requireParsed();
-      if (v === undefined) return;
-      lastValue = v;
-      render();
-      setStatus('✅ 포맷 완료 · ' + describe(v), 'ok');
+      const v = requireJson(); if (v === undefined) return;
+      lastValue = v; render();
+      setStatus('✅ 정렬 완료 · ' + describe(v), 'ok');
     }
-
     function minifyJson() {
-      const v = requireParsed();
-      if (v === undefined) return;
-      lastValue = v;
-      setView('formatted', true);
+      const v = requireJson(); if (v === undefined) return;
+      lastValue = v; setView('formatted', true);
       outputText.value = JSON.stringify(v);
-      document.getElementById('outInfo').textContent = fmtBytes(new Blob([outputText.value]).size);
       setStatus('🗜️ 압축 완료 · ' + describe(v), 'ok');
     }
-
-    function setView(view, skipRender) {
-      currentView = view;
-      document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-      outputText.style.display = view === 'formatted' ? 'block' : 'none';
-      outputTree.style.display = view === 'tree' ? 'block' : 'none';
-      if (!skipRender) render();
+    function sortKeys() {
+      const v = requireJson(); if (v === undefined) return;
+      lastValue = sortDeep(v); render();
+      setStatus('🔤 키를 알파벳순으로 정렬했습니다.', 'ok');
+    }
+    function sortDeep(v) {
+      if (Array.isArray(v)) return v.map(sortDeep);
+      if (v && typeof v === 'object') {
+        return Object.keys(v).sort().reduce((o, k) => { o[k] = sortDeep(v[k]); return o; }, {});
+      }
+      return v;
     }
 
-    function render() {
-      if (lastValue === undefined) {
-        const v = requireParsed();
-        if (v === undefined) return;
-        lastValue = v;
+    /* ---- XML 액션 ---- */
+    function prettyXmlAction() {
+      const doc = requireXmlDoc(); if (!doc) return;
+      setView('formatted', true);
+      outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + serializeXml(doc.documentElement, 0);
+      setStatus('✅ XML 정렬 완료', 'ok');
+    }
+    function serializeXml(node, depth) {
+      const pad = '  '.repeat(depth);
+      const attrs = Array.from(node.attributes || []).map(a => ` ${a.name}="${a.value}"`).join('');
+      const elementChildren = Array.from(node.childNodes).filter(n => n.nodeType === 1);
+      if (elementChildren.length === 0) {
+        const text = node.textContent.trim();
+        if (text === '') return `${pad}<${node.nodeName}${attrs}/>`;
+        return `${pad}<${node.nodeName}${attrs}>${escapeXml(text)}</${node.nodeName}>`;
       }
-      if (currentView === 'formatted') {
-        outputText.value = JSON.stringify(lastValue, null, 2);
-        document.getElementById('outInfo').textContent = fmtBytes(new Blob([outputText.value]).size);
-      } else {
-        outputTree.innerHTML = '';
-        outputTree.appendChild(buildTree(lastValue));
-        document.getElementById('outInfo').textContent = describe(lastValue);
-      }
+      const inner = elementChildren.map(c => serializeXml(c, depth + 1)).join('\n');
+      return `${pad}<${node.nodeName}${attrs}>\n${inner}\n${pad}</${node.nodeName}>`;
+    }
+    function escapeXml(s) { return String(s).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c])); }
+
+    const HTML_ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'", '&#x2F;': '/' };
+    function escapeXmlAction() {
+      if (!input.value) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      setView('formatted', true);
+      outputText.value = input.value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      setStatus('✅ Escape 완료', 'ok');
+    }
+    function unescapeXmlAction() {
+      if (!input.value) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      setView('formatted', true);
+      outputText.value = input.value.replace(/&amp;|&lt;|&gt;|&quot;|&#39;|&apos;|&#x2F;/g, m => HTML_ENTITIES[m]);
+      setStatus('✅ Unescape 완료', 'ok');
+    }
+    function validateXmlAction() {
+      const txt = input.value.trim();
+      if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      const err = xmlParseError(txt);
+      if (err) { setStatus('⚠ ' + err, 'err'); showToast('유효하지 않은 XML', 'error'); }
+      else { setStatus('✅ 유효한 XML 입니다.', 'ok'); showToast('유효한 XML 입니다.', 'success'); }
     }
 
-    /* ---- Tree builder ---- */
-    function buildTree(value) {
-      const ul = document.createElement('ul');
-      ul.className = 'tree';
-      ul.appendChild(buildNode(undefined, value, true));
-      return ul;
-    }
-
-    function buildNode(key, value, isRoot) {
-      const li = document.createElement('li');
-      const row = document.createElement('span');
-      row.className = 'row';
-
-      const isObj = value && typeof value === 'object';
-      if (isObj) {
-        const toggle = document.createElement('span');
-        toggle.className = 'toggle';
-        toggle.textContent = '▼';
-        toggle.onclick = () => {
-          li.classList.toggle('collapsed');
-          toggle.textContent = li.classList.contains('collapsed') ? '▶' : '▼';
-        };
-        row.appendChild(toggle);
-      } else {
-        const sp = document.createElement('span');
-        sp.className = 'toggle';
-        row.appendChild(sp);
-      }
-
-      if (key !== undefined) {
-        const k = document.createElement('span');
-        k.className = 'k-key';
-        k.textContent = JSON.stringify(key);
-        row.appendChild(k);
-        const colon = document.createElement('span');
-        colon.className = 'k-punc';
-        colon.textContent = ':';
-        row.appendChild(colon);
-      }
-
-      if (isObj) {
-        const arr = Array.isArray(value);
-        const open = document.createElement('span');
-        open.className = 'k-punc';
-        open.textContent = arr ? '[' : '{';
-        row.appendChild(open);
-
-        const preview = document.createElement('span');
-        preview.className = 'preview';
-        preview.textContent = arr ? ` … ${value.length} ` : ` … ${Object.keys(value).length} keys `;
-        row.appendChild(preview);
-
-        const close = document.createElement('span');
-        close.className = 'k-punc';
-        close.textContent = arr ? ']' : '}';
-        row.appendChild(close);
-
-        li.appendChild(row);
-
-        const childUl = document.createElement('ul');
-        const entries = arr ? value.map((v, i) => [i, v]) : Object.entries(value);
-        entries.forEach(([ck, cv]) => childUl.appendChild(buildNode(arr ? undefined : ck, cv)));
-        li.appendChild(childUl);
-      } else {
-        const val = document.createElement('span');
-        val.className = valueClass(value);
-        val.textContent = value === undefined ? 'undefined' : JSON.stringify(value);
-        row.appendChild(val);
-        li.appendChild(row);
-      }
-      return li;
-    }
-
-    function valueClass(v) {
-      if (v === null) return 'k-null';
-      switch (typeof v) {
-        case 'string': return 'k-string';
-        case 'number': return 'k-number';
-        case 'boolean': return 'k-bool';
-        default: return 'k-null';
-      }
-    }
-
-    /* ---- JSON <-> XML ---- */
+    /* ---- 변환 ---- */
     function convert(dir) {
       if (dir === 'toXml') {
-        const v = requireParsed();
-        if (v === undefined) return;
-        const xml = jsonToXml(v);
+        const v = requireJson(); if (v === undefined) return;
         setView('formatted', true);
-        outputText.value = xml;
-        document.getElementById('outInfo').textContent = 'XML';
+        outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + nodeToXml(Array.isArray(v) ? 'array' : 'root', v, 1);
         setStatus('✅ JSON → XML 변환 완료', 'ok');
       } else {
-        const txt = input.value.trim();
-        if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return; }
-        try {
-          const doc = new DOMParser().parseFromString(txt, 'application/xml');
-          const errNode = doc.querySelector('parsererror');
-          if (errNode) throw new Error('XML 형식이 올바르지 않습니다.');
-          const obj = xmlToJson(doc.documentElement);
-          lastValue = { [doc.documentElement.nodeName]: obj };
-          render();
-          setView(currentView === 'tree' ? 'tree' : 'formatted');
-          setStatus('✅ XML → JSON 변환 완료', 'ok');
-        } catch (e) {
-          setStatus('⚠ ' + e.message, 'err');
-          showToast('XML 파싱 실패', 'error');
-        }
+        const doc = requireXmlDoc(); if (!doc) return;
+        lastValue = { [doc.documentElement.nodeName]: xmlToJson(doc.documentElement) };
+        render();
+        setStatus('✅ XML → JSON 변환 완료', 'ok');
       }
     }
-
-    function escapeXml(s) {
-      return String(s).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
-    }
-
-    function jsonToXml(value, rootName) {
-      const root = rootName || (Array.isArray(value) ? 'array' : 'root');
-      const body = nodeToXml(root, value, 1);
-      return '<?xml version="1.0" encoding="UTF-8"?>\n' + body;
-    }
-
     function nodeToXml(name, value, depth) {
       const pad = '  '.repeat(depth - 1);
       const safe = name.replace(/[^\w.-]/g, '_');
       if (value === null || value === undefined) return `${pad}<${safe}/>`;
-      if (Array.isArray(value)) {
-        return value.map(v => nodeToXml(name, v, depth)).join('\n');
-      }
+      if (Array.isArray(value)) return value.map(v => nodeToXml(name, v, depth)).join('\n');
       if (typeof value === 'object') {
         const children = Object.entries(value).map(([k, v]) => nodeToXml(k, v, depth + 1)).join('\n');
         return `${pad}<${safe}>\n${children}\n${pad}</${safe}>`;
       }
       return `${pad}<${safe}>${escapeXml(value)}</${safe}>`;
     }
-
     function xmlToJson(node) {
       const elementChildren = Array.from(node.children);
-      if (elementChildren.length === 0) {
-        const text = node.textContent.trim();
-        return text === '' ? null : coerce(text);
-      }
+      if (elementChildren.length === 0) { const t = node.textContent.trim(); return t === '' ? null : coerce(t); }
       const obj = {};
       elementChildren.forEach(child => {
-        const key = child.nodeName;
-        const val = xmlToJson(child);
-        if (obj[key] !== undefined) {
-          if (!Array.isArray(obj[key])) obj[key] = [obj[key]];
-          obj[key].push(val);
-        } else {
-          obj[key] = val;
-        }
+        const key = child.nodeName, val = xmlToJson(child);
+        if (obj[key] !== undefined) { if (!Array.isArray(obj[key])) obj[key] = [obj[key]]; obj[key].push(val); }
+        else obj[key] = val;
       });
       return obj;
     }
+    function coerce(s) { if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s); if (s === 'true') return true; if (s === 'false') return false; return s; }
 
-    function coerce(s) {
-      if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
-      if (s === 'true') return true;
-      if (s === 'false') return false;
-      return s;
+    /* ---- 유틸: JSON 문자열 풀기 / CSV ---- */
+    function unescapeJsonString() {
+      let txt = input.value.trim();
+      if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      try {
+        // 통째로 따옴표로 감싼 JSON 문자열이면 parse, 아니면 escape 시퀀스만 복원
+        let unescaped = (txt[0] === '"') ? JSON.parse(txt) : txt.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
+        // 결과가 JSON이면 예쁘게
+        try { unescaped = JSON.stringify(JSON.parse(unescaped), null, 2); } catch (e) {}
+        setView('formatted', true);
+        outputText.value = unescaped;
+        setStatus('✅ escape 문자열을 풀었습니다.', 'ok');
+      } catch (e) { setStatus('⚠ 문자열 풀기 실패: ' + e.message, 'err'); showToast('풀 수 없는 형식입니다.', 'error'); }
+    }
+    function jsonToCsv() {
+      const v = requireJson(); if (v === undefined) return;
+      const rows = Array.isArray(v) ? v : [v];
+      if (!rows.length || typeof rows[0] !== 'object' || rows[0] === null) { showToast('객체 배열(records) 형태만 CSV로 변환됩니다.', 'warning'); return; }
+      const cols = [...rows.reduce((s, r) => { Object.keys(r || {}).forEach(k => s.add(k)); return s; }, new Set())];
+      const esc = (x) => { if (x === null || x === undefined) return ''; const s = typeof x === 'object' ? JSON.stringify(x) : String(x); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+      const csv = [cols.join(','), ...rows.map(r => cols.map(c => esc(r ? r[c] : '')).join(','))].join('\n');
+      setView('formatted', true);
+      outputText.value = csv;
+      setStatus(`✅ CSV 변환 완료 (${rows.length}행 × ${cols.length}열)`, 'ok');
     }
 
-    /* ---- misc ---- */
+    /* ---- 뷰/렌더 ---- */
+    function setView(view, skipRender) {
+      currentView = view;
+      document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+      outputText.style.display = view === 'formatted' ? 'block' : 'none';
+      outputTree.style.display = view === 'tree' ? 'block' : 'none';
+      treeSearch.style.display = view === 'tree' ? 'block' : 'none';
+      if (!skipRender) render();
+    }
+    function render() {
+      if (lastValue === undefined) { const v = requireJson(); if (v === undefined) return; lastValue = v; }
+      if (currentView === 'formatted') {
+        outputText.value = JSON.stringify(lastValue, null, 2);
+      } else {
+        renderTree();
+      }
+    }
+    function onTreeSearch() { if (currentView === 'tree') renderTree(); }
+    function renderTree() {
+      outputTree.innerHTML = '';
+      const term = treeSearch.value.trim().toLowerCase();
+      let value = lastValue;
+      if (term) {
+        const filtered = filterValue(lastValue, term);
+        if (filtered === undefined) { outputTree.innerHTML = '<div style="color:var(--text-muted); padding:1rem;">일치하는 항목이 없습니다.</div>'; return; }
+        value = filtered;
+      }
+      const ul = document.createElement('ul');
+      ul.className = 'tree';
+      ul.appendChild(buildNode(undefined, value, '', term));
+      outputTree.appendChild(ul);
+    }
+    // 검색어를 포함하는 가지만 남긴 사본 반환 (없으면 undefined)
+    function filterValue(v, term) {
+      if (v === null || typeof v !== 'object') return String(v).toLowerCase().includes(term) ? v : undefined;
+      if (Array.isArray(v)) { const a = v.map(x => filterValue(x, term)).filter(x => x !== undefined); return a.length ? a : undefined; }
+      const out = {}; let keep = false;
+      Object.entries(v).forEach(([k, val]) => {
+        if (k.toLowerCase().includes(term)) { out[k] = val; keep = true; }
+        else { const f = filterValue(val, term); if (f !== undefined) { out[k] = f; keep = true; } }
+      });
+      return keep ? out : undefined;
+    }
+    function hlText(text, term) {
+      if (!term) return escHtml(text);
+      const i = text.toLowerCase().indexOf(term);
+      if (i < 0) return escHtml(text);
+      return escHtml(text.slice(0, i)) + '<span class="hl">' + escHtml(text.slice(i, i + term.length)) + '</span>' + escHtml(text.slice(i + term.length));
+    }
+    function escHtml(s) { return String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
+
+    function buildNode(key, value, path, term) {
+      const li = document.createElement('li');
+      const row = document.createElement('span');
+      row.className = 'row';
+      const isObj = value && typeof value === 'object';
+
+      const toggle = document.createElement('span');
+      toggle.className = 'toggle';
+      if (isObj) { toggle.textContent = '▼'; toggle.onclick = () => { li.classList.toggle('collapsed'); toggle.textContent = li.classList.contains('collapsed') ? '▶' : '▼'; }; }
+      row.appendChild(toggle);
+
+      if (key !== undefined) {
+        const k = document.createElement('span');
+        k.className = 'k-key';
+        k.innerHTML = hlText(JSON.stringify(key), term);
+        k.title = '클릭하면 경로 복사: ' + (path || '(root)');
+        k.onclick = () => { navigator.clipboard.writeText(path).then(() => showToast('경로 복사: ' + (path || '(root)'), 'success')); };
+        row.appendChild(k);
+        const colon = document.createElement('span'); colon.className = 'k-punc'; colon.textContent = ':'; row.appendChild(colon);
+      }
+
+      if (isObj) {
+        const arr = Array.isArray(value);
+        const open = document.createElement('span'); open.className = 'k-punc'; open.textContent = arr ? '[' : '{'; row.appendChild(open);
+        const preview = document.createElement('span'); preview.className = 'preview'; preview.textContent = arr ? ` … ${value.length} ` : ` … ${Object.keys(value).length} keys `; row.appendChild(preview);
+        const close = document.createElement('span'); close.className = 'k-punc'; close.textContent = arr ? ']' : '}'; row.appendChild(close);
+        li.appendChild(row);
+        const childUl = document.createElement('ul');
+        const entries = arr ? value.map((v, i) => [i, v]) : Object.entries(value);
+        entries.forEach(([ck, cv]) => {
+          const childPath = arr ? `${path}[${ck}]` : (path ? `${path}.${ck}` : String(ck));
+          childUl.appendChild(buildNode(arr ? undefined : ck, cv, childPath, term));
+        });
+        li.appendChild(childUl);
+      } else {
+        const val = document.createElement('span');
+        val.className = valueClass(value);
+        val.innerHTML = hlText(value === undefined ? 'undefined' : JSON.stringify(value), term);
+        row.appendChild(val);
+        li.appendChild(row);
+      }
+      return li;
+    }
+    function valueClass(v) { if (v === null) return 'k-null'; switch (typeof v) { case 'string': return 'k-string'; case 'number': return 'k-number'; case 'boolean': return 'k-bool'; default: return 'k-null'; } }
+
+    /* ---- 공통 ---- */
     function copyOutput() {
       const text = currentView === 'formatted' ? outputText.value : (lastValue !== undefined ? JSON.stringify(lastValue, null, 2) : '');
       if (!text) { showToast('복사할 결과가 없습니다.', 'warning'); return; }
-      navigator.clipboard.writeText(text).then(
-        () => showToast('결과를 복사했습니다.', 'success'),
-        () => showToast('복사에 실패했습니다.', 'error')
-      );
+      navigator.clipboard.writeText(text).then(() => showToast('결과를 복사했습니다.', 'success'), () => showToast('복사에 실패했습니다.', 'error'));
     }
-
+    function downloadOutput() {
+      const text = currentView === 'formatted' ? outputText.value : (lastValue !== undefined ? JSON.stringify(lastValue, null, 2) : '');
+      if (!text) { showToast('저장할 결과가 없습니다.', 'warning'); return; }
+      const isXml = text.trim()[0] === '<';
+      const blob = new Blob([text], { type: isXml ? 'application/xml' : 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = isXml ? 'output.xml' : (text.trim()[0] === '{' || text.trim()[0] === '[' ? 'output.json' : 'output.txt');
+      a.click(); URL.revokeObjectURL(a.href);
+    }
     function clearAll() {
-      input.value = '';
-      outputText.value = '';
-      outputTree.innerHTML = '';
-      lastValue = undefined;
-      document.getElementById('inSize').textContent = '0 B';
-      document.getElementById('outInfo').textContent = '';
-      setStatus('준비됨');
+      input.value = ''; outputText.value = ''; outputTree.innerHTML = ''; lastValue = undefined;
+      document.getElementById('inSize').textContent = '0 B'; setBadge(null); setStatus('준비됨');
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
       input.focus();
     }
-
     function loadSample() {
       input.value = JSON.stringify({
-        name: "개발 보조 도구",
-        version: 2.1,
-        active: true,
+        name: "개발 보조 도구", version: 2.2, active: true,
         tags: ["json", "xml", "diff"],
         author: { id: 101, email: "dev@example.com", roles: ["admin", "editor"] },
         config: { darkMode: true, retries: null }
       });
       document.getElementById('inSize').textContent = fmtBytes(new Blob([input.value]).size);
-      formatJson();
+      autoValidate(); formatJson();
     }
+
+    // 파일 드래그앤드롭
+    fileDropHandler.init(input, {
+      onText: (content, file) => { input.value = content; input.dispatchEvent(new Event('input')); showToast(`'${file.name}' 불러옴`, 'success'); },
+      onImage: () => showToast('이미지는 지원하지 않습니다.', 'warning')
+    });
+
+    // Ctrl+Enter = 감지된 형식 기준 정렬
+    input.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        detectFormat(input.value) === 'xml' ? prettyXmlAction() : formatJson();
+      }
+    });
+
+    // 복구
+    window.addEventListener('load', () => {
+      try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) { input.value = saved; document.getElementById('inSize').textContent = fmtBytes(new Blob([saved]).size); autoValidate(); } } catch (e) {}
+    });
   </script>
 </body>
 </html>
