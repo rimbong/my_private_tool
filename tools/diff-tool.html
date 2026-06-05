@@ -100,6 +100,35 @@
     body.dark tr.del td.content .wd { background: rgba(255,123,114,0.38); }
     body.dark tr.add td.content .wd { background: rgba(126,231,135,0.30); }
     textarea.drag-hover { box-shadow: inset 0 0 0 3px var(--primary); }
+
+    /* 결과 헤더 컨트롤 (세그/네비) */
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; }
+    .seg button { border: none; background: var(--card-bg); color: var(--text-muted); padding: 0.35rem 0.75rem; font-weight: 800; font-size: 0.78rem; cursor: pointer; }
+    .seg button.active { background: var(--primary); color: #fff; }
+    .nav-btn-sm { padding: 0.3rem 0.55rem; border-radius: 0.4rem; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); cursor: pointer; font-weight: 800; }
+    .nav-btn-sm:hover { border-color: var(--primary); color: var(--primary); }
+
+    /* 같은 줄 접기 마커 */
+    .collapse-cell { text-align: center; color: var(--text-muted); background: var(--gutter-bg); cursor: pointer; padding: 0.35rem; font-size: 0.78rem; font-weight: 700; user-select: none; }
+    .collapse-cell:hover { color: var(--primary); background: var(--bg); }
+
+    /* 변경 이동 강조 */
+    tr.flash td { animation: diffflash 0.8s ease-out; }
+    @keyframes diffflash { from { background: rgba(99,102,241,0.35); } to { background: transparent; } }
+
+    /* 줄 번호 칸: 자릿수에 맞춰 자동 너비 + 줄바꿈 금지 (1000+ 4자리 대응) */
+    table.diff td.gutter { word-break: normal; white-space: nowrap; }
+    /* 나란히(split) 보기 — 자동 레이아웃으로 줄 번호 칸이 내용에 맞게 늘어남 */
+    table.diff.split { width: 100%; }
+    table.diff.split td.content { width: 50%; }
+    table.diff.split tr > td:nth-child(2) { border-right: 2px solid var(--border); }
+    td.content.cell-del { background: var(--del-bg); color: var(--del-text); }
+    td.content.cell-add { background: var(--add-bg); color: var(--add-text); }
+    td.content.cell-empty { background: var(--gutter-bg); }
+    td.content.cell-del .wd { background: rgba(244,63,94,0.40); border-radius: 2px; }
+    td.content.cell-add .wd { background: rgba(16,185,129,0.40); border-radius: 2px; }
+    body.dark td.content.cell-del .wd { background: rgba(255,123,114,0.38); }
+    body.dark td.content.cell-add .wd { background: rgba(126,231,135,0.30); }
   </style>
   <script src="lib/portal-theme.js"></script>
   <script src="lib/file-drop-handler.js"></script>
@@ -138,6 +167,13 @@
       <span class="pill add" id="addCount">+0</span>
       <span class="pill del" id="delCount">-0</span>
       <span id="sameMsg" style="color:var(--text-muted); font-weight:600;"></span>
+      <span style="flex:1;"></span>
+      <button class="nav-btn-sm" onclick="gotoChange(-1)" title="이전 변경">◀</button>
+      <button class="nav-btn-sm" onclick="gotoChange(1)" title="다음 변경">변경 ▶</button>
+      <div class="seg">
+        <button id="segUnified" class="active" onclick="setDiffView('unified')">통합</button>
+        <button id="segSplit" onclick="setDiffView('split')">나란히</button>
+      </div>
     </div>
     <div class="diff-view" id="diffView">
       <div class="empty-msg">양쪽에 텍스트를 입력하고 <b>비교 실행</b>을 누르세요.<br>입력을 바꾸면 자동으로 다시 비교합니다.</div>
@@ -237,6 +273,13 @@
       return { a: aOut, b: bOut };
     }
 
+    /* ===== 결과 렌더링 (통합/나란히 + 같은 줄 접기 + 변경 이동) ===== */
+    const CONTEXT = 3;          // 변경 주변에 보여줄 동일 줄 수
+    let diffBlocks = [];
+    let expanded = new Set();   // 펼친 동일 블록 인덱스
+    let viewMode = 'unified';
+    let changeAnchors = [], curChange = -1;
+
     function runDiff() {
       const aText = left.value, bText = right.value;
       if (!aText && !bText) {
@@ -244,50 +287,117 @@
         document.getElementById('addCount').textContent = '+0';
         document.getElementById('delCount').textContent = '-0';
         document.getElementById('sameMsg').textContent = '';
-        lastDiffText = '';
+        lastDiffText = ''; diffBlocks = [];
         return;
       }
       const rows = computeDiff(splitLines(aText), splitLines(bText));
-
-      // 인접한 del/add 블록을 짝지어 줄 내 변경 토큰만 강조
-      const rendered = [];
-      let idx = 0;
-      while (idx < rows.length) {
-        if (rows[idx].type === 'del') {
-          const dels = []; while (idx < rows.length && rows[idx].type === 'del') { dels.push(rows[idx]); idx++; }
-          const adds = []; while (idx < rows.length && rows[idx].type === 'add') { adds.push(rows[idx]); idx++; }
-          const pairs = Math.min(dels.length, adds.length);
-          const wd = [];
-          for (let k = 0; k < pairs; k++) wd.push(inlineDiff(dels[k].a, adds[k].b));
-          dels.forEach((d, k) => rendered.push({ ...d, html: k < pairs ? wd[k].a : null }));
-          adds.forEach((ad, k) => rendered.push({ ...ad, html: k < pairs ? wd[k].b : null }));
-        } else { rendered.push(rows[idx]); idx++; }
-      }
+      diffBlocks = buildBlocks(rows);
+      expanded.clear();
 
       let added = 0, deleted = 0;
-      const html = ['<table class="diff"><tbody>'];
       const copyLines = [];
-      rendered.forEach(r => {
-        if (r.type === 'same') {
-          html.push(`<tr class="same"><td class="gutter">${r.ai}</td><td class="gutter">${r.bi}</td><td class="sign"></td><td class="content">${esc(r.a)}</td></tr>`);
-          copyLines.push('  ' + r.a);
-        } else if (r.type === 'del') {
-          deleted++;
-          html.push(`<tr class="del"><td class="gutter">${r.ai}</td><td class="gutter"></td><td class="sign">-</td><td class="content">${r.html != null ? r.html : esc(r.a)}</td></tr>`);
-          copyLines.push('- ' + r.a);
-        } else {
-          added++;
-          html.push(`<tr class="add"><td class="gutter"></td><td class="gutter">${r.bi}</td><td class="sign">+</td><td class="content">${r.html != null ? r.html : esc(r.b)}</td></tr>`);
-          copyLines.push('+ ' + r.b);
-        }
+      rows.forEach(r => {
+        if (r.type === 'same') copyLines.push('  ' + r.a);
+        else if (r.type === 'del') { deleted++; copyLines.push('- ' + r.a); }
+        else { added++; copyLines.push('+ ' + r.b); }
       });
-      html.push('</tbody></table>');
-      diffView.innerHTML = html.join('');
       lastDiffText = copyLines.join('\n');
-
       document.getElementById('addCount').textContent = '+' + added;
       document.getElementById('delCount').textContent = '-' + deleted;
       document.getElementById('sameMsg').textContent = (added === 0 && deleted === 0) ? '✅ 두 텍스트가 동일합니다.' : '';
+
+      renderResult();
+    }
+
+    // 행들을 동일/변경 블록으로 묶고, 변경 블록은 단어 단위 강조 미리 계산
+    function buildBlocks(rows) {
+      const blocks = []; let i = 0;
+      while (i < rows.length) {
+        if (rows[i].type === 'same') {
+          const same = []; while (i < rows.length && rows[i].type === 'same') { same.push(rows[i]); i++; }
+          blocks.push({ type: 'same', rows: same });
+        } else {
+          const dels = [], adds = [];
+          while (i < rows.length && rows[i].type !== 'same') { (rows[i].type === 'del' ? dels : adds).push(rows[i]); i++; }
+          const pairs = Math.min(dels.length, adds.length), wd = [];
+          for (let k = 0; k < pairs; k++) wd.push(inlineDiff(dels[k].a, adds[k].b));
+          blocks.push({ type: 'change', dels, adds, wd, pairs });
+        }
+      }
+      return blocks;
+    }
+
+    // 동일 블록 접기: [상단 context][접힘마커][하단 context]
+    function foldSame(rows, idx, hasPrev, hasNext) {
+      if (expanded.has(idx)) return { head: rows, hidden: 0, tail: [] };
+      const keepTop = hasPrev ? CONTEXT : 0, keepBottom = hasNext ? CONTEXT : 0;
+      if (rows.length <= keepTop + keepBottom + 2) return { head: rows, hidden: 0, tail: [] };
+      return { head: rows.slice(0, keepTop), hidden: rows.length - keepTop - keepBottom, tail: keepBottom ? rows.slice(rows.length - keepBottom) : [] };
+    }
+    function collapseRow(idx, count) {
+      return `<tr class="collapse-row"><td colspan="4" class="collapse-cell" onclick="expandBlock(${idx})">⋯ ${count}줄 동일 (클릭하여 펼치기) ⋯</td></tr>`;
+    }
+
+    function renderResult() {
+      document.getElementById('segUnified').classList.toggle('active', viewMode === 'unified');
+      document.getElementById('segSplit').classList.toggle('active', viewMode === 'split');
+      if (!diffBlocks.length) return;
+      diffView.innerHTML = viewMode === 'split' ? renderSplit() : renderUnified();
+      changeAnchors = Array.from(diffView.querySelectorAll('[data-change]'));
+      curChange = -1;
+    }
+
+    function sameRowU(r) { return `<tr class="same"><td class="gutter">${r.ai}</td><td class="gutter">${r.bi}</td><td class="sign"></td><td class="content">${esc(r.a)}</td></tr>`; }
+    function renderUnified() {
+      const out = ['<table class="diff"><tbody>'];
+      diffBlocks.forEach((b, idx) => {
+        if (b.type === 'same') {
+          const f = foldSame(b.rows, idx, idx > 0, idx < diffBlocks.length - 1);
+          f.head.forEach(r => out.push(sameRowU(r)));
+          if (f.hidden > 0) out.push(collapseRow(idx, f.hidden));
+          f.tail.forEach(r => out.push(sameRowU(r)));
+        } else {
+          let first = true;
+          b.dels.forEach((d, k) => { out.push(`<tr class="del"${first ? ' data-change="1"' : ''}><td class="gutter">${d.ai}</td><td class="gutter"></td><td class="sign">-</td><td class="content">${k < b.pairs ? b.wd[k].a : esc(d.a)}</td></tr>`); first = false; });
+          b.adds.forEach((ad, k) => { out.push(`<tr class="add"${first ? ' data-change="1"' : ''}><td class="gutter"></td><td class="gutter">${ad.bi}</td><td class="sign">+</td><td class="content">${k < b.pairs ? b.wd[k].b : esc(ad.b)}</td></tr>`); first = false; });
+        }
+      });
+      out.push('</tbody></table>');
+      return out.join('');
+    }
+
+    function renderSplit() {
+      const cell = (num, content, cls) => `<td class="gutter">${num != null ? num : ''}</td><td class="content ${cls}">${content}</td>`;
+      const out = ['<table class="diff split"><tbody>'];
+      diffBlocks.forEach((b, idx) => {
+        if (b.type === 'same') {
+          const f = foldSame(b.rows, idx, idx > 0, idx < diffBlocks.length - 1);
+          f.head.forEach(r => out.push(`<tr>${cell(r.ai, esc(r.a), '')}${cell(r.bi, esc(r.b), '')}</tr>`));
+          if (f.hidden > 0) out.push(collapseRow(idx, f.hidden));
+          f.tail.forEach(r => out.push(`<tr>${cell(r.ai, esc(r.a), '')}${cell(r.bi, esc(r.b), '')}</tr>`));
+        } else {
+          const maxLen = Math.max(b.dels.length, b.adds.length);
+          for (let k = 0; k < maxLen; k++) {
+            const d = b.dels[k], ad = b.adds[k];
+            const lC = d ? (k < b.pairs ? b.wd[k].a : esc(d.a)) : '';
+            const rC = ad ? (k < b.pairs ? b.wd[k].b : esc(ad.b)) : '';
+            out.push(`<tr${k === 0 ? ' data-change="1"' : ''}>${cell(d ? d.ai : null, lC, d ? 'cell-del' : 'cell-empty')}${cell(ad ? ad.bi : null, rC, ad ? 'cell-add' : 'cell-empty')}</tr>`);
+          }
+        }
+      });
+      out.push('</tbody></table>');
+      return out.join('');
+    }
+
+    function setDiffView(mode) { viewMode = mode; renderResult(); }
+    function expandBlock(idx) { expanded.add(idx); renderResult(); }
+    function gotoChange(dir) {
+      if (!changeAnchors.length) { showToast('변경 사항이 없습니다.', 'info'); return; }
+      curChange = (curChange + dir + changeAnchors.length) % changeAnchors.length;
+      const el = changeAnchors[curChange];
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('flash');
+      setTimeout(() => el.classList.remove('flash'), 800);
     }
 
     function swap() {
