@@ -27,13 +27,11 @@
 - URL 인코딩, 디코딩 및 쿼리 파라미터를 분석합니다.
 - 디코딩된 결과에서 `?key=value` 형태의 파라미터를 자동으로 추출하여 표 형식으로 제공합니다.
 
-### 📄 XML 변환 (`xml-converter.html`)
-- HTML 엔티티(`&lt;`, `&gt;` 등)로 치환된 XML 데이터를 실제 XML 구조로 복원하고 정리합니다.
-
-
-### 🧩 JSON 도구 (`json-tool.html`)
-- JSON 포맷팅(정렬)·압축(minify)·실시간 구문 검증을 제공합니다.
-- 접고 펼칠 수 있는 **트리 뷰**와 **XML ↔ JSON 상호 변환**을 지원합니다.
+### 🧩 JSON / XML 도구 (`json-tool.html`)
+- **JSON**: 포맷(정렬)·압축·실시간 검증, 접기/펼치기 + **검색·경로복사** 트리 뷰, **키 정렬**.
+- **XML**: DOMParser 기반 **정렬·유효성 검사**, escape/unescape. (기존 XML 변환 도구를 흡수)
+- **변환**: JSON ↔ XML, JSON → CSV, escape 문자열 풀기(로그용).
+- 파일 드래그앤드롭, 입력 자동 저장(localStorage), Ctrl+Enter 정렬 지원.
 
 ### 🔍 텍스트 비교 (`diff-tool.html`)
 - 두 텍스트/코드를 LCS 알고리즘으로 **줄 단위 비교**하여 추가·삭제를 색상으로 강조합니다.
