@@ -443,7 +443,7 @@
       </div>
       <div style="display:flex; gap:0.5rem;">
           <button class="btn btn-outline" onclick="exportToICS()" title="구글/아웃룩 등 달력 앱에서 읽을 수 있는 표준 ICS 파일로 내보냅니다.">🗓️ ICS 내보내기</button>
-          <button class="btn btn-outline" onclick="exportToMarkdown()" title="현재 월의 일정을 깔끔한 문서로 내보냅니다.">📝 MD 내보내기</button>
+          <button class="btn btn-outline" onclick="openExportModal()" title="기간·상태를 골라 보고용 마크다운으로 내보냅니다.">📝 MD 내보내기</button>
           <button class="btn btn-outline" onclick="exportData()">💾 백업</button>
           <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">📂 복구</button>
           <input type="file" id="importFile" style="display:none;" accept=".json" onchange="importData(this)">
@@ -599,6 +599,58 @@
         <div style="display:flex; gap:1rem; margin-top:0.25rem;">
           <button class="btn btn-outline" style="flex:1;" onclick="closeAssignMemoModal()">취소</button>
           <button class="btn btn-primary" style="flex:2;" onclick="confirmAssignMemo()">📅 이동</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export Options Modal -->
+    <div id="exportModal" class="modal" onclick="if(event.target===this) closeExportModal()">
+      <div class="modal-content" style="width: 480px; max-width: 92vw; gap: 1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <h2 style="margin:0; font-size:1.35rem; font-weight:800;">📝 내보내기 옵션</h2>
+          <button class="btn btn-ghost" onclick="closeExportModal()" style="font-size:1.3rem;">✕</button>
+        </div>
+        <p style="margin:0; color:var(--text-muted); font-size:0.9rem;">주간/월말 보고용 마크다운 문서를 만듭니다. (메모 보드는 기본 미포함)</p>
+
+        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">기간</label>
+          <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;"><input type="radio" name="exportPeriod" value="week" onchange="onExportPeriodChange()"> 이번 주</label>
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;"><input type="radio" name="exportPeriod" value="month" checked onchange="onExportPeriodChange()"> 이번 달</label>
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;"><input type="radio" name="exportPeriod" value="custom" onchange="onExportPeriodChange()"> 사용자 지정</label>
+          </div>
+          <div id="exportCustomRange" style="display:flex; gap:0.75rem; align-items:center; margin-top:0.25rem;">
+            <input type="date" id="exportStart" style="flex:1;">
+            <span style="font-weight:800; color:#94a3b8;">~</span>
+            <input type="date" id="exportEnd" style="flex:1;">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; gap:0.5rem; flex:1; min-width:150px;">
+            <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">상태</label>
+            <div style="display:flex; gap:0.9rem; flex-wrap:wrap;">
+              <label style="display:flex; align-items:center; gap:0.3rem; cursor:pointer;"><input type="radio" name="exportStatus" value="all" checked> 전체</label>
+              <label style="display:flex; align-items:center; gap:0.3rem; cursor:pointer;"><input type="radio" name="exportStatus" value="done"> 완료만</label>
+              <label style="display:flex; align-items:center; gap:0.3rem; cursor:pointer;"><input type="radio" name="exportStatus" value="todo"> 미완료만</label>
+            </div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.5rem; min-width:130px;">
+            <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">카테고리</label>
+            <select id="exportCategory" style="padding:0.5rem 0.6rem; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); color:var(--text-main); font-weight:700;"></select>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">포함 항목</label>
+          <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;"><input type="checkbox" id="exportIncludeContent" checked> 일정 상세 내용 포함</label>
+          <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;"><input type="checkbox" id="exportIncludeStats" checked> 요약 통계(총·완료·완료율) 헤더</label>
+          <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; color:var(--danger); font-weight:700;"><input type="checkbox" id="exportIncludeMemos"> 메모 보드(Inbox) 포함</label>
+        </div>
+
+        <div style="display:flex; gap:1rem; margin-top:0.25rem;">
+          <button class="btn btn-outline" style="flex:1;" onclick="closeExportModal()">취소</button>
+          <button class="btn btn-primary" style="flex:2;" onclick="runMarkdownExport()">📥 내보내기</button>
         </div>
       </div>
     </div>
@@ -1200,7 +1252,7 @@
             if (!e.target.closest('.header-search')) closeSearchPanel();
         });
 
-        window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); closeTaskDetailModal(); closeAssignMemoModal(); closeFab(); closeQuickMemoPop(); closeSearchPanel(); } });
+        window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); closeTaskDetailModal(); closeAssignMemoModal(); closeExportModal(); closeFab(); closeQuickMemoPop(); closeSearchPanel(); } });
     }
 
     /* --- Quick Memo Logic --- */
@@ -2076,56 +2128,129 @@
     a.click();
   }
 
-  function exportToMarkdown() {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth() + 1;
-    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-    
-    let md = `# 📅 ${year}년 ${month}월 일정 계획표\n\n`;
-    md += `> 생성일: ${new Date().toLocaleString()}\n\n---\n\n`;
+  /* ===== 보고서(MD) 내보내기 옵션 다이얼로그 ===== */
+  function parseLocalDate(str) { const p = str.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
 
-    // 1. 달력 일정 섹션
-    md += `## 🗓️ 월간 일정\n\n`;
-    const sortedDates = Object.keys(todos)
-        .filter(d => {
-            const date = new Date(d);
-            return date.getFullYear() === year && (date.getMonth() + 1) === month;
-        })
-        .sort();
+  function openExportModal() {
+    // 카테고리 셀렉트 채우기 (전체 + CATEGORIES)
+    const sel = document.getElementById('exportCategory');
+    sel.innerHTML = `<option value="__all">전체</option>` + CATEGORIES.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    sel.value = '__all';
+    // 라디오/체크박스 초기화
+    document.querySelector('input[name="exportPeriod"][value="month"]').checked = true;
+    document.querySelector('input[name="exportStatus"][value="all"]').checked = true;
+    document.getElementById('exportIncludeContent').checked = true;
+    document.getElementById('exportIncludeStats').checked = true;
+    document.getElementById('exportIncludeMemos').checked = false;
+    onExportPeriodChange();
+    document.getElementById('exportModal').style.display = 'flex';
+  }
+  function closeExportModal() { document.getElementById('exportModal').style.display = 'none'; }
 
-    if (sortedDates.length === 0) {
-        md += "이 달에 기록된 일정이 없습니다.\n";
-    } else {
-        sortedDates.forEach(dateStr => {
-            const dayTasks = todos[dateStr];
-            const dateObj = new Date(dateStr);
-            const dayName = weekdays[dateObj.getDay()];
-            
-            md += `### 🗓️ ${dateStr} (${dayName})\n`;
-            
-            dayTasks.sort((a,b) => a.createdAt - b.createdAt).forEach(t => {
-                const status = t.completed ? "✅" : "⬜";
-                const span = isSpan(t) ? ` _(${t.date} ~ ${t.endDate})_` : '';
-                const tprefix = t.startTime ? `\`${timeLabel(t)}\` ` : '';
-                md += `- ${status} ${tprefix}**${t.title}**${span}\n`;
-                if (t.content) {
-                    const indentedContent = t.content.split('\n').map(line => `  > ${line}`).join('\n');
-                    md += `${indentedContent}\n`;
-                }
-            });
-            md += `\n`;
-        });
+  function onExportPeriodChange() {
+    const period = document.querySelector('input[name="exportPeriod"]:checked').value;
+    const range = computeExportRange(period);
+    document.getElementById('exportStart').value = range.startStr;
+    document.getElementById('exportEnd').value = range.endStr;
+    const isCustom = period === 'custom';
+    document.getElementById('exportStart').disabled = !isCustom;
+    document.getElementById('exportEnd').disabled = !isCustom;
+    document.getElementById('exportCustomRange').style.opacity = isCustom ? '1' : '0.55';
+  }
+
+  // 주/월 기간 계산 (custom은 입력값 사용)
+  function computeExportRange(period) {
+    if (period === 'week') {
+      const d = new Date(); d.setHours(0, 0, 0, 0);
+      const day = (d.getDay() + 6) % 7; // 월요일=0 (일~토로 바꾸려면: const day = d.getDay();)
+      const start = new Date(d); start.setDate(d.getDate() - day);
+      const end = new Date(start); end.setDate(start.getDate() + 6);
+      return { startStr: formatDate(start), endStr: formatDate(end) };
+    }
+    if (period === 'custom') {
+      return { startStr: document.getElementById('exportStart').value, endStr: document.getElementById('exportEnd').value };
+    }
+    // month (기본)
+    const y = currentDate.getFullYear(), m = currentDate.getMonth();
+    return { startStr: formatDate(new Date(y, m, 1)), endStr: formatDate(new Date(y, m + 1, 0)) };
+  }
+
+  function runMarkdownExport() {
+    const period = document.querySelector('input[name="exportPeriod"]:checked').value;
+    let { startStr, endStr } = computeExportRange(period);
+    if (!startStr || !endStr || startStr > endStr) {
+      const fb = computeExportRange('month');
+      startStr = fb.startStr; endStr = fb.endStr;
+      showToast('기간이 올바르지 않아 이번 달로 내보냅니다.', 'info');
     }
 
-    if (stickyMemos.length > 0) {
-        md += `\n---\n\n## 📝 메모 보드 / Inbox\n\n`;
-        stickyMemos.forEach(m => {
-            md += `### 📝 ${m.title}\n`;
-            md += `> 작성일: ${new Date(m.createdAt).toLocaleString()}\n\n`;
-            if (m.content) {
-                md += `${m.content}\n\n`;
-            }
+    const status = document.querySelector('input[name="exportStatus"]:checked').value;
+    const cat = document.getElementById('exportCategory').value;
+    const incContent = document.getElementById('exportIncludeContent').checked;
+    const incStats = document.getElementById('exportIncludeStats').checked;
+    const incMemos = document.getElementById('exportIncludeMemos').checked;
+    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+
+    const passFilter = (t) => {
+      if (status === 'done' && !t.completed) return false;
+      if (status === 'todo' && t.completed) return false;
+      if (cat !== '__all' && (t.category || '') !== cat) return false;
+      return true;
+    };
+
+    // 기간 내 날짜별 수집 (todosOnDate로 기간 일정까지 포함)
+    const byDate = []; // {dateStr, tasks:[...]}
+    const seen = new Set();        // 통계 중복 방지(id)
+    let total = 0, done = 0;
+    for (let d = parseLocalDate(startStr); formatDate(d) <= endStr; d.setDate(d.getDate() + 1)) {
+      const ds = formatDate(d);
+      const tasks = todosOnDate(ds).filter(passFilter).sort(compareTasks);
+      if (tasks.length) {
+        byDate.push({ dateStr: ds, tasks });
+        tasks.forEach(t => { if (!seen.has(t.id)) { seen.add(t.id); total++; if (t.completed) done++; } });
+      }
+    }
+
+    if (total === 0 && !incMemos) {
+      showToast('해당 기간에 내보낼 일정이 없습니다.', 'info');
+      return;
+    }
+
+    let md = `# 📅 ${startStr} ~ ${endStr} 일정 보고\n\n`;
+    md += `> 생성일: ${new Date().toLocaleString()}\n`;
+    if (incStats) {
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      md += `> 총 ${total}건 · 완료 ${done}건 · 완료율 ${pct}%\n`;
+    }
+    md += `\n---\n\n## 🗓️ 일정\n\n`;
+
+    if (byDate.length === 0) {
+      md += '해당 기간에 기록된 일정이 없습니다.\n';
+    } else {
+      byDate.forEach(({ dateStr, tasks }) => {
+        md += `### 🗓️ ${dateStr} (${weekdays[parseLocalDate(dateStr).getDay()]})\n`;
+        tasks.forEach(t => {
+          const stMark = t.completed ? '✅' : '⬜';
+          const span = isSpan(t) ? ` _(${t.date} ~ ${t.endDate})_` : '';
+          const tprefix = t.startTime ? `\`${timeLabel(t)}\` ` : '';
+          const catObj = getCategory(t.category);
+          const catTag = catObj.id ? ` \`#${catObj.name}\`` : '';
+          md += `- ${stMark} ${tprefix}**${t.title}**${catTag}${span}\n`;
+          if (incContent && t.content) {
+            md += t.content.split('\n').map(line => `  > ${line}`).join('\n') + '\n';
+          }
         });
+        md += `\n`;
+      });
+    }
+
+    if (incMemos && stickyMemos.length > 0) {
+      md += `\n---\n\n## 📝 메모 보드 / Inbox\n\n`;
+      stickyMemos.forEach(m => {
+        md += `### 📝 ${m.title}\n`;
+        md += `> 작성일: ${new Date(m.createdAt).toLocaleString()}\n\n`;
+        if (m.content) md += `${m.content}\n\n`;
+      });
     }
 
     md += `---\n*본 문서는 Monthly Diary & Planner에서 생성되었습니다.*`;
@@ -2133,9 +2258,11 @@
     const blob = new Blob([md], { type: 'text/markdown' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${year}년_${month}월_일정계획.md`;
+    a.download = `${startStr}_${endStr}_일정보고.md`;
     a.click();
-    showToast(`${year}년 ${month}월 일정을 MD 파일로 내보냈습니다.`, 'success');
+    URL.revokeObjectURL(a.href);
+    closeExportModal();
+    showToast('일정 보고서를 MD 파일로 내보냈습니다.', 'success');
   }
 
   function addToGoogleCalendar(id, dateStr) {
