@@ -72,6 +72,13 @@
     .err { color: var(--danger); font-weight: 700; margin-top: 0.75rem; }
     .preset { font-size: 0.78rem; padding: 0.3rem 0.6rem; }
     .presets { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.75rem; }
+
+    /* 미니 탭 */
+    .tabs { display: flex; gap: 0.4rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.4rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .tab-btn { flex: 1; padding: 0.65rem 1rem; border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.92rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+    .tab-btn:hover { background: var(--code-bg); color: var(--text); }
+    .tab-btn.active { background: var(--primary); color: #fff; }
+    @media (max-width: 560px) { .tab-btn { font-size: 0.82rem; padding: 0.55rem 0.5rem; } .tab-btn .t-label { display: none; } }
   </style>
   <script src="lib/portal-theme.js"></script>
   <script src="lib/toast-utils.js"></script>
@@ -92,8 +99,15 @@
       </div>
     </div>
 
+    <!-- 미니 탭 -->
+    <div class="tabs">
+      <button class="tab-btn" data-tab="ts" onclick="switchTab('ts')">🔁 <span class="t-label">타임스탬프 변환</span></button>
+      <button class="tab-btn" data-tab="calc" onclick="switchTab('calc')">🧮 <span class="t-label">날짜 계산기</span></button>
+      <button class="tab-btn" data-tab="cron" onclick="switchTab('cron')">📅 <span class="t-label">Cron 표현식</span></button>
+    </div>
+
     <!-- 타임스탬프 변환 -->
-    <div class="card">
+    <div class="card tab-panel" data-tab="ts">
       <h2>🔁 타임스탬프 변환</h2>
       <div class="row">
         <div style="flex:1; min-width:240px;">
@@ -127,7 +141,7 @@
     </div>
 
     <!-- 날짜 계산기 -->
-    <div class="card">
+    <div class="card tab-panel" data-tab="calc">
       <h2>🧮 날짜 계산기</h2>
 
       <label>두 날짜 차이</label>
@@ -161,7 +175,7 @@
     </div>
 
     <!-- Cron -->
-    <div class="card">
+    <div class="card tab-panel" data-tab="cron">
       <h2>📅 Cron 표현식 <span style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">(5필드 · 6필드[초 포함, Spring] · @daily 등 별칭 지원)</span></h2>
       <div class="row">
         <input type="text" class="mono" id="cronInput" placeholder="*/15 9-18 * * 1-5  또는  0 0 9 * * 1-5  또는  @daily" style="flex:1; min-width:240px; font-size:1.05rem;" oninput="parseCron()">
@@ -190,6 +204,12 @@
   </div>
 
   <script>
+    /* ===== 미니 탭 전환 ===== */
+    function switchTab(name) {
+      document.querySelectorAll('.tab-panel').forEach(p => { p.style.display = (p.dataset.tab === name) ? 'block' : 'none'; });
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    }
+
     /* ===== 현재 시각 라이브 ===== */
     function tickNow() {
       const d = new Date();
@@ -481,6 +501,7 @@
 
     // 초기값
     setNowEpoch();
+    switchTab('ts');
   </script>
 </body>
 </html>
