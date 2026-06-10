@@ -352,6 +352,7 @@
         <button class="btn" onclick="document.getElementById('fileInput').click()">파일 열기</button>
         <button class="btn" onclick="saveFile()">저장</button>
         <button class="btn" id="dropModeToggle" onclick="toggleDropMode()" title="드래그앤드롭 시 동작 방식">📄 드롭: 새로 쓰기</button>
+        <button class="btn" onclick="compactInlineImages()" title="본문에 길게 박힌 data: 이미지를 짧은 토큰으로 접습니다">🖼️ 이미지 접기</button>
         <input type="file" id="fileInput" class="file-input" accept=".md,.txt" onchange="loadFile(event)">
       </div>
     </div>
@@ -418,6 +419,65 @@
     let appendMode = false;
     const dropModeToggle = document.getElementById('dropModeToggle');
 
+    /* ===== 이미지 토큰 저장소 =====
+       본문에는 짧은 토큰(img:xxx)만 넣고, 실제 base64는 여기 + IndexedDB에 보관.
+       렌더 시 토큰을 실제 이미지로 치환하고, 저장/복사 시에는 실제 base64로 되돌린다. */
+    const imageStore = new Map(); // token -> { dataUrl, name }
+    let imgCounter = 0;
+    function makeToken() {
+      imgCounter++;
+      return 'img' + Date.now().toString(36) + imgCounter.toString(36);
+    }
+    function addImage(dataUrl, name) {
+      const token = makeToken();
+      const entry = { dataUrl, name: name || 'image' };
+      imageStore.set(token, entry);
+      if (dbManager.db) dbManager.setItem('images', token, entry).catch(() => {});
+      return token;
+    }
+    // 렌더된 컨테이너 안의 img:토큰 src를 실제 이미지로 치환
+    function resolveImages(container) {
+      container.querySelectorAll('img').forEach(img => {
+        const src = img.getAttribute('src') || '';
+        if (src.startsWith('img:')) {
+          const entry = imageStore.get(src.slice(4));
+          if (entry) {
+            img.src = entry.dataUrl;
+          } else {
+            // 누락된 토큰: 깨진 아이콘 대신 안내 박스
+            const span = document.createElement('span');
+            span.textContent = `🖼️ [이미지 없음: ${img.alt || src.slice(4)}]`;
+            span.style.cssText = 'display:inline-block; padding:0.2rem 0.5rem; border:1px dashed var(--border); border-radius:6px; opacity:0.6; font-size:0.85em;';
+            img.replaceWith(span);
+          }
+        }
+      });
+    }
+    // 저장/복사용: 본문의 img:토큰을 실제 base64로 인라인 (자기완결형 .md)
+    function inlineImages(md) {
+      return md.replace(/\]\(img:([A-Za-z0-9]+)\)/g, (m, token) => {
+        const entry = imageStore.get(token);
+        return entry ? `](${entry.dataUrl})` : m;
+      });
+    }
+    // 이미 본문에 박힌 긴 data: 이미지를 토큰으로 압축
+    function compactInlineImages() {
+      let count = 0;
+      const newText = editor.value.replace(/!\[([^\]]*)\]\((data:[^)]+)\)/g, (m, alt, dataUrl) => {
+        const token = addImage(dataUrl, alt);
+        count++;
+        return `![${alt}](img:${token})`;
+      });
+      if (count) {
+        editor.value = newText;
+        updatePreview();
+        saveToDB();
+        showToast(`이미지 ${count}개를 토큰으로 접었습니다.`, 'success');
+      } else {
+        showToast('접을 인라인 이미지(data:)가 없습니다.', 'info');
+      }
+    }
+
     function toggleDropMode() {
       appendMode = !appendMode;
       dropModeToggle.textContent = appendMode ? '📎 드롭: 이어붙이기' : '📄 드롭: 새로 쓰기';
@@ -472,7 +532,29 @@ function hello() {
     function updatePreview() {
       const text = editor.value;
       preview.innerHTML = mdRenderer.render(text);
+      resolveImages(preview);
     }
+
+    // 클립보드 이미지 붙여넣기(Ctrl+V) → 토큰으로 삽입
+    editor.addEventListener('paste', (e) => {
+      const items = (e.clipboardData && e.clipboardData.items) || [];
+      for (const item of items) {
+        if (item.type && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (!file) continue;
+          e.preventDefault();
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const name = file.name && file.name !== 'image.png' ? file.name : `pasted-${Date.now()}.png`;
+            const token = addImage(ev.target.result, name);
+            fileDropHandler.insertAtCursor(editor, `\n![${name}](img:${token})\n`);
+            showToast('붙여넣은 이미지를 첨부했습니다.', 'success');
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+      }
+    });
 
     /* --- 텍스트 추출 (마크다운 제거) --- */
     const plainOutput = document.getElementById('plainOutput');
@@ -637,7 +719,10 @@ function hello() {
     // Persistence Logic
     async function initStorage() {
       try {
-        await dbManager.init('MDViewerDB', ['content']);
+        await dbManager.init('MDViewerDB', ['content', 'images']);
+        // 저장된 이미지 토큰 복원
+        const storedImgs = await dbManager.getAll('images');
+        Object.entries(storedImgs || {}).forEach(([token, val]) => imageStore.set(token, val));
         const saved = await dbManager.getItem('content', 'last_content');
         if (saved) {
           editor.value = saved;
@@ -645,12 +730,12 @@ function hello() {
           editor.value = initialContent;
         }
         updatePreview();
-        
+
         // Initialize File Drop Handler
         fileDropHandler.init(editor, {
           onImage: (base64, file) => {
-            const tag = `\n![${file.name}](${base64})\n`;
-            fileDropHandler.insertAtCursor(editor, tag);
+            const token = addImage(base64, file.name);
+            fileDropHandler.insertAtCursor(editor, `\n![${file.name}](img:${token})\n`);
             showToast(`이미지 '${file.name}'가 첨부되었습니다.`, 'success');
           },
           onText: (content, file) => {
@@ -701,7 +786,7 @@ function hello() {
     }
 
     function saveFile() {
-      const blob = new Blob([editor.value], { type: 'text/markdown' });
+      const blob = new Blob([inlineImages(editor.value)], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -713,8 +798,8 @@ function hello() {
     // Copy Functions
     async function copyMarkdown() {
       try {
-        await navigator.clipboard.writeText(editor.value);
-        showToast('마크다운 원문이 복사되었습니다.', 'success');
+        await navigator.clipboard.writeText(inlineImages(editor.value));
+        showToast('마크다운 원문이 복사되었습니다. (이미지 포함)', 'success');
       } catch (err) {
         showToast('복사에 실패했습니다.', 'error');
       }
@@ -752,6 +837,8 @@ function hello() {
     function clearAll() {
       if (confirm('모든 내용을 비우시겠습니까?')) {
         editor.value = '';
+        imageStore.clear();
+        if (dbManager.db) dbManager.clearAll(['images']).catch(() => {});
         updatePreview();
         saveToDB();
       }
@@ -789,7 +876,7 @@ function hello() {
     function openModal() {
       const modal = document.getElementById('previewModal');
       const modalPreview = document.getElementById('modalPreview');
-      modalPreview.innerHTML = preview.innerHTML;
+      modalPreview.innerHTML = preview.innerHTML; // 미리보기는 이미 실제 이미지로 치환된 상태
       modal.style.display = 'block';
       document.body.style.overflow = 'hidden'; // Prevent scrolling background
     }
