@@ -3,218 +3,403 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SQL Converter Pro</title>
+  <title>SQL 로그 변환기</title>
   <style>
     :root {
-      --background-color: #f3f4f6;
-      --text-color: #111827;
-      --card-background-color: #ffffff;
-      --border-color: #d1d5db;
-      --primary-color: #059669;
-      --primary-hover: #059669;
-      --secondary-color: #4b5563;
-      --secondary-hover: #374151;
-      --accent-color: #2563eb;
+      --primary: #059669;
+      --primary-hover: #047857;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --code-bg: #f1f5f9;
+      --warn: #f59e0b;
+      --danger: #ef4444;
     }
+    body.dark {
+      --primary: #34d399;
+      --primary-hover: #6ee7b7;
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --border: #30363d;
+      --code-bg: #0d1117;
+      --warn: #d29922;
+      --danger: #f85149;
+    }
+    body.dark textarea, body.dark input[type="text"] { background: #0d1117; color: var(--text); }
+    body.dark .btn { background: #161b22; color: #c9d1d9; }
+    body.dark .btn:hover { background: #21262d; }
+    body.dark .hint code { background: #21262d; }
+
+    * { box-sizing: border-box; }
     body {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       margin: 0;
-      background-color: var(--background-color);
-      color: var(--text-color);
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
       padding: 2rem;
       display: flex;
       justify-content: center;
     }
-    .container {
-      width: 100%;
-      max-width: 1000px;
-    }
+    .container { width: 100%; max-width: 980px; }
     .card {
-      background-color: var(--card-background-color);
-      border-radius: 0.75rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      background-color: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
       padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
     }
-    h1 { font-size: 1.5rem; margin-bottom: 1.5rem; color: var(--primary-color); }
+    header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+    h1 { margin: 0; font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
+    .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--primary); color: #fff; font-weight: 800; }
+
     .field-group { margin-bottom: 1.25rem; }
-    label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.875rem; }
-    
+    .label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; gap: 0.5rem; flex-wrap: wrap; }
+    label { font-size: 0.8rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .count { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+    .count.warn { color: var(--warn); }
+    .count.ok { color: var(--primary); }
+
+    .hint { font-size: 0.78rem; color: var(--text-muted); margin: 0.35rem 0 0; line-height: 1.5; }
+    .hint code { background: var(--code-bg); padding: 0.1rem 0.35rem; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 0.92em; }
+
     input[type="text"], textarea {
       width: 100%;
-      padding: 0.75rem;
-      border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
+      padding: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 0.6rem;
       font-family: 'Fira Code', 'Cascadia Code', monospace;
-      font-size: 0.875rem;
-      box-sizing: border-box;
-      transition: border-color 0.2s;
-    }
-    input[type="text"]:focus, textarea:focus {
+      font-size: 0.9rem;
+      resize: vertical;
       outline: none;
-      border-color: var(--accent-color);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      transition: border-color 0.2s, box-shadow 0.2s;
+      background: #fff;
+      color: var(--text);
     }
-    textarea { min-height: 150px; resize: vertical; }
-    
-    .stats {
-      font-size: 0.75rem;
-      color: #6b7280;
-      margin-top: 0.25rem;
-      font-weight: 500;
+    input[type="text"]:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(5,150,105,0.12); }
+    textarea#inputSql { min-height: 150px; }
+    textarea#completedSql { min-height: 150px; background: var(--code-bg); }
+    textarea.drag-hover { box-shadow: inset 0 0 0 3px var(--primary); }
+
+    .options { display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; margin: 0.25rem 0 1.25rem; font-size: 0.82rem; color: var(--text-muted); font-weight: 700; }
+    .options label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; text-transform: none; letter-spacing: 0; color: var(--text-muted); font-size: 0.82rem; }
+
+    .controls { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .btn {
+      padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid var(--border);
+      font-weight: 700; cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      background: #fff; color: var(--text); font-size: 0.9rem;
     }
-    
-    .button-group {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 0.75rem;
-      margin: 1.5rem 0;
-    }
-    button {
-      padding: 0.75rem 1rem;
-      border-radius: 0.375rem;
-      border: none;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-primary { background-color: var(--primary-color); color: white; }
-    .btn-primary:hover { opacity: 0.9; }
-    .btn-secondary { background-color: var(--secondary-color); color: white; }
-    .btn-secondary:hover { background-color: var(--secondary-hover); }
-    
-    .result-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 1.5rem;
-      margin-bottom: 0.5rem;
-    }
-    #completedSql { background-color: #f9fafb; }
+    .btn:hover { background: #f1f5f9; border-color: var(--text-muted); }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); flex: 1; }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+
+    .result-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; gap: 0.5rem; flex-wrap: wrap; }
+    .result-actions { display: flex; gap: 0.5rem; }
+    #mismatchAlert { font-size: 0.78rem; font-weight: 800; }
+    #mismatchAlert.warn { color: var(--warn); }
+    #mismatchAlert.ok { color: var(--primary); }
   </style>
+  <script src="lib/shared-utils.js"></script>
+  <script src="lib/portal-theme.js"></script>
+  <script src="lib/toast-utils.js"></script>
+  <script src="lib/file-drop-handler.js"></script>
 </head>
 <body>
   <div class="container">
     <div class="card">
-      <h1>SQL Converter Pro</h1>
-      
-      <div class="field-group">
-        <label for="inputSqlValue">Binding Parameters (e.g., [a, b, c] or log format)</label>
-        <input type="text" id="inputSqlValue" placeholder="[value1, value2, ...]">
-        <div id="cntInputSqlValue" class="stats">배열의 개수 : 0 개</div>
-      </div>
+      <header>
+        <h1>🗃️ SQL 로그 변환기 <span class="badge">PRO</span></h1>
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-sm" onclick="loadSample()">샘플 로드</button>
+          <button class="btn btn-sm" onclick="clearAll()">비우기</button>
+        </div>
+      </header>
 
       <div class="field-group">
-        <label for="inputSql">SQL Input (Java code or Log)</label>
-        <textarea id="inputSql" placeholder="SELECT * FROM table WHERE col = ?"></textarea>
-        <div id="cntInputSql" class="stats">?의 개수 : 0 개</div>
+        <div class="label-row">
+          <label for="inputSqlValue">바인딩 파라미터</label>
+          <span id="cntInputSqlValue" class="count">파라미터 0개</span>
+        </div>
+        <input type="text" id="inputSqlValue" placeholder="123(Integer), 홍길동(String), null   또는   [123, 홍길동, NULL]">
+        <p class="hint">MyBatis 로그의 <code>Parameters:</code> 줄을 그대로 붙여넣으면 <b>타입(괄호)</b>을 인식해 따옴표를 자동 처리합니다. <code>[a, b, c]</code> 배열 형식도 지원.</p>
       </div>
 
-      <div class="button-group">
-        <button id="btnConvert" class="btn-primary">Convert & Copy</button>
-        <button id="btnFormat" class="btn-secondary">Pretty Print</button>
+      <div class="field-group">
+        <div class="label-row">
+          <label for="inputSql">SQL 입력 / 로그</label>
+          <span id="cntInputSql" class="count">? 0개</span>
+        </div>
+        <textarea id="inputSql" placeholder="SELECT * FROM users WHERE id = ? AND status = ?&#10;&#10;또는 MyBatis 로그 블록을 통째로 붙여넣으세요 (Preparing/Parameters 자동 분리)"></textarea>
+        <p class="hint">자바 문자열 결합(<code>"..." + "..."</code>)·주석(<code>//</code>)을 정리합니다. <code>Preparing:</code>/<code>Parameters:</code>가 포함된 로그는 자동으로 분리됩니다.</p>
       </div>
 
-      <div class="result-header">
-        <label for="completedSql">Converted SQL</label>
-        <span id="completedSqlAlert"></span>
+      <div class="options">
+        <label><input type="checkbox" id="optAutoFormat" checked> 변환 후 자동 포맷</label>
+        <label><input type="checkbox" id="optAutoCopy" checked> 변환 후 자동 복사</label>
+        <label><input type="checkbox" id="optSemicolon" checked> 끝에 세미콜론(;) 추가</label>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="convertSql()">🔄 변환</button>
+        <button class="btn" onclick="formatResult()">✨ 포맷</button>
+      </div>
+
+      <div class="result-head">
+        <label for="completedSql">변환 결과</label>
+        <div class="result-actions">
+          <span id="mismatchAlert"></span>
+          <button class="btn btn-sm" onclick="copyResult()">📋 복사</button>
+          <button class="btn btn-sm" onclick="downloadResult()">💾 저장</button>
+        </div>
       </div>
       <textarea id="completedSql" readonly placeholder="변환된 SQL이 여기에 표시됩니다..."></textarea>
     </div>
   </div>
 
-  <script src="lib/shared-utils.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      
-      /**
-       * SQL 내의 ?를 배열의 값으로 치환
-       */
-      const bindParameters = (sql, params) => {
-        let paramIdx = 0;
-        return sql.replace(/\?/g, () => {
-          if (paramIdx < params.length) {
-            const val = params[paramIdx++].trim();
-            // 숫자나 NULL이 아니면 따옴표 추가
-            if (val.toUpperCase() === 'NULL' || !isNaN(val) && val !== '') {
-              return val;
-            }
-            return `'${val}'`;
-          }
-          return '?';
-        });
-      };
+    const $ = (id) => document.getElementById(id);
+    const valueEl = $('inputSqlValue');
+    const sqlEl = $('inputSql');
+    const resultEl = $('completedSql');
 
-      /**
-       * 자바 코드 및 주석 정제
-       */
-      const cleaningData = (tmpSql) => {
-        let tmpSqlArr = tmpSql.split('\n');
-        let complSql = "";
-        tmpSqlArr.forEach(sql => {
-          let trimmedSql = sql.trim();
-          if (!trimmedSql || trimmedSql.startsWith('//')) return;
-          
-          let commentIndex = trimmedSql.indexOf('//');
-          if (commentIndex > -1) {
-            trimmedSql = trimmedSql.substring(0, commentIndex).trim();
-          }
-          
-          trimmedSql = trimmedSql.replace(/"\s*\+\s*"/g, '');
-          trimmedSql = trimmedSql.replace(/^"|"$/g, '');
-          complSql += trimmedSql + ' ';
-        });
-        return complSql.trim();
-      };
+    /* ---------- 숫자/타입 판정 ---------- */
+    // MyBatis 타입명이 숫자 계열이면 따옴표를 붙이지 않는다.
+    const NUMERIC_TYPES = /^(Integer|Long|Short|Byte|Double|Float|BigDecimal|BigInteger|Number|int|long|short|byte|double|float)$/i;
+    const BOOL_TYPES = /^(Boolean|bool)$/i;
 
-      /**
-       * 간단한 SQL 포맷팅
-       */
-      const formatSql = (sql) => {
-        const keywords = ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'GROUP BY', 'ORDER BY', 'INSERT INTO', 'UPDATE', 'SET', 'VALUES', 'LEFT JOIN', 'INNER JOIN', 'ON'];
-        let formatted = sql.replace(/\s+/g, ' ');
-        keywords.forEach(key => {
-          const regex = new RegExp(`\\s${key}\\s`, 'gi');
-          formatted = formatted.replace(regex, `\n${key} `);
-        });
-        return formatted.trim();
-      };
+    function quote(v) {
+      // SQL 문자열 이스케이프: ' -> ''
+      return "'" + String(v).replace(/'/g, "''") + "'";
+    }
 
-      const convertSql = () => {
-        const valueInput = document.getElementById('inputSqlValue').value;
-        // 로그 형식 [a, b, c] 에서 값만 추출
-        let valueArr = valueInput.replace(/[\[\]]/g, '').split(',');
-        if (valueArr.length === 1 && valueArr[0].trim() === '') valueArr = [];
-        
-        document.getElementById('cntInputSqlValue').textContent = `배열의 개수 : ${valueArr.length} 개`;
+    function bindValue(param) {
+      const { value, type } = param;
+      if (value === null || /^null$/i.test(String(value).trim())) return 'NULL';
+      const v = String(value);
+      if (type) {
+        if (NUMERIC_TYPES.test(type)) return v.trim();
+        if (BOOL_TYPES.test(type)) return v.trim();
+        return quote(v);
+      }
+      // 타입 정보가 없을 때(배열 형식): 숫자/NULL은 그대로, 나머지는 따옴표
+      const t = v.trim();
+      if (t === '') return "''";
+      if (/^null$/i.test(t)) return 'NULL';
+      if (!isNaN(t) && t !== '') return t;
+      return quote(t);
+    }
 
-        const rawSql = document.getElementById('inputSql').value;
-        let cleanSql = cleaningData(rawSql);
-        
-        const questionCount = (cleanSql.match(/\?/g) || []).length;
-        document.getElementById('cntInputSql').textContent = `?의 개수 : ${questionCount} 개`;
+    /* ---------- 파라미터 파싱 ---------- */
+    function parseParams(raw) {
+      if (!raw) return [];
+      let s = raw.trim();
+      // "Parameters:" 접두어 제거
+      const mb = s.match(/Parameters\s*:\s*([\s\S]*)$/i);
+      if (mb) s = mb[1].trim();
+      // 한 줄로 정리 (로그가 여러 줄일 수 있음)
+      s = s.replace(/\s*\n\s*/g, ' ').trim();
+      // 바깥 대괄호 제거 [a, b, c]
+      s = s.replace(/^\[([\s\S]*)\]$/, '$1').trim();
+      if (!s) return [];
 
-        let resultSql = bindParameters(cleanSql, valueArr);
-        
-        if (resultSql && !resultSql.trim().endsWith(';')) {
-          resultSql = resultSql.trim() + ';';
+      // 타입 마커가 있으면 타입 인식 토크나이저 사용 (값 내부 콤마 안전)
+      if (/\([A-Za-z0-9_$.]+\)/.test(s)) {
+        return tokenizeTyped(s);
+      }
+      // 단순 콤마 분리
+      return s.split(',').map(p => ({ value: p.trim(), type: null }));
+    }
+
+    // "1(Integer), 강남구, 서울시(String), null" 처럼 값에 콤마가 있어도 (Type) 경계로 안전 분리
+    function tokenizeTyped(s) {
+      const out = [];
+      const re = /\s*(null|[\s\S]*?\([A-Za-z0-9_$.]+\))\s*(?:,|$)/g;
+      let m, guard = 0;
+      while ((m = re.exec(s)) !== null && guard++ < 5000) {
+        if (m[0] === '') { re.lastIndex++; continue; }
+        let token = m[1].trim();
+        if (/^null$/i.test(token)) { out.push({ value: null, type: null }); }
+        else {
+          const tm = token.match(/^([\s\S]*)\(([A-Za-z0-9_$.]+)\)$/);
+          if (tm) out.push({ value: tm[1].trim(), type: tm[2] });
+          else out.push({ value: token, type: null });
         }
+        if (re.lastIndex >= s.length) break;
+      }
+      return out;
+    }
 
-        document.getElementById('completedSql').value = resultSql;
+    /* ---------- 자바 코드/로그 정제 ---------- */
+    function cleanSql(raw) {
+      // 로그 블록이면 Preparing 줄만 추출
+      const prep = raw.match(/Preparing\s*:\s*([^\n]*)/i);
+      let text = prep ? prep[1] : raw;
 
-        if (resultSql) {
-          copyAndAlert(resultSql, document.getElementById('completedSqlAlert'));
-        }
-      };
+      const lines = text.split('\n');
+      let out = '';
+      for (let line of lines) {
+        let t = line.trim();
+        if (!t) continue;
+        if (t.startsWith('//')) continue;            // 전체 주석 줄
+        const ci = t.indexOf('//');
+        if (ci > -1) t = t.substring(0, ci).trim();   // 인라인 주석 제거
+        t = t.replace(/"\s*\+\s*"/g, '');             // "abc" + "def" -> abcdef
+        t = t.replace(/^"|"$/g, '');                  // 줄 양끝 따옴표 제거
+        out += t + ' ';
+      }
+      return out.replace(/\s+/g, ' ').trim();
+    }
 
-      document.getElementById('btnConvert').addEventListener('click', convertSql);
-      
-      document.getElementById('btnFormat').addEventListener('click', () => {
-        const currentSql = document.getElementById('completedSql').value || document.getElementById('inputSql').value;
-        if (currentSql) {
-          document.getElementById('completedSql').value = formatSql(currentSql);
-        }
+    function bindParameters(sql, params) {
+      let i = 0;
+      return sql.replace(/\?/g, () => (i < params.length ? bindValue(params[i++]) : '?'));
+    }
+
+    /* ---------- SQL 포맷터 ---------- */
+    function formatSql(sql) {
+      let s = sql.replace(/\s+/g, ' ').trim();
+      if (!s) return s;
+      const major = [
+        'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY', 'LIMIT', 'OFFSET',
+        'INSERT INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE FROM', 'UNION ALL', 'UNION'
+      ];
+      major.forEach(k => {
+        const pat = k.replace(/ /g, '\\s+');
+        // DELETE FROM 의 FROM 이 다시 분리되지 않도록 FROM 단독 분리 시 앞이 DELETE면 제외
+        let re;
+        if (k === 'FROM') re = new RegExp('(?<!DELETE)\\s+' + pat + '\\s+', 'gi');
+        else re = new RegExp('\\s+' + pat + '\\s+', 'gi');
+        s = s.replace(re, '\n' + k + ' ');
       });
+      // JOIN 계열은 한 번에 처리(LEFT/INNER 등과 단독 JOIN 의 중복 분리 방지)
+      s = s.replace(/\s+((?:LEFT|RIGHT|FULL|INNER|CROSS)(?:\s+OUTER)?\s+JOIN|JOIN)\s+/gi,
+        (m, g) => '\n' + g.replace(/\s+/g, ' ').toUpperCase() + ' ');
+      // ON / AND / OR 들여쓰기
+      s = s.replace(/\s+(AND|OR)\s+/gi, '\n  $1 ');
+      s = s.replace(/\s+ON\s+/gi, '\n  ON ');
+      return s.split('\n').map(l => l.trimEnd()).join('\n').trim();
+    }
+
+    /* ---------- 개수/검증 표시 ---------- */
+    function refreshCounts(qCount, pCount) {
+      const pe = $('cntInputSqlValue');
+      pe.textContent = `파라미터 ${pCount}개`;
+      const qe = $('cntInputSql');
+      qe.textContent = `? ${qCount}개`;
+
+      const alert = $('mismatchAlert');
+      if (qCount === 0) { alert.textContent = ''; pe.className = qe.className = 'count'; return; }
+      if (qCount === pCount) {
+        alert.textContent = `✓ ? ${qCount} = 파라미터 ${pCount}`;
+        alert.className = 'ok';
+        pe.className = qe.className = 'count ok';
+      } else {
+        alert.textContent = `⚠ ? ${qCount} ≠ 파라미터 ${pCount}`;
+        alert.className = 'warn';
+        pe.className = qe.className = 'count warn';
+      }
+    }
+
+    /* ---------- 메인 동작 ---------- */
+    function convertSql() {
+      const rawSql = sqlEl.value;
+      if (!rawSql.trim()) { showToast('SQL을 입력해주세요.', 'warning'); return; }
+
+      // 로그 블록이면 Parameters 줄을 자동으로 파라미터 칸에 채움
+      const prm = rawSql.match(/Parameters\s*:\s*([^\n]*)/i);
+      if (prm && !valueEl.value.trim()) valueEl.value = prm[1].trim();
+
+      const params = parseParams(valueEl.value);
+      const clean = cleanSql(rawSql);
+      const qCount = (clean.match(/\?/g) || []).length;
+
+      let result = bindParameters(clean, params);
+      if ($('optSemicolon').checked && result && !result.trim().endsWith(';')) {
+        result = result.trim() + ';';
+      }
+      if ($('optAutoFormat').checked) result = formatSql(result);
+
+      resultEl.value = result;
+      refreshCounts(qCount, params.length);
+
+      if (qCount !== params.length) {
+        showToast(`? ${qCount}개와 파라미터 ${params.length}개가 일치하지 않습니다.`, 'warning');
+      } else {
+        showToast('변환 완료', 'success');
+      }
+      if ($('optAutoCopy').checked && result) copyText(result);
+    }
+
+    function formatResult() {
+      const cur = resultEl.value || cleanSql(sqlEl.value);
+      if (!cur.trim()) { showToast('포맷할 내용이 없습니다.', 'warning'); return; }
+      resultEl.value = formatSql(cur);
+      showToast('포맷 완료', 'success');
+    }
+
+    async function copyResult() {
+      if (!resultEl.value) { showToast('복사할 결과가 없습니다.', 'warning'); return; }
+      await copyText(resultEl.value);
+      showToast('클립보드에 복사되었습니다.', 'success');
+    }
+
+    function downloadResult() {
+      if (!resultEl.value) { showToast('저장할 결과가 없습니다.', 'warning'); return; }
+      download('converted_query.sql', resultEl.value);
+    }
+
+    function clearAll() {
+      valueEl.value = '';
+      sqlEl.value = '';
+      resultEl.value = '';
+      refreshCounts(0, 0);
+      sqlEl.focus();
+    }
+
+    function loadSample() {
+      sqlEl.value = '==>  Preparing: SELECT u.id, u.name, u.email FROM users u LEFT JOIN orders o ON o.user_id = u.id WHERE u.status = ? AND u.name = ? AND u.age > ? ORDER BY u.created_at DESC\n==> Parameters: ACTIVE(String), 오\'브라이언(String), 20(Integer)';
+      valueEl.value = '';
+      convertSql();
+    }
+
+    // 입력 시 개수 실시간 갱신(가벼운 미리보기)
+    function livePreview() {
+      const clean = cleanSql(sqlEl.value);
+      const qCount = (clean.match(/\?/g) || []).length;
+      let pCount = parseParams(valueEl.value).length;
+      // SQL칸에 Parameters 줄이 있고 파라미터칸이 비었으면 그것으로 미리보기
+      if (!valueEl.value.trim()) {
+        const prm = sqlEl.value.match(/Parameters\s*:\s*([^\n]*)/i);
+        if (prm) pCount = parseParams(prm[1]).length;
+      }
+      refreshCounts(qCount, pCount);
+    }
+    valueEl.addEventListener('input', livePreview);
+    sqlEl.addEventListener('input', livePreview);
+
+    // Ctrl+Enter 로 변환
+    [valueEl, sqlEl].forEach(el => el.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); convertSql(); }
+    }));
+
+    // 파일 드래그앤드롭 (.sql/.log/.txt 등)
+    const dropAsText = (el) => fileDropHandler.init(el, {
+      onText: (content) => { el.value = content; livePreview(); showToast('파일을 불러왔습니다.', 'success'); },
+      onOther: (file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => { el.value = e.target.result; livePreview(); showToast('파일을 불러왔습니다.', 'success'); };
+        reader.readAsText(file);
+      },
+      onImage: () => showToast('이미지는 지원하지 않습니다.', 'warning')
     });
+    dropAsText(sqlEl);
   </script>
 </body>
 </html>
