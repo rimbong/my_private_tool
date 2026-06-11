@@ -20,6 +20,8 @@
       --editor-bg: #f8fafc;
       --text: #111827;
       --sidebar-width: 50%;
+      --accent: #3b82f6;       /* 탭 활성/호버 강조색 */
+      --tab-border: #cbd5e1;   /* 탭 윤곽선(기본보다 진하게) */
     }
 
     body.dark-mode {
@@ -29,6 +31,8 @@
       --border: #30363d;
       --editor-bg: #0d1117;
       --text: #c9d1d9;
+      --accent: #58a6ff;
+      --tab-border: #4b5563;
     }
 
     body {
@@ -140,6 +144,77 @@
       padding: 2rem;
       background: var(--header-bg);
     }
+
+    /* --- 문서 탭 바 --- */
+    .doc-tabs {
+      display: flex;
+      align-items: flex-end;
+      background: var(--editor-bg);
+      border-bottom: 2px solid var(--tab-border);
+      padding: 0.45rem 0.5rem 0;
+      gap: 0.4rem;
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: thin;
+    }
+    .doc-tab-list { display: flex; align-items: flex-end; gap: 0.4rem; }
+    .doc-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 0.5rem 0.5rem 0.8rem;
+      border: 1.5px solid var(--tab-border);
+      border-bottom: none;
+      border-radius: 0.6rem 0.6rem 0 0;
+      background: var(--header-bg);
+      color: var(--text);
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+      max-width: 220px;
+      position: relative;
+      bottom: -2px;                 /* 바 하단선과 살짝 겹쳐 탭처럼 보이게 */
+      box-shadow: 0 -1px 2px rgba(0,0,0,0.04);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .doc-tab:hover { border-color: var(--accent); color: var(--accent); }
+    .doc-tab.active {
+      background: var(--bg);
+      border-color: var(--accent);
+      border-top-width: 3px;        /* 상단 파란 강조선 */
+      border-bottom: 2px solid var(--bg);  /* 활성 탭은 바 하단선을 덮어 본문과 이어짐 */
+      font-weight: 700;
+      color: var(--text);
+      z-index: 1;
+    }
+    .doc-tab-title { overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+    .doc-tab-close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      font-size: 0.72rem;
+      opacity: 0.55;
+      flex-shrink: 0;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .doc-tab-close:hover { opacity: 1; background: var(--tab-border); }
+    .doc-tab-add {
+      align-self: center;
+      margin: 0 0.2rem 0.2rem;
+      border: 1.5px solid var(--tab-border);
+      background: var(--header-bg);
+      color: var(--text);
+      width: 30px; height: 30px;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      font-size: 1.15rem;
+      line-height: 1;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .doc-tab-add:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
 
     main {
       flex: 1;
@@ -258,6 +333,8 @@
       .action-group { flex-wrap: wrap; }
       .action-group .btn { padding: 0.45rem 0.7rem; font-size: 0.85rem; }
       .preview-toolbar { padding: 0.4rem 0.7rem; }
+      .doc-tab { max-width: 150px; font-size: 0.78rem; padding: 0.35rem 0.45rem 0.35rem 0.6rem; }
+      .doc-tab-title { max-width: 110px; }
     }
 
     .file-input {
@@ -308,7 +385,7 @@
 
     /* Print Styles */
     @media print {
-      header, .editor-container, .resizer, .modal-header, .action-group, .btn, .preview-toolbar {
+      header, .editor-container, .resizer, .modal-header, .action-group, .btn, .preview-toolbar, .doc-tabs {
         display: none !important;
       }
 
@@ -371,6 +448,11 @@
       <button class="btn btn-ghost" onclick="clearAll()" style="color: var(--danger);">비우기</button>
     </div>
   </header>
+
+  <div class="doc-tabs" id="docTabs">
+    <div class="doc-tab-list" id="docTabList"></div>
+    <button class="doc-tab-add" onclick="newDoc()" title="새 문서 추가">＋</button>
+  </div>
 
   <main>
     <div class="editor-container" id="editorContainer">
@@ -488,6 +570,172 @@
       appendMode = !appendMode;
       dropModeToggle.textContent = appendMode ? '📎 드롭: 이어붙이기' : '📄 드롭: 새로 쓰기';
       dropModeToggle.classList.toggle('btn-primary', appendMode);
+    }
+
+    /* ===== 다중 문서(탭) 관리 =====
+       문서별로 { id, title, content, customTitle, updatedAt } 를 IndexedDB 'docs' 스토어에 보관.
+       탭 순서/활성 문서는 'content' 스토어(doc_order, active_doc)에 기록.
+       이미지 토큰 저장소(imageStore/'images')는 모든 문서가 공유한다. */
+    let docs = [];          // 순서대로 정렬된 문서 배열
+    let activeDocId = null;
+    let docCounter = 0;
+    function genDocId() { docCounter++; return 'd' + Date.now().toString(36) + docCounter.toString(36); }
+
+    // 첫 줄(또는 첫 제목)에서 탭 이름 자동 생성
+    function deriveTitle(content) {
+      const firstLine = (content || '').split('\n').map(l => l.trim()).find(l => l) || '';
+      let t = firstLine
+        .replace(/^#{1,6}\s+/, '')                       // 헤더 마크 제거
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, '[이미지]')      // 이미지
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')          // 링크 → 텍스트
+        .replace(/[`*_~>#]+/g, ' ')                        // 잡 마크다운 기호
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (t.length > 30) t = t.slice(0, 30) + '…';
+      return t || '제목 없음';
+    }
+
+    function getActiveDoc() { return docs.find(d => d.id === activeDocId) || null; }
+
+    function persistDoc(doc) {
+      if (dbManager.db) dbManager.setItem('docs', doc.id, doc).catch(() => {});
+    }
+    function persistMeta() {
+      if (!dbManager.db) return;
+      dbManager.setItem('content', 'doc_order', docs.map(d => d.id)).catch(() => {});
+      dbManager.setItem('content', 'active_doc', activeDocId).catch(() => {});
+    }
+
+    function renderTabs() {
+      const list = document.getElementById('docTabList');
+      list.innerHTML = '';
+      docs.forEach(d => {
+        const tab = document.createElement('div');
+        tab.className = 'doc-tab' + (d.id === activeDocId ? ' active' : '');
+        tab.dataset.id = d.id;
+        tab.title = d.title + '  (더블클릭: 이름 변경)';
+        tab.onclick = () => switchDoc(d.id);
+        tab.ondblclick = () => renameDoc(d.id);
+
+        const title = document.createElement('span');
+        title.className = 'doc-tab-title';
+        title.textContent = d.title;
+        tab.appendChild(title);
+
+        const close = document.createElement('span');
+        close.className = 'doc-tab-close';
+        close.textContent = '✕';
+        close.title = '문서 닫기';
+        close.onclick = (e) => deleteDoc(d.id, e);
+        tab.appendChild(close);
+
+        list.appendChild(tab);
+      });
+      const activeTab = list.querySelector('.doc-tab.active');
+      if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    }
+
+    function loadDoc(id) {
+      const doc = docs.find(d => d.id === id);
+      if (!doc) return;
+      activeDocId = id;
+      editor.value = doc.content;
+      updatePreview();
+      if (previewMode === 'text') updatePlain();
+      renderTabs();
+    }
+
+    function switchDoc(id) {
+      if (id === activeDocId) return;
+      saveToDB();          // 현재 편집 내용 보존(메모리+DB)
+      loadDoc(id);
+      persistMeta();
+    }
+
+    function newDoc(initial) {
+      saveToDB();          // 현재 문서 보존
+      const content = (typeof initial === 'string') ? initial : '';
+      const doc = { id: genDocId(), title: deriveTitle(content), content, customTitle: false, updatedAt: Date.now() };
+      docs.push(doc);
+      activeDocId = doc.id;
+      editor.value = content;
+      updatePreview();
+      if (previewMode === 'text') updatePlain();
+      renderTabs();
+      persistDoc(doc);
+      persistMeta();
+      editor.focus();
+      return doc;
+    }
+
+    function renameDoc(id) {
+      const doc = docs.find(d => d.id === id);
+      if (!doc) return;
+      const name = prompt('문서 이름을 입력하세요 (비우면 자동 이름으로 복귀):', doc.title);
+      if (name === null) return;
+      const trimmed = name.trim();
+      if (trimmed) { doc.customTitle = true; doc.title = trimmed; }
+      else { doc.customTitle = false; doc.title = deriveTitle(doc.content); }
+      doc.updatedAt = Date.now();
+      renderTabs();
+      persistDoc(doc);
+    }
+
+    function deleteDoc(id, e) {
+      if (e) e.stopPropagation();
+      const idx = docs.findIndex(d => d.id === id);
+      if (idx === -1) return;
+      const doc = docs[idx];
+      if (!confirm(`'${doc.title}' 문서를 닫을까요? 되돌릴 수 없습니다.`)) return;
+      if (id !== activeDocId) saveToDB();   // 활성 문서 편집분 보존
+      docs.splice(idx, 1);
+      if (dbManager.db) dbManager.removeItem('docs', id).catch(() => {});
+      if (activeDocId === id) {
+        if (docs.length === 0) {
+          const blank = { id: genDocId(), title: '제목 없음', content: '', customTitle: false, updatedAt: Date.now() };
+          docs.push(blank);
+          persistDoc(blank);
+          loadDoc(blank.id);
+        } else {
+          loadDoc(docs[Math.max(0, idx - 1)].id);
+        }
+      } else {
+        renderTabs();
+      }
+      persistMeta();
+      showToast('문서를 닫았습니다.', 'info');
+    }
+
+    // 'docs' 스토어 + 순서/활성 메타를 읽어 docs 배열 구성 (없으면 기존 단일 문서 이관)
+    async function loadAllDocs() {
+      const order = await dbManager.getItem('content', 'doc_order');
+      const all = await dbManager.getAll('docs') || {};
+      docs = [];
+      if (Array.isArray(order) && order.length) {
+        order.forEach(id => { if (all[id]) docs.push(all[id]); });
+        Object.keys(all).forEach(id => { if (!order.includes(id)) docs.push(all[id]); });
+      } else {
+        Object.values(all).forEach(d => docs.push(d));
+      }
+      // 필드 정규화
+      docs.forEach(d => {
+        if (typeof d.customTitle !== 'boolean') d.customTitle = false;
+        if (!d.title) d.title = deriveTitle(d.content);
+      });
+
+      if (docs.length === 0) {
+        // 최초 실행이거나 구버전(단일 문서) 사용자 → 이관
+        const legacy = await dbManager.getItem('content', 'last_content');
+        const content = (legacy && legacy.trim()) ? legacy : initialContent;
+        const doc = { id: genDocId(), title: deriveTitle(content), content, customTitle: false, updatedAt: Date.now() };
+        docs.push(doc);
+        persistDoc(doc);
+      }
+
+      const savedActive = await dbManager.getItem('content', 'active_doc');
+      activeDocId = (savedActive && docs.some(d => d.id === savedActive)) ? savedActive : docs[0].id;
+      loadDoc(activeDocId);
+      persistMeta();
     }
 
     // Initial Content
@@ -725,17 +973,12 @@ function hello() {
     // Persistence Logic
     async function initStorage() {
       try {
-        await dbManager.init('MDViewerDB', ['content', 'images']);
+        await dbManager.init('MDViewerDB', ['content', 'images', 'docs']);
         // 저장된 이미지 토큰 복원
         const storedImgs = await dbManager.getAll('images');
         Object.entries(storedImgs || {}).forEach(([token, val]) => imageStore.set(token, val));
-        const saved = await dbManager.getItem('content', 'last_content');
-        if (saved) {
-          editor.value = saved;
-        } else {
-          editor.value = initialContent;
-        }
-        updatePreview();
+        // 문서 목록 로드 (없으면 기존 단일 문서 자동 이관) + 탭 렌더
+        await loadAllDocs();
 
         // Initialize File Drop Handler
         fileDropHandler.init(editor, {
@@ -761,17 +1004,24 @@ function hello() {
         });
       } catch (err) {
         console.error('Failed to init DB:', err);
-        editor.value = initialContent;
-        updatePreview();
+        // DB 실패 시에도 인메모리 문서 1개로 동작 (영속만 안 됨)
+        if (docs.length === 0) {
+          docs.push({ id: genDocId(), title: deriveTitle(initialContent), content: initialContent, customTitle: false, updatedAt: Date.now() });
+        }
+        activeDocId = docs[0].id;
+        loadDoc(activeDocId);
       }
     }
 
-    async function saveToDB() {
-      try {
-        await dbManager.setItem('content', 'last_content', editor.value);
-      } catch (err) {
-        console.error('Failed to save to DB:', err);
-      }
+    function saveToDB() {
+      const doc = getActiveDoc();
+      if (!doc) return;
+      const prevTitle = doc.title;
+      doc.content = editor.value;
+      if (!doc.customTitle) doc.title = deriveTitle(doc.content);
+      doc.updatedAt = Date.now();
+      persistDoc(doc);
+      if (doc.title !== prevTitle) renderTabs();  // 자동 제목이 바뀌면 탭 갱신
     }
 
     // Initialize on load
@@ -781,22 +1031,31 @@ function hello() {
     function loadFile(event) {
       const file = event.target.files[0];
       if (!file) return;
-      
+
       const reader = new FileReader();
       reader.onload = (e) => {
-        editor.value = e.target.result;
-        updatePreview();
-        saveToDB();
+        // 기존 문서를 덮어쓰지 않고 새 탭으로 연다
+        const doc = newDoc(e.target.result);
+        const base = (file.name || '문서').replace(/\.[^.]+$/, '');
+        if (base) { doc.title = base; doc.customTitle = true; }
+        doc.updatedAt = Date.now();
+        persistDoc(doc);
+        renderTabs();
+        showToast(`'${file.name}'을(를) 새 탭으로 열었습니다.`, 'success');
       };
       reader.readAsText(file);
+      event.target.value = '';   // 같은 파일을 다시 열 수 있도록 초기화
     }
 
     function saveFile() {
+      const doc = getActiveDoc();
+      const base = (doc && doc.title && doc.title !== '제목 없음') ? doc.title : 'document';
+      const safe = base.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 60) || 'document';
       const blob = new Blob([inlineImages(editor.value)], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'document.md';
+      a.download = safe + '.md';
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -841,12 +1100,12 @@ function hello() {
     }
 
     function clearAll() {
-      if (confirm('모든 내용을 비우시겠습니까?')) {
+      // 현재 문서의 내용만 비운다 (다른 탭/공유 이미지는 보존)
+      if (confirm('현재 문서의 내용을 비우시겠습니까?')) {
         editor.value = '';
-        imageStore.clear();
-        if (dbManager.db) dbManager.clearAll(['images']).catch(() => {});
         updatePreview();
         saveToDB();
+        editor.focus();
       }
     }
 

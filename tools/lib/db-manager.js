@@ -87,6 +87,15 @@ const dbManager = {
     });
   },
 
+  async removeItem(storeName, key) {
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(storeName, 'readwrite');
+      tx.objectStore(storeName).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+    });
+  },
+
   async getAll(storeName) {
     return new Promise((resolve, reject) => {
       const tx = this.db.transaction(storeName, 'readonly');
