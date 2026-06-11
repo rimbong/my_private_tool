@@ -265,7 +265,12 @@
                 }
             }
 
-            const checkedRadio = document.querySelector('input[name="selectView"]:checked');
+            let checkedRadio = document.querySelector('input[name="selectView"]:checked');
+            if (!checkedRadio) {
+                // ?tool= 없이 들어와도 빈 화면이 되지 않도록 첫 도구를 기본 선택
+                checkedRadio = document.querySelector('input[name="selectView"]');
+                if (checkedRadio) checkedRadio.checked = true;
+            }
             if (checkedRadio) {
                 frame.src = checkedRadio.value;
             }

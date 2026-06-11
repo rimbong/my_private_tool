@@ -128,6 +128,10 @@ const dbManager = {
   async clearAll(stores) {
     const tx = this.db.transaction(stores, 'readwrite');
     stores.forEach(s => tx.objectStore(s).clear());
-    return new Promise(r => tx.oncomplete = r);
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = (e) => reject(e);
+      tx.onabort = (e) => reject(e);
+    });
   }
 };
