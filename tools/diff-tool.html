@@ -136,12 +136,14 @@
       h1 { font-size: 1.1rem; }
       .toolbar { gap: 0.4rem; }
       .btn { padding: 0.45rem 0.7rem; font-size: 0.8rem; }
+      /* 세로 스택 시 결과 영역이 찌그러지지 않도록 페이지 스크롤 허용 */
+      body { height: auto; min-height: 100vh; overflow-y: auto; }
       /* 입력 A/B 를 가로 2분할 → 세로 스택 */
       .inputs { flex-direction: column; min-height: auto; }
-      .inputs .pane { min-height: 130px; }
+      .inputs .pane { min-height: 140px; }
       .inputs .pane + .pane { border-left: none; border-top: 1px solid var(--border); }
+      .result { min-height: 55vh; }
       .result-head { flex-wrap: wrap; gap: 0.5rem; }
-      /* 나란히(split) 보기는 가로 스크롤(.diff-view overflow:auto)로 대응 */
     }
   </style>
   <script src="lib/portal-theme.js"></script>
