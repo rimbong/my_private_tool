@@ -105,6 +105,14 @@
     #mismatchAlert { font-size: 0.78rem; font-weight: 800; }
     #mismatchAlert.warn { color: var(--warn); }
     #mismatchAlert.ok { color: var(--primary); }
+
+    /* ===== Responsive: 모바일 ===== */
+    @media (max-width: 600px) {
+      body { padding: 0.75rem; overflow-x: hidden; }
+      .card { padding: 1.1rem; border-radius: 0.75rem; }
+      h1 { font-size: 1.25rem; }
+      .controls .btn { flex: 1; min-width: 0; }
+    }
   </style>
   <script src="lib/shared-utils.js"></script>
   <script src="lib/portal-theme.js"></script>
