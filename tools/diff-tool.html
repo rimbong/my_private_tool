@@ -129,6 +129,20 @@
     td.content.cell-add .wd { background: rgba(16,185,129,0.40); border-radius: 2px; }
     body.dark td.content.cell-del .wd { background: rgba(255,123,114,0.38); }
     body.dark td.content.cell-add .wd { background: rgba(126,231,135,0.30); }
+
+    /* ===== Responsive: 모바일 ===== */
+    @media (max-width: 768px) {
+      header { padding: 0.7rem 1rem; }
+      h1 { font-size: 1.1rem; }
+      .toolbar { gap: 0.4rem; }
+      .btn { padding: 0.45rem 0.7rem; font-size: 0.8rem; }
+      /* 입력 A/B 를 가로 2분할 → 세로 스택 */
+      .inputs { flex-direction: column; min-height: auto; }
+      .inputs .pane { min-height: 130px; }
+      .inputs .pane + .pane { border-left: none; border-top: 1px solid var(--border); }
+      .result-head { flex-wrap: wrap; gap: 0.5rem; }
+      /* 나란히(split) 보기는 가로 스크롤(.diff-view overflow:auto)로 대응 */
+    }
   </style>
   <script src="lib/portal-theme.js"></script>
   <script src="lib/file-drop-handler.js"></script>

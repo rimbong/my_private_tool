@@ -78,7 +78,20 @@
     .tab-btn { flex: 1; padding: 0.65rem 1rem; border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.92rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
     .tab-btn:hover { background: var(--code-bg); color: var(--text); }
     .tab-btn.active { background: var(--primary); color: #fff; }
-    @media (max-width: 560px) { .tab-btn { font-size: 0.82rem; padding: 0.55rem 0.5rem; } .tab-btn .t-label { display: none; } }
+    @media (max-width: 560px) {
+      .tab-btn { font-size: 0.82rem; padding: 0.55rem 0.5rem; }
+      .tab-btn .t-label { display: none; }
+      body { padding: 1rem; overflow-x: hidden; }
+      .card { padding: 1rem; }
+      /* 결과 라벨 칸 축소(160px → 92px) */
+      .grid { grid-template-columns: 92px 1fr auto; gap: 0.4rem 0.6rem; }
+      .grid .val { font-size: 0.85rem; }
+      .live-now { font-size: 1.2rem; }
+      /* Cron 5칸: 글자 축소로 넘침 방지 */
+      .cron-fields { gap: 0.3rem; }
+      .cron-fields .cf .box { padding: 0.3rem 0.15rem; font-size: 0.85rem; }
+      .cron-fields .cf small { font-size: 0.6rem; }
+    }
   </style>
   <script src="lib/portal-theme.js"></script>
   <script src="lib/toast-utils.js"></script>
