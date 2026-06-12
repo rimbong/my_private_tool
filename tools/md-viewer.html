@@ -205,16 +205,20 @@
     }
     .doc-tab-close:hover { opacity: 1; background: var(--tab-border); }
     .doc-tab-add {
-      align-self: center;
-      margin: 0 0.2rem 0.2rem;
+      align-self: flex-end;            /* 탭과 같은 바닥선에 정렬 */
+      display: inline-flex;            /* ＋ 글리프 정중앙 정렬 */
+      align-items: center;
+      justify-content: center;
+      margin: 0 0.2rem 5px;            /* 하단선 위로 살짝 띄움 */
       border: 1.5px solid var(--tab-border);
       background: var(--header-bg);
       color: var(--text);
       width: 30px; height: 30px;
       border-radius: 0.45rem;
       cursor: pointer;
-      font-size: 1.15rem;
+      font-size: 1.1rem;
       line-height: 1;
+      padding: 0;
       flex-shrink: 0;
       transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
@@ -1002,14 +1006,11 @@ function hello() {
               saveToDB();
               showToast(`파일 '${file.name}'의 내용이 이어붙여졌습니다.`, 'success');
             } else {
-              // 새로 쓰기: 현재 문서를 덮지 않고 새 탭으로 연다 (기록 보존)
-              const doc = newDoc(content);
-              const base = (file.name || '문서').replace(/\.[^.]+$/, '');
-              if (base) { doc.title = base; doc.customTitle = true; }
-              doc.updatedAt = Date.now();
-              persistDoc(doc);
-              renderTabs();
-              showToast(`파일 '${file.name}'을(를) 새 탭으로 열었습니다.`, 'success');
+              // 새로 쓰기: 현재 탭의 내용을 덮어씀 (새 탭 생성하지 않음)
+              editor.value = content;
+              updatePreview();
+              saveToDB();
+              showToast(`파일 '${file.name}'의 내용을 현재 탭에 불러왔습니다.`, 'success');
             }
           }
         });
