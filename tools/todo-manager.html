@@ -656,27 +656,70 @@
       <div class="modal-content" style="width: 850px; max-width: 95vw;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 id="detailTaskTitle" style="margin:0; font-size:1.6rem; font-weight:800; color:var(--text-main); word-break:break-all;"></h2>
+            <h2 id="taskEditHeading" style="display:none; margin:0; font-size:1.4rem; font-weight:800; color:var(--text-main);">✏️ 일정 수정</h2>
             <button class="btn btn-ghost" onclick="closeTaskDetailModal()" style="font-size: 1.5rem;">✕</button>
         </div>
-        <div id="detailTaskMeta" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-top: 0.5rem; display:flex; align-items:center; gap:0.5rem;"></div>
+        <div id="taskDetailView">
+          <div id="detailTaskMeta" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-top: 0.5rem; display:flex; align-items:center; gap:0.5rem;"></div>
 
-        <!-- Tab Toggles -->
-        <div style="display:flex; align-items: center; gap:0.2rem; margin-top:1.5rem;">
-            <button id="viewTaskTabPlain" class="btn btn-outline active" onclick="switchTaskDetailView('plain')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">텍스트</button>
-            <button id="viewTaskTabMD" class="btn btn-outline" onclick="switchTaskDetailView('md')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">마크다운 미리보기</button>
-            <button id="taskThemeToggle" class="btn btn-ghost" onclick="mdRenderer.toggleTheme()" title="테마 전환" style="margin-left: auto; display: none;">🌙</button>
+          <!-- Tab Toggles -->
+          <div style="display:flex; align-items: center; gap:0.2rem; margin-top:1.5rem;">
+              <button id="viewTaskTabPlain" class="btn btn-outline active" onclick="switchTaskDetailView('plain')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">텍스트</button>
+              <button id="viewTaskTabMD" class="btn btn-outline" onclick="switchTaskDetailView('md')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">마크다운 미리보기</button>
+              <button id="taskThemeToggle" class="btn btn-ghost" onclick="mdRenderer.toggleTheme()" title="테마 전환" style="margin-left: auto; display: none;">🌙</button>
+          </div>
+
+          <!-- Content Area -->
+          <div style="border: 1px solid var(--border); border-radius: 0 12px 12px 12px; background: var(--card-bg); overflow: hidden; position: relative;">
+              <div id="detailTaskContent" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: #334155; display: block;"></div>
+              <div id="detailTaskMD" class="markdown-body" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; display: none;"></div>
+          </div>
         </div>
 
-        <!-- Content Area -->
-        <div style="border: 1px solid var(--border); border-radius: 0 12px 12px 12px; background: var(--card-bg); overflow: hidden; position: relative;">
-            <div id="detailTaskContent" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: #334155; display: block;"></div>
-            <div id="detailTaskMD" class="markdown-body" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; display: none;"></div>
+        <!-- Edit Form (상세 모달 인라인 수정) -->
+        <div id="taskEditForm" style="display:none; flex-direction:column; gap:1.1rem; margin-top:1rem;">
+            <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">제목</label>
+                <input type="text" id="etTitle" style="font-weight:700; font-size:1.05rem;">
+            </div>
+            <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+                <div style="display:flex; flex-direction:column; gap:0.4rem; flex:1; min-width:220px;">
+                    <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">📅 기간 (시작 ~ 종료)</label>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <input type="date" id="etDateStart" style="flex:1;">
+                        <span style="color:var(--text-muted); font-weight:800;">~</span>
+                        <input type="date" id="etDateEnd" style="flex:1;">
+                    </div>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.4rem; min-width:150px;">
+                    <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">카테고리</label>
+                    <select id="etCategory" style="padding:0.6rem 0.7rem; border:1px solid var(--border); border-radius:12px; background:var(--card-bg); color:var(--text-main); font-weight:700;"></select>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">⏰ 시간 <span style="font-weight:600;">(비우면 종일)</span></label>
+                <div style="display:flex; gap:0.5rem; align-items:center;">
+                    <input type="time" id="etStart">
+                    <span style="color:var(--text-muted); font-weight:800;">~</span>
+                    <input type="time" id="etEnd">
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">내용 <span style="font-weight:600;">(마크다운 지원)</span></label>
+                <textarea id="etContent" style="min-height:220px; width:100%; box-sizing:border-box; font-size:1rem; line-height:1.6;"></textarea>
+            </div>
         </div>
 
-        <div style="display:flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+        <!-- View Footer -->
+        <div id="taskDetailFooter" style="display:flex; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
             <button class="btn btn-ghost" onclick="copyTaskFromDetail()">📋 복사</button>
             <button class="btn btn-outline" onclick="editTaskFromDetail()">✏️ 수정하기</button>
             <button class="btn btn-primary" onclick="closeTaskDetailModal()" style="min-width: 100px;">닫기</button>
+        </div>
+        <!-- Edit Footer -->
+        <div id="taskEditFooter" style="display:none; gap: 1rem; justify-content: flex-end; margin-top: 1.5rem;">
+            <button class="btn btn-outline" onclick="cancelTaskEdit()" style="min-width:100px;">취소</button>
+            <button class="btn btn-primary" onclick="saveTaskFromDetail()" style="min-width: 120px;">💾 저장</button>
         </div>
       </div>
     </div>
@@ -1361,8 +1404,9 @@
             `<span>${dateLabel}</span><span class="status-badge ${task.completed ? 'status-done' : 'status-pending'}">${task.completed ? 'Done' : 'Todo'}</span>${dTimeChip}${dCatChip}`;
         document.getElementById('detailTaskContent').innerText = task.content || '(내용 없음)';
 
-        // 기본은 텍스트 보기로 초기화
+        // 기본은 텍스트 보기 + 보기 모드로 초기화
         switchTaskDetailView('plain');
+        setTaskDetailMode('view');
 
         modal.style.display = 'flex';
     }
@@ -1401,23 +1445,57 @@
         if (task) copyText(`${task.title}\n${task.content || ''}`);
     }
 
+    // 상세 모달의 보기/수정 모드 전환
+    function setTaskDetailMode(mode) {
+        const editing = mode === 'edit';
+        document.getElementById('taskDetailView').style.display = editing ? 'none' : 'block';
+        document.getElementById('taskEditForm').style.display = editing ? 'flex' : 'none';
+        document.getElementById('taskDetailFooter').style.display = editing ? 'none' : 'flex';
+        document.getElementById('taskEditFooter').style.display = editing ? 'flex' : 'none';
+        document.getElementById('detailTaskTitle').style.display = editing ? 'none' : 'block';
+        document.getElementById('taskEditHeading').style.display = editing ? 'block' : 'none';
+    }
+
+    // 상세 모달 안에서 바로 수정 (드로어로 이동하지 않음)
     function editTaskFromDetail() {
         const modal = document.getElementById('taskDetailModal');
-        const id = modal.dataset.taskId, date = modal.dataset.taskDate;
-        closeTaskDetailModal();
-        // 현재 클릭 이벤트가 끝난 뒤 드로어를 열어야 전역 클릭 핸들러가 곧바로 닫는 것을 방지
-        setTimeout(() => {
-            selectedDate = new Date(date);
-            currentDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-            renderCalendar();
-            updateSelectedDateLabel();
-            openDrawer();
-            const card = document.querySelector(`#drawerContent .todo-card-big[data-id="${id}"]`);
-            if (card) {
-                startEditCard(card);
-                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
-        }, 0);
+        const id = modal.dataset.taskId, dateStr = modal.dataset.taskDate;
+        const task = (todos[dateStr] || []).find(t => t.id === id);
+        if (!task) return;
+        document.getElementById('etTitle').value = task.title || '';
+        document.getElementById('etCategory').innerHTML = categoryOptionsHtml(task.category);
+        document.getElementById('etDateStart').value = task.date;
+        document.getElementById('etDateEnd').value = task.endDate || task.date;
+        document.getElementById('etStart').value = task.startTime || '';
+        document.getElementById('etEnd').value = task.endTime || '';
+        document.getElementById('etContent').value = task.content || '';
+        setTaskDetailMode('edit');
+        document.getElementById('etTitle').focus();
+    }
+
+    function cancelTaskEdit() { setTaskDetailMode('view'); }
+
+    async function saveTaskFromDetail() {
+        const modal = document.getElementById('taskDetailModal');
+        const id = modal.dataset.taskId, dateStr = modal.dataset.taskDate;
+        const title = document.getElementById('etTitle').value.trim();
+        if (!title) { showToast('제목을 입력하세요.', 'warning'); return; }
+        const task = (todos[dateStr] || []).find(t => t.id === id);
+        if (!task) return;
+        await applyTaskEdit(task, dateStr, {
+            title,
+            content: document.getElementById('etContent').value.trim(),
+            category: document.getElementById('etCategory').value || '',
+            startTime: document.getElementById('etStart').value || '',
+            endTime: document.getElementById('etEnd').value || '',
+            newStart: document.getElementById('etDateStart').value || dateStr,
+            newEnd: document.getElementById('etDateEnd').value || '',
+        });
+        refreshCurrentView();
+        handleSearch();
+        showToast('일정을 수정했습니다.', 'success');
+        // 수정 결과로 상세 보기 갱신 (시작일이 바뀌었으면 새 버킷 기준)
+        openTaskDetailModal(id, task.date);
     }
 
     function closeTaskDetailModal() {
@@ -1634,6 +1712,13 @@
                     <input type="text" class="edit-title" value="${task.title}" style="font-weight:800; flex:1; box-sizing:border-box;">
                     <select class="edit-category" title="카테고리" style="padding:0.5rem 0.6rem; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); color:var(--text-main); font-weight:700;">${categoryOptionsHtml(task.category)}</select>
                 </div>
+                <div style="display:flex; gap:0.4rem; align-items:center; font-size:0.85rem; flex-wrap:wrap;">
+                    <span style="color:var(--text-muted);">📅</span>
+                    <input type="date" class="edit-date-start" value="${task.date}" style="padding:0.35rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text-main);">
+                    <span style="color:var(--text-muted);">~</span>
+                    <input type="date" class="edit-date-end" value="${task.endDate || task.date}" style="padding:0.35rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text-main);">
+                    <span style="color:var(--text-muted); font-size:0.72rem;">(종료일=시작일이면 하루)</span>
+                </div>
                 <div style="display:flex; gap:0.4rem; align-items:center; font-size:0.85rem;">
                     <span style="color:var(--text-muted);">⏰</span>
                     <input type="time" class="edit-start" value="${task.startTime || ''}" style="padding:0.35rem 0.5rem; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); color:var(--text-main);">
@@ -1839,18 +1924,45 @@
         card.querySelector('.edit-mode').style.display = 'none'; 
         card.classList.remove('editing'); 
     }
+    // 일정 필드/기간 수정 공통 처리 (드로어 카드 인라인 편집 + 상세 모달 편집 공용)
+    async function applyTaskEdit(task, oldBucket, f) {
+        task.title = f.title;
+        task.content = f.content;
+        task.category = f.category;
+        task.startTime = f.startTime;
+        task.endTime = f.endTime;
+        let newStart = f.newStart || oldBucket;
+        let newEnd = f.newEnd || newStart;
+        if (newEnd < newStart) { const tmp = newStart; newStart = newEnd; newEnd = tmp; } // 거꾸로 입력 보정
+        const oldStart = task.date;
+        task.date = newStart;
+        if (newEnd && newEnd !== newStart) task.endDate = newEnd; else delete task.endDate;
+        if (oldStart !== newStart) {
+            // 시작일이 바뀌면 메모리 버킷 이동(IndexedDB는 id 기준이라 그대로)
+            todos[oldStart] = (todos[oldStart] || []).filter(t => t.id !== task.id);
+            if (!todos[newStart]) todos[newStart] = [];
+            todos[newStart].push(task);
+        }
+        await dbManager.setItem('todos', task.id, task);
+    }
+
     async function saveEditCard(card) {
         const id = card.dataset.id, dateStr = card.dataset.date;
-        const title = card.querySelector('.edit-title').value.trim(), content = card.querySelector('.edit-content').value.trim();
+        const title = card.querySelector('.edit-title').value.trim();
         if (!title) return;
-        const category = card.querySelector('.edit-category')?.value || '';
-        const startTime = card.querySelector('.edit-start')?.value || '';
-        const endTime = card.querySelector('.edit-end')?.value || '';
         const task = todos[dateStr].find(t => t.id === id);
-        task.title = title; task.content = content; task.category = category;
-        task.startTime = startTime; task.endTime = endTime;
-        await dbManager.setItem('todos', id, task);
+        if (!task) return;
+        await applyTaskEdit(task, dateStr, {
+            title,
+            content: card.querySelector('.edit-content').value.trim(),
+            category: card.querySelector('.edit-category')?.value || '',
+            startTime: card.querySelector('.edit-start')?.value || '',
+            endTime: card.querySelector('.edit-end')?.value || '',
+            newStart: card.querySelector('.edit-date-start')?.value || dateStr,
+            newEnd: card.querySelector('.edit-date-end')?.value || '',
+        });
         refreshCurrentView();
+        handleSearch();
     }
     async function toggleStatus(id, d) { const t = todos[d].find(x => x.id === id); t.completed = !t.completed; await dbManager.setItem('todos', id, t); refreshCurrentView(); }
     
