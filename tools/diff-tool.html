@@ -20,6 +20,8 @@
       --del-text: #b91c1c;
       --gutter-bg: #f8fafc;
       --gutter-text: #94a3b8;
+      --accent: #4f46e5;       /* 탭 활성/호버 강조색 */
+      --tab-border: #cbd5e1;   /* 탭 윤곽선(기본보다 진하게) */
     }
     body.dark {
       --primary: #818cf8;
@@ -36,6 +38,8 @@
       --del-text: #ff7b72;
       --gutter-bg: #161b22;
       --gutter-text: #6e7681;
+      --accent: #818cf8;
+      --tab-border: #4b5563;
     }
     * { box-sizing: border-box; }
     body {
@@ -101,6 +105,81 @@
     body.dark tr.add td.content .wd { background: rgba(126,231,135,0.30); }
     textarea.drag-hover { box-shadow: inset 0 0 0 3px var(--primary); }
 
+    /* --- 비교 탭 바 (여러 비교를 띄워놓고 전환) --- */
+    .doc-tabs {
+      display: flex;
+      align-items: flex-end;
+      background: var(--gutter-bg);
+      border-bottom: 2px solid var(--tab-border);
+      padding: 0.4rem 0.5rem 0;
+      gap: 0.4rem;
+      overflow-x: auto;
+      flex-shrink: 0;
+      scrollbar-width: thin;
+    }
+    .doc-tab-list { display: flex; align-items: flex-end; gap: 0.4rem; }
+    .doc-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.4rem 0.5rem 0.45rem 0.8rem;
+      border: 1.5px solid var(--tab-border);
+      border-bottom: none;
+      border-radius: 0.6rem 0.6rem 0 0;
+      background: var(--card-bg);
+      color: var(--text);
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+      max-width: 220px;
+      position: relative;
+      bottom: -2px;                 /* 바 하단선과 살짝 겹쳐 탭처럼 보이게 */
+      box-shadow: 0 -1px 2px rgba(0,0,0,0.04);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .doc-tab:hover { border-color: var(--accent); color: var(--accent); }
+    .doc-tab.active {
+      background: var(--bg);
+      border-color: var(--accent);
+      border-top-width: 3px;        /* 상단 강조선 */
+      border-bottom: 2px solid var(--bg);  /* 활성 탭은 바 하단선을 덮어 본문과 이어짐 */
+      font-weight: 700;
+      color: var(--text);
+      z-index: 1;
+    }
+    .doc-tab-title { overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+    .doc-tab-close {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      font-size: 0.72rem;
+      opacity: 0.55;
+      flex-shrink: 0;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .doc-tab-close:hover { opacity: 1; background: var(--tab-border); }
+    .doc-tab-add {
+      align-self: flex-end;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 0.2rem 5px;
+      border: 1.5px solid var(--tab-border);
+      background: var(--card-bg);
+      color: var(--text);
+      width: 30px; height: 30px;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      font-size: 1.1rem;
+      line-height: 1;
+      padding: 0;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .doc-tab-add:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
+
     /* 결과 헤더 컨트롤 (세그/네비) */
     .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; }
     .seg button { border: none; background: var(--card-bg); color: var(--text-muted); padding: 0.35rem 0.75rem; font-weight: 800; font-size: 0.78rem; cursor: pointer; }
@@ -144,11 +223,14 @@
       .inputs .pane + .pane { border-left: none; border-top: 1px solid var(--border); }
       .result { min-height: 55vh; }
       .result-head { flex-wrap: wrap; gap: 0.5rem; }
+      .doc-tab { max-width: 150px; font-size: 0.78rem; padding: 0.35rem 0.45rem 0.4rem 0.6rem; }
+      .doc-tab-title { max-width: 110px; }
     }
   </style>
   <script src="lib/portal-theme.js"></script>
   <script src="lib/file-drop-handler.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/db-manager.js"></script>
 </head>
 <body>
   <header>
@@ -165,6 +247,11 @@
       <button class="btn" onclick="clearAll()">비우기</button>
     </div>
   </header>
+
+  <div class="doc-tabs" id="docTabs">
+    <div class="doc-tab-list" id="docTabList"></div>
+    <button class="doc-tab-add" onclick="newCompare()" title="새 비교 추가">＋</button>
+  </div>
 
   <div class="inputs">
     <div class="pane">
@@ -204,7 +291,7 @@
     let debounceTimer;
     [left, right].forEach(el => el.addEventListener('input', () => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(runDiff, 350);
+      debounceTimer = setTimeout(() => { runDiff(); saveActiveCompare(); }, 350);
     }));
     document.querySelectorAll('.opt input').forEach(c => c.addEventListener('change', runDiff));
 
@@ -419,11 +506,14 @@
     function swap() {
       const t = left.value; left.value = right.value; right.value = t;
       runDiff();
+      saveActiveCompare();
     }
 
     function clearAll() {
+      // 현재 탭의 내용만 비운다 (다른 탭은 보존)
       left.value = ''; right.value = '';
       runDiff();
+      saveActiveCompare();
       left.focus();
     }
 
@@ -431,6 +521,7 @@
       left.value = `function greet(name) {\n  console.log("Hello, " + name);\n  return true;\n}\n\nconst version = 1;`;
       right.value = `function greet(name, lang) {\n  console.log("안녕, " + name);\n  return true;\n}\n\nconst version = 2;\nconst debug = false;`;
       runDiff();
+      saveActiveCompare();
     }
 
     function copyDiff() {
@@ -443,9 +534,199 @@
 
     // 파일 드래그앤드롭으로 양쪽 불러오기
     [left, right].forEach(el => fileDropHandler.init(el, {
-      onText: (content) => { el.value = content; runDiff(); },
+      onText: (content) => { el.value = content; runDiff(); saveActiveCompare(); },
       onImage: () => showToast('이미지는 지원하지 않습니다.', 'warning')
     }));
+
+    /* ===== 다중 비교(탭) 관리 =====
+       탭별로 { id, title, left, right, customTitle, updatedAt } 를 IndexedDB 'compares' 스토어에 보관.
+       탭 순서/활성 탭은 'meta' 스토어(compare_order, active_compare)에 기록.
+       여러 비교 묶음을 띄워놓고 전환하며 작업할 수 있다. */
+    let compares = [];          // 순서대로 정렬된 비교 배열
+    let activeCompareId = null;
+    let compareCounter = 0;
+    function genCompareId() { compareCounter++; return 'c' + Date.now().toString(36) + compareCounter.toString(36); }
+
+    // 원본(A) 첫 줄에서 탭 이름 자동 생성 (없으면 변경본(B)에서)
+    function deriveCompareTitle(c) {
+      const src = (c.left && c.left.trim()) ? c.left : (c.right || '');
+      const firstLine = src.split('\n').map(l => l.trim()).find(l => l) || '';
+      let t = firstLine.replace(/[`*_~>#|]+/g, ' ').replace(/\s+/g, ' ').trim();
+      if (t.length > 28) t = t.slice(0, 28) + '…';
+      return t || '빈 비교';
+    }
+
+    function getActiveCompare() { return compares.find(c => c.id === activeCompareId) || null; }
+
+    function persistCompare(c) {
+      if (dbManager.db) dbManager.setItem('compares', c.id, c).catch(() => {});
+    }
+    function persistCompareMeta() {
+      if (!dbManager.db) return;
+      dbManager.setItem('meta', 'compare_order', compares.map(c => c.id)).catch(() => {});
+      dbManager.setItem('meta', 'active_compare', activeCompareId).catch(() => {});
+    }
+
+    function renderCompareTabs() {
+      const list = document.getElementById('docTabList');
+      list.innerHTML = '';
+      compares.forEach((c, idx) => {
+        const tab = document.createElement('div');
+        tab.className = 'doc-tab' + (c.id === activeCompareId ? ' active' : '');
+        tab.dataset.id = c.id;
+        tab.title = c.title + '  (더블클릭: 이름 변경)';
+        tab.onclick = () => switchCompare(c.id);
+        tab.ondblclick = () => renameCompare(c.id);
+
+        const title = document.createElement('span');
+        title.className = 'doc-tab-title';
+        title.textContent = (c.customTitle ? '' : `${idx + 1}. `) + c.title;
+        tab.appendChild(title);
+
+        const close = document.createElement('span');
+        close.className = 'doc-tab-close';
+        close.textContent = '✕';
+        close.title = '비교 닫기';
+        close.onclick = (e) => deleteCompare(c.id, e);
+        tab.appendChild(close);
+
+        list.appendChild(tab);
+      });
+      const activeTab = list.querySelector('.doc-tab.active');
+      if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+    }
+
+    function loadCompare(id) {
+      const c = compares.find(x => x.id === id);
+      if (!c) return;
+      activeCompareId = id;
+      left.value = c.left || '';
+      right.value = c.right || '';
+      runDiff();
+      renderCompareTabs();
+    }
+
+    function switchCompare(id) {
+      if (id === activeCompareId) return;
+      saveActiveCompare();   // 현재 편집 내용 보존
+      loadCompare(id);
+      persistCompareMeta();
+    }
+
+    function newCompare() {
+      saveActiveCompare();   // 현재 비교 보존
+      const c = { id: genCompareId(), title: '빈 비교', left: '', right: '', customTitle: false, updatedAt: Date.now() };
+      compares.push(c);
+      activeCompareId = c.id;
+      left.value = ''; right.value = '';
+      runDiff();
+      renderCompareTabs();
+      persistCompare(c);
+      persistCompareMeta();
+      left.focus();
+      return c;
+    }
+
+    function renameCompare(id) {
+      const c = compares.find(x => x.id === id);
+      if (!c) return;
+      const name = prompt('비교 이름을 입력하세요 (비우면 자동 이름으로 복귀):', c.title);
+      if (name === null) return;
+      const trimmed = name.trim();
+      if (trimmed) { c.customTitle = true; c.title = trimmed; }
+      else { c.customTitle = false; c.title = deriveCompareTitle(c); }
+      c.updatedAt = Date.now();
+      renderCompareTabs();
+      persistCompare(c);
+    }
+
+    function deleteCompare(id, e) {
+      if (e) e.stopPropagation();
+      const idx = compares.findIndex(c => c.id === id);
+      if (idx === -1) return;
+      const c = compares[idx];
+      const hasContent = (c.left && c.left.trim()) || (c.right && c.right.trim());
+      if (hasContent && !confirm(`'${c.title}' 비교를 닫을까요? 되돌릴 수 없습니다.`)) return;
+      if (id !== activeCompareId) saveActiveCompare();   // 활성 비교 편집분 보존
+      compares.splice(idx, 1);
+      if (dbManager.db) dbManager.removeItem('compares', id).catch(() => {});
+      if (activeCompareId === id) {
+        if (compares.length === 0) {
+          const blank = { id: genCompareId(), title: '빈 비교', left: '', right: '', customTitle: false, updatedAt: Date.now() };
+          compares.push(blank);
+          persistCompare(blank);
+          loadCompare(blank.id);
+        } else {
+          // 닫은 자리의 오른쪽 탭(없으면 마지막 탭)을 활성화
+          loadCompare(compares[Math.min(idx, compares.length - 1)].id);
+        }
+      } else {
+        renderCompareTabs();
+      }
+      persistCompareMeta();
+      showToast('비교를 닫았습니다.', 'info');
+    }
+
+    // 현재 편집 중인 A/B 를 활성 비교에 저장 (자동 제목 갱신 포함)
+    function saveActiveCompare() {
+      const c = getActiveCompare();
+      if (!c) return;
+      const prevTitle = c.title;
+      c.left = left.value;
+      c.right = right.value;
+      if (!c.customTitle) c.title = deriveCompareTitle(c);
+      c.updatedAt = Date.now();
+      persistCompare(c);
+      if (c.title !== prevTitle) renderCompareTabs();  // 자동 제목이 바뀌면 탭 갱신
+    }
+
+    // 'compares' 스토어 + 순서/활성 메타를 읽어 compares 배열 구성
+    async function loadAllCompares() {
+      const order = await dbManager.getItem('meta', 'compare_order');
+      const all = await dbManager.getAll('compares') || {};
+      compares = [];
+      if (Array.isArray(order) && order.length) {
+        order.forEach(id => { if (all[id]) compares.push(all[id]); });
+        Object.keys(all).forEach(id => { if (!order.includes(id)) compares.push(all[id]); });
+      } else {
+        Object.values(all).forEach(c => compares.push(c));
+      }
+      // 필드 정규화
+      compares.forEach(c => {
+        if (typeof c.customTitle !== 'boolean') c.customTitle = false;
+        if (typeof c.left !== 'string') c.left = '';
+        if (typeof c.right !== 'string') c.right = '';
+        if (!c.title) c.title = deriveCompareTitle(c);
+      });
+
+      if (compares.length === 0) {
+        const first = { id: genCompareId(), title: '빈 비교', left: '', right: '', customTitle: false, updatedAt: Date.now() };
+        compares.push(first);
+        persistCompare(first);
+      }
+
+      const savedActive = await dbManager.getItem('meta', 'active_compare');
+      activeCompareId = (savedActive && compares.some(c => c.id === savedActive)) ? savedActive : compares[0].id;
+      loadCompare(activeCompareId);
+      persistCompareMeta();
+    }
+
+    async function initStorage() {
+      try {
+        await dbManager.init('DiffToolDB', ['compares', 'meta']);
+        await loadAllCompares();
+      } catch (err) {
+        console.error('Failed to init DB:', err);
+        // DB 실패 시에도 인메모리 비교 1개로 동작 (영속만 안 됨)
+        if (compares.length === 0) {
+          compares.push({ id: genCompareId(), title: '빈 비교', left: '', right: '', customTitle: false, updatedAt: Date.now() });
+        }
+        activeCompareId = compares[0].id;
+        loadCompare(activeCompareId);
+      }
+    }
+
+    window.addEventListener('load', initStorage);
   </script>
 </body>
 </html>
