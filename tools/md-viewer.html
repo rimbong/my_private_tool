@@ -224,6 +224,133 @@
     }
     .doc-tab-add:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
 
+    .doc-tab-more {
+      align-self: flex-end;
+      margin: 0 0.2rem 5px auto;       /* auto → 바 오른쪽 끝으로 밀착 */
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      border: 1.5px solid var(--tab-border);
+      background: var(--card-bg, var(--header-bg));
+      color: var(--text);
+      height: 30px;
+      padding: 0 0.7rem;
+      border-radius: 0.45rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .doc-tab-more:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
+    .doc-tab-more span { font-variant-numeric: tabular-nums; opacity: 0.85; }
+
+    /* --- 문서 관리 다이얼로그 --- */
+    .modal-content.doc-manager {
+      width: 600px;
+      max-width: 92vw;
+      height: auto;
+      max-height: 82vh;
+      margin: auto;
+    }
+    .modal.center { align-items: center; justify-content: center; }
+    .modal.center { display: none; }            /* JS가 flex로 전환 */
+    .dm-toolbar {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .dm-toolbar input {
+      flex: 1; min-width: 160px;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border); border-radius: 0.45rem;
+      background: var(--editor-bg); color: var(--text);
+      font-size: 0.9rem; outline: none;
+    }
+    .dm-toolbar input:focus { border-color: var(--accent); }
+    .dm-hint { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+    .dm-hint b { color: var(--text); }
+    .dm-list {
+      flex: 1; overflow-y: auto; padding: 0.5rem;
+      display: flex; flex-direction: column; gap: 0.35rem;
+    }
+    .dm-empty { padding: 2.5rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+    .dm-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.55rem 0.65rem;
+      border: 1px solid var(--border); border-radius: 0.55rem;
+      background: var(--card-bg, var(--header-bg));
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dm-item:hover { border-color: var(--accent); }
+    .dm-item.active { border-color: var(--accent); background: var(--bg); box-shadow: inset 3px 0 0 var(--accent); }
+    .dm-check {
+      flex-shrink: 0;
+      width: 19px; height: 19px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      margin: 0 0.35rem;
+    }
+    .dm-check:disabled { cursor: default; opacity: 0.65; }
+    .dm-main { flex: 1; min-width: 0; cursor: pointer; }
+    .dm-title { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dm-title .dm-badge { font-size: 0.68rem; font-weight: 700; color: var(--accent); margin-left: 0.4rem; }
+    .dm-meta { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.15rem; }
+    .dm-act {
+      flex-shrink: 0;
+      width: 30px; height: 30px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid transparent; border-radius: 0.4rem;
+      background: transparent; cursor: pointer; color: var(--text-muted);
+      font-size: 0.85rem;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+    }
+    .dm-act:hover { background: var(--editor-bg); border-color: var(--border); color: var(--text); }
+    .dm-act.danger:hover { color: var(--danger); border-color: var(--danger); }
+    .dm-footer {
+      padding: 0.75rem 1.5rem; border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
+    }
+
+    /* 필터 칩 + 선택 모드 토글 */
+    .dm-subbar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 1.5rem; border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .dm-filters { display: inline-flex; gap: 0.3rem; }
+    .dm-chip {
+      border: 1px solid var(--border); background: transparent; color: var(--text-muted);
+      padding: 0.32rem 0.65rem; border-radius: 999px; cursor: pointer;
+      font-size: 0.8rem; font-weight: 600; white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .dm-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .dm-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .dm-chip span { opacity: 0.85; font-variant-numeric: tabular-nums; }
+    .dm-select-toggle { margin-left: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+
+    /* 일괄 작업 바 */
+    .dm-bulkbar {
+      display: none; align-items: center; gap: 0.6rem;
+      padding: 0.55rem 1.5rem; border-bottom: 1px solid var(--border);
+      background: var(--editor-bg); flex-wrap: wrap;
+    }
+    .dm-selall { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; cursor: pointer; user-select: none; }
+    .dm-selall input { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+    .dm-selcount { font-size: 0.82rem; color: var(--text-muted); }
+    .dm-selcount b { color: var(--accent); }
+    .dm-bulkbar .btn { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
+    .dm-danger-btn { color: var(--danger); border-color: var(--danger); }
+    .dm-danger-btn:hover { background: var(--danger); color: #fff; }
+    .dm-tag {
+      font-size: 0.68rem; font-weight: 700; color: var(--accent);
+      border: 1px solid var(--accent); border-radius: 999px;
+      padding: 0.05rem 0.4rem; margin-left: 0.4rem; vertical-align: middle;
+    }
+    .dm-item.selected { border-color: var(--accent); background: var(--bg); }
+
     main {
       flex: 1;
       display: flex;
@@ -460,6 +587,7 @@
   <div class="doc-tabs" id="docTabs">
     <div class="doc-tab-list" id="docTabList"></div>
     <button class="doc-tab-add" onclick="newDoc()" title="새 문서 추가">＋</button>
+    <button class="doc-tab-more" id="docMoreBtn" onclick="openDocManager()" title="모든 문서 보기/관리">📚 전체 <span id="docTotalCount">0</span></button>
   </div>
 
   <main>
@@ -499,6 +627,41 @@
       </div>
       <div class="modal-body">
         <div id="modalPreview" class="markdown-body"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 문서 관리 다이얼로그 -->
+  <div id="docManagerModal" class="modal center" onclick="if(event.target===this) closeDocManager()">
+    <div class="modal-content doc-manager">
+      <div class="modal-header">
+        <h2 style="margin:0; font-size:1.1rem;">📚 문서 관리</h2>
+        <button class="btn" onclick="closeDocManager()">닫기 (Esc)</button>
+      </div>
+      <div class="dm-toolbar">
+        <input type="text" id="docSearch" placeholder="🔍 문서 검색..." oninput="renderDocManager()" autocomplete="off">
+        <span class="dm-hint">탭 표시 <b id="dmVisCount">0</b>/<span id="dmMax">5</span> · 전체 <b id="dmAllCount">0</b></span>
+      </div>
+      <div class="dm-subbar">
+        <div class="dm-filters">
+          <button class="dm-chip active" data-f="all" onclick="setDocFilter('all')">전체 <span id="cntAll">0</span></button>
+          <button class="dm-chip" data-f="visible" onclick="setDocFilter('visible')">탭 표시 <span id="cntVis">0</span></button>
+          <button class="dm-chip" data-f="hidden" onclick="setDocFilter('hidden')">숨김 <span id="cntHid">0</span></button>
+        </div>
+        <button class="btn dm-select-toggle" id="dmSelectToggle" onclick="toggleSelectMode()">☑ 선택</button>
+      </div>
+      <div class="dm-bulkbar" id="dmBulkBar">
+        <label class="dm-selall"><input type="checkbox" id="dmSelAll" onchange="toggleSelectAll(this.checked)"> 전체 선택</label>
+        <span class="dm-selcount"><b id="dmSelCount">0</b>개 선택</span>
+        <span style="flex:1;"></span>
+        <button class="btn" onclick="bulkShow()">📌 탭에 표시</button>
+        <button class="btn" onclick="bulkHide()">🙈 숨기기</button>
+        <button class="btn dm-danger-btn" onclick="bulkDelete()">🗑 영구 삭제</button>
+      </div>
+      <div class="dm-list" id="docManagerList"></div>
+      <div class="dm-footer">
+        <button class="btn" onclick="newDocFromManager()">＋ 새 문서</button>
+        <span style="font-size:0.78rem; color:var(--text-muted);">☑ 탭에 표시 · 항목 클릭 → 열기 · 🗑 영구 삭제</span>
       </div>
     </div>
   </div>
@@ -583,10 +746,33 @@
        문서별로 { id, title, content, customTitle, updatedAt } 를 IndexedDB 'docs' 스토어에 보관.
        탭 순서/활성 문서는 'content' 스토어(doc_order, active_doc)에 기록.
        이미지 토큰 저장소(imageStore/'images')는 모든 문서가 공유한다. */
-    let docs = [];          // 순서대로 정렬된 문서 배열
+    let docs = [];          // 순서대로 정렬된 전체 문서 배열
     let activeDocId = null;
     let docCounter = 0;
     function genDocId() { docCounter++; return 'd' + Date.now().toString(36) + docCounter.toString(36); }
+
+    /* 탭 바에는 최대 MAX_VISIBLE개만 노출하고, 나머지는 '문서 관리' 다이얼로그에서 다룬다.
+       visibleIds = 현재 탭으로 보이는 문서 id 집합. accessTime = 최근 접근 시각(오래된 것부터 바에서 밀어냄). */
+    const MAX_VISIBLE = 5;
+    let visibleIds = [];
+    const accessTime = {};
+
+    // id를 탭 바에 노출 보장. 가득 차면 활성 문서를 제외하고 가장 오래 안 본 탭을 바에서 내림(문서는 보존).
+    function ensureVisible(id) {
+      accessTime[id] = Date.now();
+      if (visibleIds.includes(id)) return;
+      visibleIds.push(id);
+      while (visibleIds.length > MAX_VISIBLE) {
+        let victim = null, oldest = Infinity;
+        for (const v of visibleIds) {
+          if (v === activeDocId || v === id) continue;
+          const t = accessTime[v] || 0;
+          if (t < oldest) { oldest = t; victim = v; }
+        }
+        if (!victim) break;
+        visibleIds = visibleIds.filter(v => v !== victim);
+      }
+    }
 
     // 첫 줄(또는 첫 제목)에서 탭 이름 자동 생성
     function deriveTitle(content) {
@@ -611,12 +797,14 @@
       if (!dbManager.db) return;
       dbManager.setItem('content', 'doc_order', docs.map(d => d.id)).catch(() => {});
       dbManager.setItem('content', 'active_doc', activeDocId).catch(() => {});
+      dbManager.setItem('content', 'visible_docs', visibleIds).catch(() => {});
     }
 
     function renderTabs() {
       const list = document.getElementById('docTabList');
       list.innerHTML = '';
-      docs.forEach(d => {
+      // 전체 문서(docs) 순서를 유지하되, 탭 바에는 visibleIds에 속한 문서만 노출
+      docs.filter(d => visibleIds.includes(d.id)).forEach(d => {
         const tab = document.createElement('div');
         tab.className = 'doc-tab' + (d.id === activeDocId ? ' active' : '');
         tab.dataset.id = d.id;
@@ -632,20 +820,27 @@
         const close = document.createElement('span');
         close.className = 'doc-tab-close';
         close.textContent = '✕';
-        close.title = '문서 닫기';
-        close.onclick = (e) => deleteDoc(d.id, e);
+        close.title = '탭에서 숨기기 (문서는 보존)';
+        close.onclick = (e) => hideTab(d.id, e);
         tab.appendChild(close);
 
         list.appendChild(tab);
       });
       const activeTab = list.querySelector('.doc-tab.active');
       if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+
+      const countEl = document.getElementById('docTotalCount');
+      if (countEl) countEl.textContent = docs.length;
+      // 다이얼로그가 열려 있으면 목록도 동기화
+      const dm = document.getElementById('docManagerModal');
+      if (dm && dm.style.display === 'flex') renderDocManager();
     }
 
     function loadDoc(id) {
       const doc = docs.find(d => d.id === id);
       if (!doc) return;
       activeDocId = id;
+      ensureVisible(id);   // 활성 문서는 항상 탭 바에 노출
       editor.value = doc.content;
       updatePreview();
       if (previewMode === 'text') updatePlain();
@@ -665,6 +860,7 @@
       const doc = { id: genDocId(), title: deriveTitle(content), content, customTitle: false, updatedAt: Date.now() };
       docs.push(doc);
       activeDocId = doc.id;
+      ensureVisible(doc.id);
       editor.value = content;
       updatePreview();
       if (previewMode === 'text') updatePlain();
@@ -693,9 +889,11 @@
       const idx = docs.findIndex(d => d.id === id);
       if (idx === -1) return;
       const doc = docs[idx];
-      if (!confirm(`'${doc.title}' 문서를 닫을까요? 되돌릴 수 없습니다.`)) return;
+      if (!confirm(`'${doc.title}' 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`)) return;
       if (id !== activeDocId) saveToDB();   // 활성 문서 편집분 보존
       docs.splice(idx, 1);
+      visibleIds = visibleIds.filter(v => v !== id);
+      delete accessTime[id];
       if (dbManager.db) dbManager.removeItem('docs', id).catch(() => {});
       if (activeDocId === id) {
         if (docs.length === 0) {
@@ -711,7 +909,311 @@
         renderTabs();
       }
       persistMeta();
-      showToast('문서를 닫았습니다.', 'info');
+      showToast('문서를 삭제했습니다.', 'info');
+    }
+
+    // 탭 ✕: 영구 삭제가 아니라 탭 바에서만 내림(문서는 보존, 문서 관리에서 다시 열 수 있음)
+    function hideTab(id, e) {
+      if (e) e.stopPropagation();
+      if (!visibleIds.includes(id)) return;
+      if (id === activeDocId) {
+        // 보고 있는 탭을 닫는 경우: 다른 문서로 전환해야 함
+        const others = docs.filter(d => d.id !== id);
+        if (others.length === 0) { showToast('마지막 문서는 닫을 수 없어요.', 'info'); return; }
+        saveToDB();
+        visibleIds = visibleIds.filter(v => v !== id);
+        // 다음 활성 문서: 남아있는 탭 우선, 없으면 가장 최근 수정 문서
+        let nextId = visibleIds[0];
+        if (!nextId) nextId = others.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0].id;
+        loadDoc(nextId);     // ensureVisible + renderTabs
+      } else {
+        visibleIds = visibleIds.filter(v => v !== id);
+        renderTabs();
+      }
+      persistMeta();
+      showToast('탭에서 숨겼습니다. 📚 전체에서 다시 열 수 있어요.', 'info');
+    }
+
+    /* ===== 문서 관리 다이얼로그 ===== */
+    function timeAgo(ts) {
+      if (!ts) return '';
+      const s = Math.floor((Date.now() - ts) / 1000);
+      if (s < 60) return '방금';
+      const m = Math.floor(s / 60); if (m < 60) return m + '분 전';
+      const h = Math.floor(m / 60); if (h < 24) return h + '시간 전';
+      const d = Math.floor(h / 24); if (d < 7) return d + '일 전';
+      const w = Math.floor(d / 7); if (w < 5) return w + '주 전';
+      return Math.floor(d / 30) + '개월 전';
+    }
+    function docPreview(content) {
+      if (!content) return '';
+      const t = content
+        .replace(/```[\s\S]*?```/g, ' ')              // 코드블록
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')         // 이미지
+        .replace(/[#>*_`~\[\]()!|\-]/g, ' ')
+        .replace(/\s+/g, ' ').trim();
+      return t.slice(0, 42);
+    }
+
+    let dmFilter = 'all';        // 'all' | 'visible' | 'hidden'
+    let dmSelectMode = false;    // 일괄 선택 모드
+    let dmSelected = new Set();  // 선택된 문서 id
+
+    function openDocManager() {
+      saveToDB();   // 현재 편집/제목을 목록에 반영
+      const modal = document.getElementById('docManagerModal');
+      document.getElementById('dmMax').textContent = MAX_VISIBLE;
+      // 다이얼로그 열 때 상태 초기화
+      dmFilter = 'all';
+      dmSelectMode = false;
+      dmSelected.clear();
+      document.getElementById('docSearch').value = '';
+      document.getElementById('dmBulkBar').style.display = 'none';
+      const tgl = document.getElementById('dmSelectToggle');
+      tgl.classList.remove('btn-primary');
+      tgl.textContent = '☑ 선택';
+      modal.style.display = 'flex';
+      renderDocManager();
+      const search = document.getElementById('docSearch');
+      setTimeout(() => search.focus(), 30);
+    }
+    function closeDocManager() {
+      document.getElementById('docManagerModal').style.display = 'none';
+    }
+
+    // 검색어 + 필터를 적용한 (최근 수정순) 문서 목록
+    function getManagerDocs() {
+      const term = (document.getElementById('docSearch').value || '').trim().toLowerCase();
+      let list = docs.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      if (dmFilter === 'visible') list = list.filter(d => visibleIds.includes(d.id));
+      else if (dmFilter === 'hidden') list = list.filter(d => !visibleIds.includes(d.id));
+      if (term) list = list.filter(d => (d.title || '').toLowerCase().includes(term) || (d.content || '').toLowerCase().includes(term));
+      return list;
+    }
+
+    function renderDocManager() {
+      const listEl = document.getElementById('docManagerList');
+      const allN = docs.length, visN = visibleIds.length, hidN = allN - visN;
+      document.getElementById('dmAllCount').textContent = allN;
+      document.getElementById('dmVisCount').textContent = visN;
+      document.getElementById('cntAll').textContent = allN;
+      document.getElementById('cntVis').textContent = visN;
+      document.getElementById('cntHid').textContent = hidN;
+      document.querySelectorAll('.dm-chip').forEach(c => c.classList.toggle('active', c.dataset.f === dmFilter));
+
+      const inSel = dmSelectMode;
+      const filtered = getManagerDocs();
+
+      // 일괄 작업 바 동기화
+      document.getElementById('dmSelCount').textContent = dmSelected.size;
+      const selAll = document.getElementById('dmSelAll');
+      if (selAll) selAll.checked = filtered.length > 0 && filtered.every(d => dmSelected.has(d.id));
+
+      listEl.innerHTML = '';
+      if (!filtered.length) {
+        const e = document.createElement('div');
+        e.className = 'dm-empty';
+        e.textContent = allN ? '해당하는 문서가 없습니다.' : '문서가 없습니다.';
+        listEl.appendChild(e);
+        return;
+      }
+
+      filtered.forEach(d => {
+        const isActive = d.id === activeDocId;
+        const isVisible = visibleIds.includes(d.id);
+        const isSel = dmSelected.has(d.id);
+
+        const item = document.createElement('div');
+        item.className = 'dm-item' + (isActive ? ' active' : '') + (inSel && isSel ? ' selected' : '');
+
+        const check = document.createElement('input');
+        check.type = 'checkbox';
+        check.className = 'dm-check';
+        if (inSel) {
+          // 선택 모드: 체크박스 = 다중 선택 (활성 문서 포함 선택 가능)
+          check.checked = isSel;
+          check.title = '선택';
+          check.onclick = (e) => e.stopPropagation();
+          check.onchange = () => toggleSelectDoc(d.id);
+        } else {
+          // 일반 모드: 체크박스 = 탭에 표시
+          check.checked = isVisible;
+          check.disabled = isActive;
+          check.title = isActive ? '현재 보고 있는 문서는 항상 탭에 표시됩니다' : '탭에 표시';
+          check.onclick = (e) => e.stopPropagation();
+          check.onchange = () => toggleVisibleFromManager(d.id);
+        }
+        item.appendChild(check);
+
+        const main = document.createElement('div');
+        main.className = 'dm-main';
+        main.title = inSel ? '클릭하여 선택' : '클릭하여 열기';
+        main.onclick = () => inSel ? toggleSelectDoc(d.id) : openFromManager(d.id);
+
+        const title = document.createElement('div');
+        title.className = 'dm-title';
+        title.textContent = d.title || '제목 없음';
+        if (isActive) {
+          const badge = document.createElement('span');
+          badge.className = 'dm-badge';
+          badge.textContent = '● 현재';
+          title.appendChild(badge);
+        } else if (inSel && isVisible) {
+          // 선택 모드에선 체크박스가 '선택'이므로 탭 표시 여부를 태그로 안내
+          const tag = document.createElement('span');
+          tag.className = 'dm-tag';
+          tag.textContent = '탭';
+          title.appendChild(tag);
+        }
+        const meta = document.createElement('div');
+        meta.className = 'dm-meta';
+        const len = (d.content || '').length;
+        const prev = docPreview(d.content);
+        meta.textContent = `${timeAgo(d.updatedAt)} · ${len.toLocaleString()}자` + (prev ? ` · ${prev}` : '');
+        main.appendChild(title);
+        main.appendChild(meta);
+        item.appendChild(main);
+
+        if (!inSel) {
+          const ren = document.createElement('button');
+          ren.className = 'dm-act';
+          ren.textContent = '✏️';
+          ren.title = '이름 변경';
+          ren.onclick = (e) => { e.stopPropagation(); renameDoc(d.id); };
+          item.appendChild(ren);
+
+          const del = document.createElement('button');
+          del.className = 'dm-act danger';
+          del.textContent = '🗑';
+          del.title = '영구 삭제';
+          del.onclick = (e) => { e.stopPropagation(); deleteDoc(d.id, e); };
+          item.appendChild(del);
+        }
+
+        listEl.appendChild(item);
+      });
+    }
+
+    function setDocFilter(f) {
+      dmFilter = f;
+      renderDocManager();
+    }
+
+    function toggleSelectMode() {
+      dmSelectMode = !dmSelectMode;
+      if (!dmSelectMode) dmSelected.clear();
+      document.getElementById('dmBulkBar').style.display = dmSelectMode ? 'flex' : 'none';
+      const tgl = document.getElementById('dmSelectToggle');
+      tgl.classList.toggle('btn-primary', dmSelectMode);
+      tgl.textContent = dmSelectMode ? '✕ 선택 취소' : '☑ 선택';
+      renderDocManager();
+    }
+
+    function toggleSelectDoc(id) {
+      if (dmSelected.has(id)) dmSelected.delete(id); else dmSelected.add(id);
+      renderDocManager();
+    }
+
+    function toggleSelectAll(checked) {
+      const ids = getManagerDocs().map(d => d.id);
+      if (checked) ids.forEach(id => dmSelected.add(id));
+      else ids.forEach(id => dmSelected.delete(id));
+      renderDocManager();
+    }
+
+    // 선택한 문서들을 탭에 표시 (5개 제한 내에서)
+    function bulkShow() {
+      if (!dmSelected.size) { showToast('선택된 문서가 없습니다.', 'info'); return; }
+      let added = 0, skipped = 0;
+      for (const id of dmSelected) {
+        if (visibleIds.includes(id)) continue;
+        if (visibleIds.length >= MAX_VISIBLE) { skipped++; continue; }
+        visibleIds.push(id);
+        accessTime[id] = Date.now();
+        added++;
+      }
+      renderTabs(); persistMeta(); renderDocManager();
+      if (added && skipped) showToast(`${added}개 표시 · ${skipped}개는 ${MAX_VISIBLE}개 제한으로 제외됐어요.`, 'warning');
+      else if (added) showToast(`${added}개를 탭에 표시했어요.`, 'success');
+      else if (skipped) showToast(`탭은 최대 ${MAX_VISIBLE}개까지 표시할 수 있어요.`, 'warning');
+      else showToast('이미 모두 탭에 표시 중입니다.', 'info');
+    }
+
+    // 선택한 문서들을 탭에서 숨김 (현재 보고 있는 문서는 유지)
+    function bulkHide() {
+      if (!dmSelected.size) { showToast('선택된 문서가 없습니다.', 'info'); return; }
+      let hid = 0, keptActive = false;
+      for (const id of dmSelected) {
+        if (id === activeDocId) { keptActive = true; continue; }
+        if (visibleIds.includes(id)) { visibleIds = visibleIds.filter(v => v !== id); hid++; }
+      }
+      renderTabs(); persistMeta(); renderDocManager();
+      if (hid) showToast(`${hid}개를 탭에서 숨겼어요.` + (keptActive ? ' (현재 문서는 유지)' : ''), 'info');
+      else if (keptActive) showToast('현재 보고 있는 문서는 숨길 수 없어요.', 'info');
+      else showToast('숨길 탭이 없습니다.', 'info');
+    }
+
+    // 데이터만 제거 (확인창/토스트 없이) — 일괄 삭제용 코어
+    function removeDocCore(id) {
+      const idx = docs.findIndex(d => d.id === id);
+      if (idx === -1) return;
+      docs.splice(idx, 1);
+      visibleIds = visibleIds.filter(v => v !== id);
+      delete accessTime[id];
+      if (dbManager.db) dbManager.removeItem('docs', id).catch(() => {});
+    }
+
+    // 선택한 문서들을 영구 삭제
+    function bulkDelete() {
+      if (!dmSelected.size) { showToast('선택된 문서가 없습니다.', 'info'); return; }
+      const ids = [...dmSelected];
+      if (!confirm(`${ids.length}개 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`)) return;
+      const deletingActive = ids.includes(activeDocId);
+      if (!deletingActive) saveToDB();   // 활성 문서 편집분 보존
+      ids.forEach(removeDocCore);
+      dmSelected.clear();
+      if (docs.length === 0) {
+        const blank = { id: genDocId(), title: '제목 없음', content: '', customTitle: false, updatedAt: Date.now() };
+        docs.push(blank);
+        persistDoc(blank);
+        loadDoc(blank.id);
+      } else if (!docs.some(d => d.id === activeDocId)) {
+        // 활성 문서가 삭제됨 → 가장 최근 문서로 전환
+        const next = docs.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+        loadDoc(next.id);
+      } else {
+        renderTabs();
+      }
+      persistMeta();
+      showToast(`${ids.length}개 문서를 삭제했어요.`, 'info');
+      renderDocManager();
+    }
+
+    function openFromManager(id) {
+      switchDoc(id);          // 활성화 + 탭 바 편입(필요 시 LRU 밀어내기)
+      closeDocManager();
+    }
+
+    function toggleVisibleFromManager(id) {
+      if (id === activeDocId) return;   // 활성 문서는 항상 표시
+      if (visibleIds.includes(id)) {
+        visibleIds = visibleIds.filter(v => v !== id);
+      } else {
+        if (visibleIds.length >= MAX_VISIBLE) {
+          showToast(`탭은 최대 ${MAX_VISIBLE}개까지 표시할 수 있어요. 다른 탭을 먼저 숨겨주세요.`, 'warning');
+          renderDocManager();   // 체크 상태 원복
+          return;
+        }
+        visibleIds.push(id);
+        accessTime[id] = Date.now();
+      }
+      renderTabs();           // 탭 바 + (열려있는) 목록 동기화
+      persistMeta();
+    }
+
+    function newDocFromManager() {
+      closeDocManager();
+      newDoc();
     }
 
     // 'docs' 스토어 + 순서/활성 메타를 읽어 docs 배열 구성 (없으면 기존 단일 문서 이관)
@@ -742,9 +1244,17 @@
         if (legacy && dbManager.db) dbManager.removeItem('content', 'last_content').catch(() => {});
       }
 
+      // 탭 바에 노출할 문서 집합 복원 (없으면 처음 MAX_VISIBLE개)
+      const savedVisible = await dbManager.getItem('content', 'visible_docs');
+      visibleIds = Array.isArray(savedVisible) ? savedVisible.filter(id => docs.some(d => d.id === id)) : [];
+      if (visibleIds.length === 0) visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
+      // 접근 시각 시드: 저장된 순서대로 오래된→최신 (안정적인 LRU 밀어내기용)
+      const seedNow = Date.now();
+      visibleIds.forEach((id, i) => { accessTime[id] = seedNow - (visibleIds.length - i) * 1000; });
+
       const savedActive = await dbManager.getItem('content', 'active_doc');
       activeDocId = (savedActive && docs.some(d => d.id === savedActive)) ? savedActive : docs[0].id;
-      loadDoc(activeDocId);
+      loadDoc(activeDocId);   // 활성 문서가 visible에 없으면 자동 편입
       persistMeta();
     }
 
@@ -1186,6 +1696,7 @@ function hello() {
     window.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         closeModal();
+        closeDocManager();
       }
       
       // Smart Ctrl+A (or Cmd+A) inside modal
