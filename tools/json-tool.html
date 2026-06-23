@@ -64,12 +64,6 @@
     .divider { width: 1px; align-self: stretch; background: var(--border); margin: 0 0.3rem; }
     .spacer { flex: 1; }
     .btn-lg { padding: 0.5rem 0.9rem; font-size: 0.85rem; }
-    /* 변환 드롭다운 */
-    .convert-dd { position: relative; display: inline-block; }
-    .dd-menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 12px 24px rgba(0,0,0,0.16); z-index: 50; min-width: 180px; overflow: hidden; padding: 0.3rem; }
-    .dd-menu.open { display: block; }
-    .dd-menu button { display: block; width: 100%; text-align: left; border: none; background: transparent; color: var(--text); padding: 0.5rem 0.7rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; border-radius: 7px; }
-    .dd-menu button:hover { background: var(--bg); color: var(--primary); }
     .btn {
       padding: 0.4rem 0.7rem; border-radius: 0.5rem; border: 1px solid var(--border);
       font-weight: 700; font-size: 0.8rem; cursor: pointer; background: var(--card-bg);
@@ -82,8 +76,15 @@
     .btn-danger:hover { border-color: var(--danger); color: var(--danger); }
 
     main { flex: 1; display: flex; min-height: 0; }
-    .pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-    .pane + .pane { border-left: 1px solid var(--border); }
+    .pane { display: flex; flex-direction: column; min-width: 0; }
+    #inPane { width: 50%; flex-shrink: 0; }
+    #outPane { flex: 1; min-width: 0; }
+    /* 입력/결과 사이 드래그 리사이저 */
+    .resizer { width: 8px; margin: 0 -4px; background: transparent; cursor: col-resize; position: relative; z-index: 10; flex-shrink: 0; transition: background 0.2s; }
+    .resizer::after { content: ''; position: absolute; left: 3px; top: 0; width: 1px; height: 100%; background: var(--border); transition: background 0.2s, width 0.2s; }
+    .resizer:hover::after, .resizer.active::after { background: var(--primary); width: 3px; left: 2px; }
+    body.resizing { cursor: col-resize; user-select: none; }
+    body.resizing textarea, body.resizing .output { pointer-events: none; }
     .pane-head {
       padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 800; text-transform: uppercase;
       letter-spacing: 0.05em; color: var(--text-muted); background: var(--card-bg);
@@ -131,7 +132,12 @@
     .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; }
     .seg button { border: none; background: var(--card-bg); color: var(--text-muted); padding: 0.4rem 0.7rem; font-weight: 800; font-size: 0.78rem; cursor: pointer; }
     .seg button.active { background: var(--primary); color: #fff; }
-    @media (max-width: 820px) { main { flex-direction: column; } .pane + .pane { border-left: none; border-top: 1px solid var(--border); } }
+    @media (max-width: 820px) {
+      main { flex-direction: column; }
+      #inPane { width: 100%; flex: 1; }
+      #outPane { border-top: 1px solid var(--border); }
+      .resizer { display: none; }
+    }
   </style>
   <script src="lib/portal-theme.js"></script>
   <script src="lib/file-drop-handler.js"></script>
@@ -147,35 +153,37 @@
       </div>
     </div>
     <div class="toolbar">
-      <!-- JSON 액션 -->
+      <!-- JSON 액션 (공통: 정렬·압축·검증·Escape·Unescape + JSON 고유: 키정렬) -->
       <div id="jsonActions" class="action-set">
         <button class="btn btn-primary btn-lg" onclick="formatJson()" title="Ctrl+Enter">✨ 정렬</button>
         <button class="btn btn-lg" onclick="minifyJson()">🗜️ 압축</button>
-        <button class="btn btn-lg" onclick="setView('tree')">🌳 트리</button>
+        <button class="btn btn-lg" onclick="validateJson()">✅ 검증</button>
+        <button class="btn btn-lg" onclick="escapeJsonString()" title="입력을 JSON 문자열로 escape">Escape</button>
+        <button class="btn btn-lg" onclick="unescapeJsonString()" title="escape된 문자열을 복원">Unescape</button>
         <button class="btn btn-lg" onclick="sortKeys()">🔤 키정렬</button>
       </div>
-      <!-- XML 액션 -->
+      <!-- XML 액션 (공통: 정렬·압축·검증·Escape·Unescape) -->
       <div id="xmlActions" class="action-set" style="display:none;">
         <button class="btn btn-primary btn-lg" onclick="prettyXmlAction()" title="Ctrl+Enter">✨ 정렬</button>
+        <button class="btn btn-lg" onclick="minifyXml()">🗜️ 압축</button>
+        <button class="btn btn-lg" onclick="validateXmlAction()">✅ 검증</button>
         <button class="btn btn-lg" onclick="escapeXmlAction()">Escape</button>
         <button class="btn btn-lg" onclick="unescapeXmlAction()">Unescape</button>
-        <button class="btn btn-lg" onclick="validateXmlAction()">검증</button>
       </div>
 
       <div class="divider"></div>
 
-      <div class="convert-dd">
-        <button class="btn btn-lg" onclick="toggleConvertMenu(event)">🔄 변환 ▾</button>
-        <div id="convertMenu" class="dd-menu">
-          <button onclick="convert('toXml'); closeConvertMenu()">JSON → XML</button>
-          <button onclick="convert('fromXml'); closeConvertMenu()">XML → JSON</button>
-          <button onclick="jsonToCsv(); closeConvertMenu()">JSON → CSV</button>
-          <button onclick="unescapeJsonString(); closeConvertMenu()">escape 문자열 풀기</button>
-        </div>
+      <!-- 변환: 현재 형식에 맞는 버튼만 노출 -->
+      <div id="convJson" class="action-set">
+        <button class="btn btn-lg" onclick="convert('toXml')" title="JSON을 XML로 변환">🔄 JSON→XML</button>
+      </div>
+      <div id="convXml" class="action-set" style="display:none;">
+        <button class="btn btn-lg" onclick="convert('fromXml')" title="XML을 JSON으로 변환">🔄 XML→JSON</button>
       </div>
 
       <div class="spacer"></div>
 
+      <button class="btn btn-lg" onclick="outputToInput()" title="결과를 입력창으로 보내 연속 변환">⤴ 입력으로</button>
       <button class="btn btn-lg" onclick="copyOutput()">📋 복사</button>
       <button class="btn btn-lg" onclick="downloadOutput()">💾 저장</button>
       <button class="btn btn-lg" onclick="loadSample()">샘플</button>
@@ -184,14 +192,15 @@
   </header>
 
   <main>
-    <div class="pane">
+    <div class="pane" id="inPane">
       <div class="pane-head">
         <span>입력 <span class="badge" id="fmtBadge">-</span></span>
         <span class="badge" id="inSize">0 B</span>
       </div>
       <textarea id="input" placeholder="JSON 또는 XML을 붙여넣으세요. (.json/.xml/.txt 파일을 끌어다 놓아도 됩니다)" spellcheck="false"></textarea>
     </div>
-    <div class="pane">
+    <div class="resizer" id="resizer" title="드래그하여 패널 너비 조절"></div>
+    <div class="pane" id="outPane">
       <div class="pane-head">
         <span>결과</span>
         <div class="right">
@@ -250,11 +259,9 @@
       document.getElementById('fmtXml').classList.toggle('active', fmt === 'xml');
       document.getElementById('jsonActions').style.display = fmt === 'json' ? 'inline-flex' : 'none';
       document.getElementById('xmlActions').style.display = fmt === 'xml' ? 'inline-flex' : 'none';
+      document.getElementById('convJson').style.display = fmt === 'json' ? 'inline-flex' : 'none';
+      document.getElementById('convXml').style.display = fmt === 'xml' ? 'inline-flex' : 'none';
     }
-    function toggleConvertMenu(e) { if (e) e.stopPropagation(); document.getElementById('convertMenu').classList.toggle('open'); }
-    function closeConvertMenu() { document.getElementById('convertMenu').classList.remove('open'); }
-    document.addEventListener('click', (e) => { if (!e.target.closest('.convert-dd')) closeConvertMenu(); });
-
     input.addEventListener('input', () => {
       document.getElementById('inSize').textContent = fmtBytes(new Blob([input.value]).size);
       try { localStorage.setItem(STORAGE_KEY, input.value); } catch (e) {}
@@ -331,6 +338,12 @@
       }
       return v;
     }
+    function validateJson() {
+      const txt = input.value.trim();
+      if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      try { const v = JSON.parse(txt); setStatus('✅ 유효한 JSON · ' + describe(v), 'ok'); showToast('유효한 JSON입니다.', 'success'); }
+      catch (e) { setStatus('⚠ ' + jsonError(e, txt), 'err'); showToast('유효하지 않은 JSON', 'error'); }
+    }
 
     /* ---- XML 액션 ---- */
     function prettyXmlAction() {
@@ -373,6 +386,14 @@
       if (err) { setStatus('⚠ ' + err, 'err'); showToast('유효하지 않은 XML', 'error'); }
       else { setStatus('✅ 유효한 XML 입니다.', 'ok'); showToast('유효한 XML 입니다.', 'success'); }
     }
+    // XML 압축: 태그 사이의 공백(들여쓰기/줄바꿈)만 제거 (텍스트 내용은 보존)
+    function minifyXml() {
+      const doc = requireXmlDoc(); if (!doc) return;
+      setView('formatted', true);
+      const xml = new XMLSerializer().serializeToString(doc.documentElement);
+      outputText.value = xml.replace(/>\s+</g, '><').trim();
+      setStatus('🗜️ XML 압축 완료', 'ok');
+    }
 
     /* ---- 변환 ---- */
     function convert(dir) {
@@ -410,9 +431,33 @@
       });
       return obj;
     }
-    function coerce(s) { if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s); if (s === 'true') return true; if (s === 'false') return false; return s; }
+    // 숫자/불리언으로 변환하되, 앞자리 0이 의미 있는 값(전화번호·사번 등)은 문자열로 보존
+    function coerce(s) {
+      if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(s)) return Number(s);
+      if (s === 'true') return true;
+      if (s === 'false') return false;
+      return s;
+    }
 
-    /* ---- 유틸: JSON 문자열 풀기 / CSV ---- */
+    // 변환 결과를 입력창으로 보내 연속 변환
+    function outputToInput() {
+      const text = currentView === 'formatted' ? outputText.value : (lastValue !== undefined ? JSON.stringify(lastValue, null, 2) : '');
+      if (!text.trim()) { showToast('입력으로 보낼 결과가 없습니다.', 'warning'); return; }
+      input.value = text;
+      input.dispatchEvent(new Event('input'));   // 크기 갱신 + 저장 + 형식 자동 감지
+      showToast('결과를 입력으로 보냈습니다.', 'success');
+      input.focus();
+    }
+
+    /* ---- 유틸: JSON 문자열 escape / 풀기 ---- */
+    // 입력 전체를 JSON 문자열 리터럴로 escape (예: {"a":1} → "{\"a\":1}")
+    function escapeJsonString() {
+      const txt = input.value;
+      if (!txt.trim()) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      setView('formatted', true);
+      outputText.value = JSON.stringify(txt);
+      setStatus('✅ JSON 문자열로 escape 했습니다.', 'ok');
+    }
     function unescapeJsonString() {
       let txt = input.value.trim();
       if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return; }
@@ -426,20 +471,14 @@
         setStatus('✅ escape 문자열을 풀었습니다.', 'ok');
       } catch (e) { setStatus('⚠ 문자열 풀기 실패: ' + e.message, 'err'); showToast('풀 수 없는 형식입니다.', 'error'); }
     }
-    function jsonToCsv() {
-      const v = requireJson(); if (v === undefined) return;
-      const rows = Array.isArray(v) ? v : [v];
-      if (!rows.length || typeof rows[0] !== 'object' || rows[0] === null) { showToast('객체 배열(records) 형태만 CSV로 변환됩니다.', 'warning'); return; }
-      const cols = [...rows.reduce((s, r) => { Object.keys(r || {}).forEach(k => s.add(k)); return s; }, new Set())];
-      const esc = (x) => { if (x === null || x === undefined) return ''; const s = typeof x === 'object' ? JSON.stringify(x) : String(x); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-      const csv = [cols.join(','), ...rows.map(r => cols.map(c => esc(r ? r[c] : '')).join(','))].join('\n');
-      setView('formatted', true);
-      outputText.value = csv;
-      setStatus(`✅ CSV 변환 완료 (${rows.length}행 × ${cols.length}열)`, 'ok');
-    }
 
     /* ---- 뷰/렌더 ---- */
     function setView(view, skipRender) {
+      // 트리는 JSON 구조 전용 — XML 입력이면 변환을 안내하고 텍스트 뷰를 유지
+      if (view === 'tree' && lastValue === undefined && detectFormat(input.value) === 'xml') {
+        showToast('트리 보기는 JSON 전용입니다. "XML→JSON" 변환 후 보세요.', 'info');
+        return;
+      }
       currentView = view;
       document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
       outputText.style.display = view === 'formatted' ? 'block' : 'none';
@@ -580,6 +619,29 @@
         detectFormat(input.value) === 'xml' ? prettyXmlAction() : formatJson();
       }
     });
+
+    /* ---- 입력/결과 패널 드래그 리사이즈 ---- */
+    const resizer = document.getElementById('resizer');
+    const inPane = document.getElementById('inPane');
+    let isResizing = false;
+    resizer.addEventListener('mousedown', () => {
+      isResizing = true;
+      resizer.classList.add('active');
+      document.body.classList.add('resizing');
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!isResizing) return;
+      const w = (e.clientX / document.body.clientWidth) * 100;
+      if (w > 15 && w < 85) inPane.style.width = w + '%';
+    });
+    document.addEventListener('mouseup', () => {
+      if (!isResizing) return;
+      isResizing = false;
+      resizer.classList.remove('active');
+      document.body.classList.remove('resizing');
+    });
+    // 더블클릭으로 50:50 복원
+    resizer.addEventListener('dblclick', () => { inPane.style.width = '50%'; });
 
     // 복구
     window.addEventListener('load', () => {
