@@ -661,7 +661,7 @@
       <div class="dm-list" id="docManagerList"></div>
       <div class="dm-footer">
         <button class="btn" onclick="newDocFromManager()">＋ 새 문서</button>
-        <span style="font-size:0.78rem; color:var(--text-muted);">☑ 탭에 표시 · 항목 클릭 → 열기 · 🗑 영구 삭제</span>
+        <span style="font-size:0.78rem; color:var(--text-muted);">☑ 탭에 표시 · 항목 클릭 → 현재 전환 · 🗑 영구 삭제</span>
       </div>
     </div>
   </div>
@@ -912,26 +912,32 @@
       showToast('문서를 삭제했습니다.', 'info');
     }
 
-    // 탭 ✕: 영구 삭제가 아니라 탭 바에서만 내림(문서는 보존, 문서 관리에서 다시 열 수 있음)
+    // 탭 ✕: 내용 있는 탭은 숨김(보존 → 📚 전체에서 다시 열기 가능),
+    //       내용 없는 탭은 목록에 남기지 않고 영구 제거.
     function hideTab(id, e) {
       if (e) e.stopPropagation();
       if (!visibleIds.includes(id)) return;
-      if (id === activeDocId) {
-        // 보고 있는 탭을 닫는 경우: 다른 문서로 전환해야 함
-        const others = docs.filter(d => d.id !== id);
-        if (others.length === 0) { showToast('마지막 문서는 닫을 수 없어요.', 'info'); return; }
-        saveToDB();
-        visibleIds = visibleIds.filter(v => v !== id);
-        // 다음 활성 문서: 남아있는 탭 우선, 없으면 가장 최근 수정 문서
-        let nextId = visibleIds[0];
-        if (!nextId) nextId = others.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0].id;
-        loadDoc(nextId);     // ensureVisible + renderTabs
+
+      const isActive = id === activeDocId;
+      if (isActive) saveToDB();   // 활성 문서면 현재 편집분을 doc에 반영한 뒤 판단
+
+      const doc = docs.find(d => d.id === id);
+      const empty = !doc || !(doc.content && doc.content.trim());
+
+      if (empty) {
+        removeDocCore(id);                               // docs/visibleIds/DB 에서 제거
       } else {
-        visibleIds = visibleIds.filter(v => v !== id);
+        visibleIds = visibleIds.filter(v => v !== id);   // 탭 바에서만 내림(문서 보존)
+      }
+
+      if (isActive) {
+        if (visibleIds.length > 0) loadDoc(visibleIds[0]);  // 남은 탭으로 전환(숨긴 문서 미소환)
+        else newDoc();                                       // 마지막 탭 → 빈 새 탭
+      } else {
         renderTabs();
       }
       persistMeta();
-      showToast('탭에서 숨겼습니다. 📚 전체에서 다시 열 수 있어요.', 'info');
+      if (!empty) showToast('탭에서 숨겼습니다. 📚 전체에서 다시 열 수 있어요.', 'info');
     }
 
     /* ===== 문서 관리 다이얼로그 ===== */
