@@ -981,10 +981,12 @@
       document.getElementById('docManagerModal').style.display = 'none';
     }
 
-    // 검색어 + 필터를 적용한 (최근 수정순) 문서 목록
+    // 검색어 + 필터를 적용한 문서 목록
+    // 정렬하지 않고 docs[] 순서(= 탭/전체 리스트 순서)를 그대로 유지 →
+    // 현재 문서를 바꿔도 항목의 위치(인덱스)가 흔들리지 않는다.
     function getManagerDocs() {
       const term = (document.getElementById('docSearch').value || '').trim().toLowerCase();
-      let list = docs.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      let list = docs.slice();
       if (dmFilter === 'visible') list = list.filter(d => visibleIds.includes(d.id));
       else if (dmFilter === 'hidden') list = list.filter(d => !visibleIds.includes(d.id));
       if (term) list = list.filter(d => (d.title || '').toLowerCase().includes(term) || (d.content || '').toLowerCase().includes(term));
@@ -1047,7 +1049,7 @@
 
         const main = document.createElement('div');
         main.className = 'dm-main';
-        main.title = inSel ? '클릭하여 선택' : '클릭하여 열기';
+        main.title = inSel ? '클릭하여 선택' : '클릭하여 현재 문서로 전환';
         main.onclick = () => inSel ? toggleSelectDoc(d.id) : openFromManager(d.id);
 
         const title = document.createElement('div');
@@ -1190,8 +1192,11 @@
     }
 
     function openFromManager(id) {
-      switchDoc(id);          // 활성화 + 탭 바 편입(필요 시 LRU 밀어내기)
-      closeDocManager();
+      // 다이얼로그는 닫지 않고 '현재(활성) 문서'만 이동시킨다.
+      // switchDoc → renderTabs가 (모달이 열려 있으면) renderDocManager를 호출해
+      // 목록의 '● 현재' 표시와 활성 하이라이트가 갱신된다.
+      if (id === activeDocId) return;
+      switchDoc(id);
     }
 
     function toggleVisibleFromManager(id) {
