@@ -618,15 +618,23 @@
   <div id="previewModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h2 style="margin:0; font-size:1.1rem;">🔍 전체 화면 미리보기</h2>
+        <div style="display:flex; align-items:center; gap:1rem;">
+          <h2 style="margin:0; font-size:1.1rem;">🔍 크게 보기</h2>
+          <div class="view-seg">
+            <button id="modalSegPreview" class="seg-btn active" onclick="setModalMode('preview')">👁️ 미리보기</button>
+            <button id="modalSegText" class="seg-btn" onclick="setModalMode('text')">📄 텍스트 추출</button>
+          </div>
+        </div>
         <div style="display:flex; gap:0.5rem; align-items:center;">
-          <span style="font-size:0.8rem; color:var(--text-muted); margin-right:1rem;">(Tip: Ctrl+A로 전체 선택 후 복사하세요)</span>
+          <span id="modalTip" style="font-size:0.8rem; color:var(--text-muted); margin-right:1rem;">(Tip: Ctrl+A로 전체 선택 후 복사하세요)</span>
+          <button class="btn" id="modalTextCopy" style="display:none;" onclick="copyModalPlain()">📋 텍스트 복사</button>
           <button class="btn btn-primary" onclick="printMarkdown()">🖨️ 인쇄 / PDF 저장</button>
           <button class="btn" onclick="closeModal()">닫기 (Esc)</button>
         </div>
       </div>
       <div class="modal-body">
         <div id="modalPreview" class="markdown-body"></div>
+        <textarea id="modalPlain" class="plain-output" readonly style="display:none;" placeholder="마크다운 문법이 제거된 순수 텍스트가 여기에 표시됩니다..."></textarea>
       </div>
     </div>
   </div>
@@ -1364,6 +1372,74 @@ function hello() {
       return t;
     }
 
+    // 표 정렬용: 표시 폭(한글/전각 문자는 2칸)
+    function dispWidth(s) {
+      let w = 0;
+      for (const ch of (s || '')) {
+        const c = ch.codePointAt(0);
+        if ((c >= 0x1100 && c <= 0x115f) || (c >= 0x2e80 && c <= 0xa4cf) ||
+            (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) ||
+            (c >= 0xfe30 && c <= 0xfe4f) || (c >= 0xff00 && c <= 0xff60) ||
+            (c >= 0xffe0 && c <= 0xffe6) || (c >= 0x20000 && c <= 0x3fffd)) w += 2;
+        else w += 1;
+      }
+      return w;
+    }
+    function padDisp(s, width) { return s + ' '.repeat(Math.max(0, width - dispWidth(s))); }
+    // 표시 폭 기준 줄바꿈(단어 단위, 한 단어가 너무 길면 강제 분해)
+    function wrapDisp(s, max) {
+      const words = (s || '').split(/\s+/).filter(Boolean);
+      const lines = [];
+      let cur = '';
+      for (let w of words) {
+        while (dispWidth(w) > max) {
+          let part = '';
+          for (const ch of w) { if (dispWidth(part + ch) > max) break; part += ch; }
+          if (cur) { lines.push(cur); cur = ''; }
+          lines.push(part);
+          w = w.slice(part.length);
+        }
+        if (!cur) cur = w;
+        else if (dispWidth(cur + ' ' + w) <= max) cur += ' ' + w;
+        else { lines.push(cur); cur = w; }
+      }
+      if (cur) lines.push(cur);
+      return lines.length ? lines : [''];
+    }
+
+    // 마크다운 표 → 행별 레코드 블록으로 변환 (요약 없이 전체 내용 보존)
+    //   ━━ [n] ━━━━
+    //   라벨 : 값            (값이 길면 다음 줄을 값 시작 위치에 정렬)
+    function tableToBlocks(headers, dataRows) {
+      const VALW = 60;                 // 값 줄바꿈 폭
+      const DIV = 46;                  // 구분선 목표 폭
+      // 첫 칸이 번호열(#/번호/No/순번 또는 1~2자리 숫자)이면 [n]으로 승격하고 본문에서 제외
+      const firstIsIndex = /^(#|no\.?|번호|순번)$/i.test((headers[0] || '').trim()) ||
+        (dataRows.length > 0 && dataRows.every(r => /^\d{1,2}$/.test((r[0] || '').trim())));
+      const numCol = firstIsIndex ? 0 : -1;
+      const hasHeader = headers.some(h => h);
+      const bodyCols = headers.map((_, idx) => idx).filter(idx => idx !== numCol);
+      const labels = bodyCols.map(idx => hasHeader ? inlineToText(headers[idx]) : '');
+      const labelW = labels.some(l => l) ? Math.max(...labels.map(dispWidth)) : 0;
+
+      const out = [];
+      dataRows.forEach((row, idx) => {
+        const n = numCol >= 0 ? (row[numCol] || '').trim() : String(idx + 1);
+        const prefix = `━━ [${n}] `;
+        out.push(prefix + '━'.repeat(Math.max(3, DIV - dispWidth(prefix))));
+        bodyCols.forEach((col, bi) => {
+          const val = inlineToText(row[col] || '');
+          const head = labelW ? `${padDisp(labels[bi], labelW)} : ` : '';
+          const indent = ' '.repeat(dispWidth(head));
+          const wrapped = wrapDisp(val, VALW);
+          out.push(head + (wrapped[0] || ''));
+          for (let k = 1; k < wrapped.length; k++) out.push(indent + wrapped[k]);
+        });
+        out.push('');
+      });
+      return out.join('\n').trimEnd();
+    }
+
     // 마크다운 전체를 가독성 있는 평문으로 변환 (표 → 리스트, 헤더 → 구분선 등)
     function markdownToText(md) {
       if (!md) return '';
@@ -1390,19 +1466,16 @@ function hello() {
           continue;
         }
 
-        // 표: 헤더 + 구분선 패턴이면 행마다 'key: value' 리스트로 변환
+        // 표: 헤더 + 구분선 패턴이면 행마다 레코드 블록으로 변환 (전체 내용 보존)
         if (line.includes('|') && i + 1 < lines.length && isTableSep(lines[i + 1])) {
           const headers = splitRow(line);
-          const hasHeader = headers.some(h => h);
           i += 2; // 헤더행 + 구분선
+          const dataRows = [];
           while (i < lines.length && lines[i].includes('|') && lines[i].trim() !== '') {
-            const cells = splitRow(lines[i]);
-            const rowText = hasHeader
-              ? cells.map((c, idx) => headers[idx] ? `${inlineToText(headers[idx])}: ${inlineToText(c)}` : inlineToText(c)).join(' | ')
-              : cells.map(inlineToText).join(' | ');
-            out.push(`- ${rowText}`);
+            dataRows.push(splitRow(lines[i]));
             i++;
           }
+          if (dataRows.length) out.push(tableToBlocks(headers, dataRows));
           continue;
         }
 
@@ -1524,12 +1597,14 @@ function hello() {
               const prefix = editor.value.trim() ? `${editor.value.replace(/\s+$/, '')}\n\n--- [Dropped: ${file.name}] ---\n\n` : '';
               editor.value = prefix + content;
               updatePreview();
+              if (previewMode === 'text') updatePlain();
               saveToDB();
               showToast(`파일 '${file.name}'의 내용이 이어붙여졌습니다.`, 'success');
             } else {
               // 새로 쓰기: 현재 탭의 내용을 덮어씀 (새 탭 생성하지 않음)
               editor.value = content;
               updatePreview();
+              if (previewMode === 'text') updatePlain();
               saveToDB();
               showToast(`파일 '${file.name}'의 내용을 현재 탭에 불러왔습니다.`, 'success');
             }
@@ -1671,12 +1746,43 @@ function hello() {
     });
 
     // Modal Control
+    let modalMode = 'preview';
+
+    function renderModalView() {
+      const isText = modalMode === 'text';
+      document.getElementById('modalSegPreview').classList.toggle('active', !isText);
+      document.getElementById('modalSegText').classList.toggle('active', isText);
+      document.getElementById('modalPreview').style.display = isText ? 'none' : 'block';
+      const mp = document.getElementById('modalPlain');
+      mp.style.display = isText ? 'block' : 'none';
+      document.getElementById('modalTextCopy').style.display = isText ? '' : 'none';
+      document.getElementById('modalTip').style.display = isText ? 'none' : '';
+      if (isText) mp.value = markdownToText(editor.value);
+      else document.getElementById('modalPreview').innerHTML = preview.innerHTML; // 이미 실제 이미지로 치환된 상태
+    }
+
+    function setModalMode(mode) {
+      modalMode = mode;
+      renderModalView();
+    }
+
     function openModal() {
+      modalMode = previewMode === 'text' ? 'text' : 'preview'; // 현재 보던 모드 그대로 크게 열기
+      renderModalView();
       const modal = document.getElementById('previewModal');
-      const modalPreview = document.getElementById('modalPreview');
-      modalPreview.innerHTML = preview.innerHTML; // 미리보기는 이미 실제 이미지로 치환된 상태
       modal.style.display = 'block';
       document.body.style.overflow = 'hidden'; // Prevent scrolling background
+    }
+
+    async function copyModalPlain() {
+      const v = document.getElementById('modalPlain').value;
+      if (!v) { showToast('추출할 텍스트가 없습니다.', 'warning'); return; }
+      try {
+        await navigator.clipboard.writeText(v);
+        showToast('순수 텍스트를 복사했습니다.', 'success');
+      } catch (e) {
+        showToast('복사에 실패했습니다.', 'error');
+      }
     }
 
     function closeModal() {
@@ -1714,11 +1820,17 @@ function hello() {
       const modal = document.getElementById('previewModal');
       if (modal.style.display === 'block' && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
         e.preventDefault(); // Stop default "select all page"
-        const range = document.createRange();
-        range.selectNodeContents(document.getElementById('modalPreview'));
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(range);
+        if (modalMode === 'text') {
+          const mp = document.getElementById('modalPlain');
+          mp.focus();
+          mp.select();
+        } else {
+          const range = document.createRange();
+          range.selectNodeContents(document.getElementById('modalPreview'));
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
       }
     });
 
