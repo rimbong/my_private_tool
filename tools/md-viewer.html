@@ -204,6 +204,19 @@
       transition: background 0.15s, opacity 0.15s;
     }
     .doc-tab-close:hover { opacity: 1; background: var(--tab-border); }
+    .doc-tab-del {
+      display: none;                 /* 평소 숨김, 탭에 마우스 올릴 때만 노출 */
+      align-items: center;
+      justify-content: center;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      font-size: 0.68rem;
+      opacity: 0.6;
+      flex-shrink: 0;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .doc-tab:hover .doc-tab-del { display: inline-flex; }
+    .doc-tab-del:hover { opacity: 1; background: var(--danger, #e5484d); color: #fff; }
     .doc-tab-add {
       align-self: flex-end;            /* 탭과 같은 바닥선에 정렬 */
       display: inline-flex;            /* ＋ 글리프 정중앙 정렬 */
@@ -825,11 +838,18 @@
         title.textContent = d.title;
         tab.appendChild(title);
 
+        const del = document.createElement('span');
+        del.className = 'doc-tab-del';
+        del.textContent = '🗑';
+        del.title = '영구 삭제 (문서 자체를 제거, 되돌릴 수 없음)';
+        del.onclick = (e) => purgeTab(d.id, e);
+        tab.appendChild(del);
+
         const close = document.createElement('span');
         close.className = 'doc-tab-close';
         close.textContent = '✕';
-        close.title = '탭에서 숨기기 (문서는 보존)';
-        close.onclick = (e) => hideTab(d.id, e);
+        close.title = '탭에서 숨기기 (문서는 보존) · Shift+클릭 시 영구 삭제';
+        close.onclick = (e) => (e.shiftKey ? purgeTab(d.id, e) : hideTab(d.id, e));
         tab.appendChild(close);
 
         list.appendChild(tab);
@@ -946,6 +966,24 @@
       }
       persistMeta();
       if (!empty) showToast('탭에서 숨겼습니다. 📚 전체에서 다시 열 수 있어요.', 'info');
+    }
+
+    // 확인창 없이 탭에서 바로 영구 삭제 (🗑 클릭 또는 Shift+✕)
+    function purgeTab(id, e) {
+      if (e) e.stopPropagation();
+      const idx = docs.findIndex(d => d.id === id);
+      if (idx === -1) return;
+      const isActive = id === activeDocId;
+      if (!isActive) saveToDB();            // 활성 문서 편집분 보존
+      removeDocCore(id);                    // docs/visibleIds/accessTime/DB 에서 제거
+      if (isActive) {
+        if (visibleIds.length > 0) loadDoc(visibleIds[0]); // 남은 탭으로 전환
+        else newDoc();                                      // 마지막 탭 → 빈 새 탭
+      } else {
+        renderTabs();
+      }
+      persistMeta();
+      showToast('문서를 영구 삭제했습니다. 🗑', 'info');
     }
 
     /* ===== 문서 관리 다이얼로그 ===== */
