@@ -45,7 +45,7 @@
       display: flex;
       justify-content: center;
     }
-    .container { width: 100%; max-width: 980px; }
+    .container { width: 100%; max-width: none; }
     .card {
       background-color: var(--card-bg);
       border: 1px solid var(--border);
@@ -81,14 +81,25 @@
       color: var(--text);
     }
     input[type="text"]:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(5,150,105,0.12); }
-    textarea#inputSql { min-height: 150px; }
-    textarea#completedSql { min-height: 150px; background: var(--code-bg); }
+    textarea#inputSql { min-height: 340px; }
+    textarea#completedSql { min-height: 340px; background: var(--code-bg); }
+    /* 입력/결과 좌우 2단 (전체 폭 활용) */
+    .io-grid { display: flex; gap: 1.5rem; align-items: flex-start; margin-bottom: 1.25rem; }
+    .io-col { flex: 1; min-width: 0; }
+    .io-col > .field-group { margin-bottom: 0; }
+    /* 입력/결과 헤더 높이 통일 → 두 textarea 시작·끝 라인 정렬 */
+    .io-col .label-row, .io-col .result-head { min-height: 2.25rem; box-sizing: border-box; align-items: center; margin-bottom: 0.6rem; }
+    @media (max-width: 900px) {
+      .io-grid { flex-direction: column; gap: 0; }
+      textarea#inputSql, textarea#completedSql { min-height: 200px; }
+    }
     textarea.drag-hover { box-shadow: inset 0 0 0 3px var(--primary); }
 
     .options { display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; margin: 0.25rem 0 1.25rem; font-size: 0.82rem; color: var(--text-muted); font-weight: 700; }
     .options label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; text-transform: none; letter-spacing: 0; color: var(--text-muted); font-size: 0.82rem; }
 
     .controls { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .controls .btn { flex: 0 0 auto; padding: 0.55rem 1.6rem; }
     .btn {
       padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid var(--border);
       font-weight: 700; cursor: pointer; transition: all 0.2s;
@@ -96,7 +107,7 @@
       background: #fff; color: var(--text); font-size: 0.9rem;
     }
     .btn:hover { background: #f1f5f9; border-color: var(--text-muted); }
-    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); flex: 1; }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
     .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
     .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
 
@@ -105,6 +116,19 @@
     #mismatchAlert { font-size: 0.78rem; font-weight: 800; }
     #mismatchAlert.warn { color: var(--warn); }
     #mismatchAlert.ok { color: var(--primary); }
+
+    /* ===== 바인딩 매핑 표 (? → 치환값) ===== */
+    .bind-section { margin-top: 1.25rem; padding-top: 1.25rem; border-top: 2px dashed var(--border); }
+    .bind-section > .bind-cap { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+    .bind-cap .hint { margin: 0; }
+    table.bind-table { width: 100%; border-collapse: collapse; margin-top: 0.75rem; font-size: 0.85rem; }
+    table.bind-table th, table.bind-table td { padding: 0.55rem 0.7rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+    table.bind-table th { color: var(--text-muted); font-weight: 800; text-transform: none; letter-spacing: 0; }
+    table.bind-table td.idx { width: 3rem; color: var(--text-muted); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    table.bind-table td.val { font-family: 'Fira Code', Consolas, monospace; word-break: break-all; color: var(--primary); font-weight: 700; }
+    table.bind-table td.typ { width: 9rem; white-space: nowrap; }
+    table.bind-table td.typ .tg { font-size: 0.72rem; padding: 0.12rem 0.45rem; border-radius: 4px; background: var(--border); color: var(--text-muted); font-weight: 800; }
+    table.bind-table tr.bad td { color: var(--warn); }
 
     /* ===== Responsive: 모바일 ===== */
     @media (max-width: 600px) {
@@ -124,7 +148,12 @@
     <div class="card">
       <header>
         <h1>🗃️ SQL 로그 변환기 <span class="badge">PRO</span></h1>
-        <div style="display:flex; gap:0.5rem;">
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <select id="logMode" class="btn btn-sm" onchange="onModeChange()" title="로그 형식 — 보통 '자동'이면 알아서 감지합니다. 선택은 샘플/안내용입니다.">
+            <option value="auto">자동 감지</option>
+            <option value="mybatis">MyBatis</option>
+            <option value="ibatis">iBATIS</option>
+          </select>
           <button class="btn btn-sm" onclick="loadSample()">샘플 로드</button>
           <button class="btn btn-sm" onclick="clearAll()">비우기</button>
         </div>
@@ -136,38 +165,51 @@
           <span id="cntInputSqlValue" class="count">파라미터 0개</span>
         </div>
         <input type="text" id="inputSqlValue" placeholder="123(Integer), 홍길동(String), null   또는   [123, 홍길동, NULL]">
-        <p class="hint">MyBatis 로그의 <code>Parameters:</code> 줄을 그대로 붙여넣으면 <b>타입(괄호)</b>을 인식해 따옴표를 자동 처리합니다. <code>[a, b, c]</code> 배열 형식도 지원.</p>
+        <p class="hint">MyBatis <code>Parameters:</code>(타입 괄호) 또는 iBATIS <code>Parameters:</code>+<code>Types:</code> 줄을 그대로 붙여넣으면 타입을 인식해 따옴표를 자동 처리합니다. <code>[a, b, c]</code> 배열도 지원.</p>
       </div>
 
-      <div class="field-group">
-        <div class="label-row">
-          <label for="inputSql">SQL 입력 / 로그</label>
-          <span id="cntInputSql" class="count">? 0개</span>
+      <div class="io-grid">
+        <div class="io-col">
+          <div class="field-group">
+            <div class="label-row">
+              <label for="inputSql">SQL 입력 / 로그</label>
+              <span id="cntInputSql" class="count">? 0개</span>
+            </div>
+            <textarea id="inputSql" placeholder="SELECT * FROM users WHERE id = ? AND status = ?&#10;&#10;또는 MyBatis 로그 블록을 통째로 붙여넣으세요 (Preparing/Parameters 자동 분리)"></textarea>
+            <p class="hint">자바 문자열 결합(<code>"..." + "..."</code>)·주석(<code>//</code>)을 정리합니다. <code>Preparing:</code>/<code>Executing Statement:</code> 로그 줄과 끝의 <code>| [..]</code> 꼬리표를 자동 분리합니다.</p>
+          </div>
+          <div class="options">
+            <label><input type="checkbox" id="optAutoFormat" checked> 변환 후 자동 포맷</label>
+            <label><input type="checkbox" id="optAutoCopy" checked> 변환 후 자동 복사</label>
+            <label><input type="checkbox" id="optSemicolon" checked> 끝에 세미콜론(;) 추가</label>
+          </div>
+          <div class="controls">
+            <button class="btn btn-primary" onclick="convertSql()">🔄 변환</button>
+          </div>
         </div>
-        <textarea id="inputSql" placeholder="SELECT * FROM users WHERE id = ? AND status = ?&#10;&#10;또는 MyBatis 로그 블록을 통째로 붙여넣으세요 (Preparing/Parameters 자동 분리)"></textarea>
-        <p class="hint">자바 문자열 결합(<code>"..." + "..."</code>)·주석(<code>//</code>)을 정리합니다. <code>Preparing:</code>/<code>Parameters:</code>가 포함된 로그는 자동으로 분리됩니다.</p>
-      </div>
-
-      <div class="options">
-        <label><input type="checkbox" id="optAutoFormat" checked> 변환 후 자동 포맷</label>
-        <label><input type="checkbox" id="optAutoCopy" checked> 변환 후 자동 복사</label>
-        <label><input type="checkbox" id="optSemicolon" checked> 끝에 세미콜론(;) 추가</label>
-      </div>
-
-      <div class="controls">
-        <button class="btn btn-primary" onclick="convertSql()">🔄 변환</button>
-        <button class="btn" onclick="formatResult()">✨ 포맷</button>
-      </div>
-
-      <div class="result-head">
-        <label for="completedSql">변환 결과</label>
-        <div class="result-actions">
-          <span id="mismatchAlert"></span>
-          <button class="btn btn-sm" onclick="copyResult()">📋 복사</button>
-          <button class="btn btn-sm" onclick="downloadResult()">💾 저장</button>
+        <div class="io-col">
+          <div class="result-head">
+            <label for="completedSql">변환 결과</label>
+            <div class="result-actions">
+              <span id="mismatchAlert"></span>
+              <button class="btn btn-sm" onclick="formatResult()">✨ 포맷</button>
+              <button class="btn btn-sm" onclick="copyResult()">📋 복사</button>
+              <button class="btn btn-sm" onclick="downloadResult()">💾 저장</button>
+            </div>
+          </div>
+          <textarea id="completedSql" readonly placeholder="변환된 SQL이 여기에 표시됩니다..."></textarea>
+          <div id="bindSection" class="bind-section" style="display:none;">
+            <div class="bind-cap">
+              <label>바인딩 매핑 (? → 값)</label>
+              <span class="hint">각 <code>?</code>가 어떤 값으로 바뀌었는지 순서대로 보여줍니다.</span>
+            </div>
+            <table class="bind-table">
+              <thead><tr><th style="width:3rem;">#</th><th>치환된 값</th><th style="width:9rem;">타입</th></tr></thead>
+              <tbody id="bindBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
-      <textarea id="completedSql" readonly placeholder="변환된 SQL이 여기에 표시됩니다..."></textarea>
     </div>
   </div>
 
@@ -192,8 +234,9 @@
       if (value === null || /^null$/i.test(String(value).trim())) return 'NULL';
       const v = String(value);
       if (type) {
-        if (NUMERIC_TYPES.test(type)) return v.trim();
-        if (BOOL_TYPES.test(type)) return v.trim();
+        const st = String(type).split('.').pop();   // java.lang.Integer -> Integer
+        if (NUMERIC_TYPES.test(st)) return v.trim();
+        if (BOOL_TYPES.test(st)) return v.trim();
         return quote(v);
       }
       // 타입 정보가 없을 때(배열 형식): 순수 정수/소수만 그대로, 나머지는 따옴표
@@ -206,9 +249,30 @@
     }
 
     /* ---------- 파라미터 파싱 ---------- */
+    // 로그 줄 끝의 ' | [패키지.클래스]' 꼬리표 제거 (iBATIS/JDBC 로그)
+    function stripLogTail(s) {
+      return s.replace(/\s*\|\s*\[[\w.$]+\]\s*$/gm, '');
+    }
+    // "label: [ ... ]" 에서 대괄호 안 내용 추출 (없으면 null)
+    function bracketAfter(text, label) {
+      const m = text.match(new RegExp(label + '\\s*:\\s*\\[([^\\]]*)\\]', 'i'));
+      return m ? m[1] : null;
+    }
+    const splitCsv = (s) => s.split(',').map(x => x.trim());
+
     function parseParams(raw) {
       if (!raw) return [];
-      let s = raw.trim();
+      let s = stripLogTail(raw).trim();
+
+      // iBATIS: Parameters + Types 가 함께 있으면 인덱스로 짝지어 정확한 타입 적용
+      const pBracket = bracketAfter(s, 'Parameters');
+      const tBracket = bracketAfter(s, 'Types');
+      if (pBracket !== null && tBracket !== null) {
+        const vals = splitCsv(pBracket);
+        const types = splitCsv(tBracket);
+        return vals.map((v, i) => ({ value: v, type: types[i] ? types[i].split('.').pop() : null }));
+      }
+
       // "Parameters:" 접두어 제거
       const mb = s.match(/Parameters\s*:\s*([\s\S]*)$/i);
       if (mb) s = mb[1].trim();
@@ -247,9 +311,11 @@
 
     /* ---------- 자바 코드/로그 정제 ---------- */
     function cleanSql(raw) {
-      // 로그 블록이면 Preparing 줄만 추출
-      const prep = raw.match(/Preparing\s*:\s*([^\n]*)/i);
+      // 로그 블록이면 SQL 줄만 추출 (MyBatis: Preparing / iBATIS: Executing Statement)
+      const prep = raw.match(/(?:Preparing|Executing\s+Statement)\s*:\s*([^\n]*)/i);
       let text = prep ? prep[1] : raw;
+      // 로그 줄 끝의 ' | [패키지.클래스]' 꼬리표 제거
+      text = text.replace(/\s*\|\s*\[[\w.$]+\]\s*$/gm, '');
 
       const lines = text.split('\n');
       let out = '';
@@ -321,9 +387,12 @@
       const rawSql = sqlEl.value;
       if (!rawSql.trim()) { showToast('SQL을 입력해주세요.', 'warning'); return; }
 
-      // 로그 블록이면 Parameters 줄을 자동으로 파라미터 칸에 채움
-      const prm = rawSql.match(/Parameters\s*:\s*([^\n]*)/i);
-      if (prm && !valueEl.value.trim()) valueEl.value = prm[1].trim();
+      // 로그 블록이면 Parameters(+ iBATIS Types) 줄을 자동으로 파라미터 칸에 채움
+      if (!valueEl.value.trim()) {
+        const prm = rawSql.match(/Parameters\s*:\s*[^\n]*/i);
+        const typ = rawSql.match(/Types\s*:\s*[^\n]*/i);
+        if (prm) valueEl.value = [prm[0], typ ? typ[0] : ''].filter(Boolean).join('\n');
+      }
 
       const params = parseParams(valueEl.value);
       const clean = cleanSql(rawSql);
@@ -337,6 +406,7 @@
 
       resultEl.value = result;
       refreshCounts(qCount, params.length);
+      renderBindTable(params, qCount);
 
       if (qCount !== params.length) {
         showToast(`? ${qCount}개와 파라미터 ${params.length}개가 일치하지 않습니다.`, 'warning');
@@ -369,13 +439,68 @@
       sqlEl.value = '';
       resultEl.value = '';
       refreshCounts(0, 0);
+      $('bindSection').style.display = 'none';
       sqlEl.focus();
     }
 
+    /* ---------- 바인딩 매핑 표 (? → 치환값) ---------- */
+    function bindKindLabel(param) {
+      if (param.type) return param.type.split('.').pop();   // 명시 타입 (String, Integer ...)
+      const b = bindValue(param);                            // 타입 없을 때: 추정
+      if (b === 'NULL') return 'NULL';
+      if (b === "''") return '빈문자열(추정)';
+      if (/^'[\s\S]*'$/.test(b)) return '문자열(추정)';
+      return '숫자(추정)';
+    }
+
+    function renderBindTable(params, qCount) {
+      const body = $('bindBody');
+      body.innerHTML = '';
+      const n = Math.max(qCount, params.length);
+      if (n === 0) { $('bindSection').style.display = 'none'; return; }
+      for (let i = 0; i < n; i++) {
+        const tr = document.createElement('tr');
+        const idx = document.createElement('td'); idx.className = 'idx'; idx.textContent = i + 1;
+        const val = document.createElement('td'); val.className = 'val';
+        const typ = document.createElement('td'); typ.className = 'typ';
+        const tg = document.createElement('span'); tg.className = 'tg';
+        if (i < qCount && i < params.length) {
+          val.textContent = bindValue(params[i]);
+          tg.textContent = bindKindLabel(params[i]);
+        } else if (i < qCount) {                 // ? 보다 파라미터가 모자람
+          tr.className = 'bad'; val.textContent = '(미바인딩 ?)'; tg.textContent = '없음';
+        } else {                                  // 파라미터가 ? 보다 많음
+          tr.className = 'bad'; val.textContent = bindValue(params[i]) + '   (초과 파라미터)'; tg.textContent = bindKindLabel(params[i]);
+        }
+        typ.appendChild(tg);
+        tr.append(idx, val, typ);
+        body.appendChild(tr);
+      }
+      $('bindSection').style.display = 'block';
+    }
+
+    // 모드별 샘플 (파싱은 자동 감지가 처리 — 샘플은 형식 학습용)
+    const SAMPLES = {
+      mybatis:
+        '==>  Preparing: SELECT u.id, u.name, u.email FROM users u LEFT JOIN orders o ON o.user_id = u.id WHERE u.status = ? AND u.name = ? AND u.age > ? ORDER BY u.created_at DESC\n' +
+        '==> Parameters: ACTIVE(String), 오\'브라이언(String), 20(Integer)',
+      ibatis:
+        '06/24 11:01:20 [http-nio-8080-exec-5] {pstm-105698} Executing Statement:  SELECT a.MESSAGE_ID, a.IO_TYPE, a.SEQ_NO FROM U2C_MESSAGE_FIELD_LIST a WHERE a.IO_TYPE = ? AND a.STATE != ? START WITH a.MESSAGE_ID = ? CONNECT BY NOCYCLE PRIOR a.MESSAGE_ID = a.PARENT_MESSAGE_ID  | [java.sql.PreparedStatement]\n' +
+        '06/24 11:01:20 [http-nio-8080-exec-5] {pstm-105698} Parameters: [03, 06, MESG0000003352] | [java.sql.PreparedStatement]\n' +
+        '06/24 11:01:20 [http-nio-8080-exec-5] {pstm-105698} Types: [java.lang.String, java.lang.String, java.lang.String] | [java.sql.PreparedStatement]'
+    };
+
     function loadSample() {
-      sqlEl.value = '==>  Preparing: SELECT u.id, u.name, u.email FROM users u LEFT JOIN orders o ON o.user_id = u.id WHERE u.status = ? AND u.name = ? AND u.age > ? ORDER BY u.created_at DESC\n==> Parameters: ACTIVE(String), 오\'브라이언(String), 20(Integer)';
+      // 자동이면 iBATIS 예시(새로 지원된 3줄 형식)를 보여줌
+      const mode = $('logMode').value === 'mybatis' ? 'mybatis' : 'ibatis';
+      sqlEl.value = SAMPLES[mode];   // SQL+Parameters(+Types)를 통째로 → 자동 분리
       valueEl.value = '';
       convertSql();
+    }
+
+    // 빈 폼에서 모드를 바꾸면 그 모드 샘플을 바로 보여줌(작업 중이면 건드리지 않음)
+    function onModeChange() {
+      if (!sqlEl.value.trim() && !valueEl.value.trim() && $('logMode').value !== 'auto') loadSample();
     }
 
     // 입력 시 개수 실시간 갱신(가벼운 미리보기)
@@ -385,8 +510,9 @@
       let pCount = parseParams(valueEl.value).length;
       // SQL칸에 Parameters 줄이 있고 파라미터칸이 비었으면 그것으로 미리보기
       if (!valueEl.value.trim()) {
-        const prm = sqlEl.value.match(/Parameters\s*:\s*([^\n]*)/i);
-        if (prm) pCount = parseParams(prm[1]).length;
+        const prm = sqlEl.value.match(/Parameters\s*:\s*[^\n]*/i);
+        const typ = sqlEl.value.match(/Types\s*:\s*[^\n]*/i);
+        if (prm) pCount = parseParams([prm[0], typ ? typ[0] : ''].filter(Boolean).join('\n')).length;
       }
       refreshCounts(qCount, pCount);
     }
