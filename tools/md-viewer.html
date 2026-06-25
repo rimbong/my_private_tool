@@ -813,12 +813,14 @@
 
     function persistDoc(doc) {
       if (dbManager.db) dbManager.setItem('docs', doc.id, doc).catch(() => {});
+      notifySync();
     }
     function persistMeta() {
       if (!dbManager.db) return;
       dbManager.setItem('content', 'doc_order', docs.map(d => d.id)).catch(() => {});
       dbManager.setItem('content', 'active_doc', activeDocId).catch(() => {});
       dbManager.setItem('content', 'visible_docs', visibleIds).catch(() => {});
+      notifySync();
     }
 
     function renderTabs() {
@@ -1215,6 +1217,7 @@
       visibleIds = visibleIds.filter(v => v !== id);
       delete accessTime[id];
       if (dbManager.db) dbManager.removeItem('docs', id).catch(() => {});
+      notifySync();
     }
 
     // 선택한 문서들을 영구 삭제
@@ -1648,6 +1651,8 @@ function hello() {
             }
           }
         });
+
+        enableSync();   // 같은 브라우저의 다른 탭/창과 실시간 동기화 시작
       } catch (err) {
         console.error('Failed to init DB:', err);
         // DB 실패 시에도 인메모리 문서 1개로 동작 (영속만 안 됨)
@@ -1668,6 +1673,104 @@ function hello() {
       doc.updatedAt = Date.now();
       persistDoc(doc);
       if (doc.title !== prevTitle) renderTabs();  // 자동 제목이 바뀌면 탭 갱신
+    }
+
+    /* ===== 탭/창 간 실시간 동기화 (같은 브라우저, 서버 불필요) =====
+       원리: 한 창이 IndexedDB에 저장하면 BroadcastChannel로 "변경됨"을 알리고,
+       다른 창은 DB에서 다시 읽어 반영한다. 단, 편집 중인 에디터는 덮어쓰지 않는다. */
+    const SYNC_NAME = 'md-viewer-sync';
+    const tabId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    let syncBC = null;
+    let syncReady = false;       // 초기 로드 완료 전엔 broadcast 하지 않음
+    let applyingRemote = false;  // 원격 변경 반영 중엔 재-broadcast 하지 않음(루프 방지)
+    let syncOutTimer = null, syncInTimer = null;
+
+    function notifySync() {
+      if (!syncBC || !syncReady || applyingRemote) return;
+      clearTimeout(syncOutTimer);
+      syncOutTimer = setTimeout(() => {
+        try { syncBC.postMessage({ from: tabId, t: Date.now() }); } catch (e) {}
+      }, 250);
+    }
+
+    function scheduleRemoteReload() {
+      clearTimeout(syncInTimer);
+      syncInTimer = setTimeout(applyRemote, 150);
+    }
+
+    // 다른 창의 변경을 DB에서 다시 읽어 반영 (편집 중 에디터는 보호)
+    async function applyRemote() {
+      if (!dbManager.db || applyingRemote) return;
+      applyingRemote = true;
+      try {
+        const prevActive = activeDocId;
+        const editing = (document.activeElement === editor);
+        const localActive = getActiveDoc();
+        // 디바운스 저장 대기 중인 미저장 입력 여부 (DB로 되돌리면 유실되므로 보호 대상)
+        const localUnsaved = !!localActive && editor.value !== localActive.content;
+
+        const all = await dbManager.getAll('docs') || {};
+        const order = await dbManager.getItem('content', 'doc_order');
+        const savedVisible = await dbManager.getItem('content', 'visible_docs');
+
+        const rebuilt = [];
+        if (Array.isArray(order) && order.length) {
+          order.forEach(id => { if (all[id]) rebuilt.push(all[id]); });
+          Object.keys(all).forEach(id => { if (!order.includes(id)) rebuilt.push(all[id]); });
+        } else {
+          Object.values(all).forEach(d => rebuilt.push(d));
+        }
+        rebuilt.forEach(d => { if (typeof d.customTitle !== 'boolean') d.customTitle = false; if (!d.title) d.title = deriveTitle(d.content); });
+        docs = rebuilt;
+
+        visibleIds = Array.isArray(savedVisible)
+          ? savedVisible.filter(id => docs.some(d => d.id === id))
+          : visibleIds.filter(id => docs.some(d => d.id === id));
+
+        if (docs.some(d => d.id === prevActive)) {
+          activeDocId = prevActive;                       // 이 창이 보던 문서는 그대로 유지
+          if (!visibleIds.includes(activeDocId)) ensureVisible(activeDocId);
+          if (visibleIds.length === 0) visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
+          const cur = getActiveDoc();
+          if (cur) {
+            const remoteContent = cur.content;   // DB(다른 창)의 현재 내용
+            if (editing || localUnsaved) {
+              // 편집 중이거나 미저장 입력이 있으면 내 내용을 지킨다(되돌림/유실 방지)
+              if (localActive && remoteContent !== localActive.content) {
+                showToast('🔄 다른 창에서 이 문서가 변경됐어요. 편집 중이라 미반영 — 저장 시 내 내용으로 유지됩니다.', 'info');
+              }
+              cur.content = editor.value;         // 모델도 내 에디터 값으로 유지
+            } else if (editor.value !== remoteContent) {
+              editor.value = remoteContent;       // 안전하게 최신 내용 반영
+              updatePreview();
+              if (previewMode === 'text') updatePlain();
+            }
+          }
+          renderTabs();
+        } else if (docs.length) {
+          if (visibleIds.length === 0) visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
+          loadDoc(visibleIds[0] || docs[0].id);           // 보던 문서가 삭제됨 → 남은 문서로
+        } else {
+          newDoc();                                        // 전부 사라짐 → 빈 새 문서
+        }
+      } catch (e) {
+        console.error('sync apply failed', e);
+      } finally {
+        applyingRemote = false;
+      }
+    }
+
+    function enableSync() {
+      try {
+        syncBC = new BroadcastChannel(SYNC_NAME);
+        syncBC.onmessage = (ev) => {
+          if (!ev || !ev.data || ev.data.from === tabId) return;   // 자기 자신 메시지는 무시
+          scheduleRemoteReload();
+        };
+      } catch (e) { syncBC = null; }   // BroadcastChannel 미지원 시 동기화만 비활성(나머지는 정상)
+      // 숨겼다 다시 보는 창은 한 번 더 최신화(놓친 메시지 대비)
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRemoteReload(); });
+      syncReady = true;
     }
 
     // Initialize on load
