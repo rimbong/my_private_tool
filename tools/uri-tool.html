@@ -41,7 +41,7 @@
     }
     .container {
       width: 100%;
-      max-width: 900px;
+      max-width: none;
       display: flex;
       flex-direction: column;
       gap: 1.5rem;
@@ -67,10 +67,19 @@
       gap: 0.75rem;
       margin-bottom: 1.5rem;
     }
+    /* 입력/결과 좌우 2단 (전체 폭 활용) */
+    .io-grid { display: flex; gap: 1.5rem; align-items: flex-start; }
+    .io-grid .input-section, .io-grid .output-section { flex: 1; min-width: 0; }
+    .io-grid textarea { min-height: 260px; }
+    @media (max-width: 900px) { .io-grid { flex-direction: column; gap: 0; } .io-grid textarea { min-height: 160px; } }
+    /* 입력/결과 헤더(라벨+버튼) — 높이 통일로 textarea 오와열 정렬 */
+    .sec-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; min-height: 2.2rem; }
+    .btn.btn-sm { padding: 0.4rem 0.9rem; font-size: 0.8rem; }
     label { font-size: 0.875rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
     
     textarea {
       width: 100%;
+      box-sizing: border-box;   /* padding/border 포함 → 2단에서 겹침 방지 */
       min-height: 140px;
       padding: 1rem;
       border: 1px solid var(--border);
@@ -112,7 +121,8 @@
     .btn-primary:hover { background: var(--primary-hover); }
 
     .controls .btn {
-      flex: 1;
+      flex: 0 0 auto;
+      padding: 0.55rem 1.6rem;
     }
 
     /* 파라미터 테이블 스타일 */
@@ -151,6 +161,7 @@
       h1 { font-size: 1.25rem; }
       th, td { padding: 0.55rem; }
       th { width: 32%; }
+      .controls .btn { flex: 1 1 auto; }   /* 모바일에선 넓게(탭하기 쉽게) */
     }
   </style>
   <script src="lib/portal-theme.js"></script>
@@ -161,6 +172,8 @@
     .uri-opts { display:flex; gap:1.25rem; align-items:center; flex-wrap:wrap; margin-bottom:1.25rem; font-size:0.85rem; color:var(--text-muted); font-weight:700; }
     .uri-opts select { padding:0.4rem 0.6rem; border:1px solid var(--border); border-radius:0.4rem; background:var(--card-bg); color:var(--text); font-weight:700; }
     .uri-opts label { display:flex; align-items:center; gap:0.4rem; cursor:pointer; }
+    .help-tip { display:inline-flex; align-items:center; justify-content:center; width:1.1rem; height:1.1rem; border-radius:50%; border:1px solid var(--border); color:var(--text-muted); font-size:0.72rem; font-weight:800; cursor:help; user-select:none; }
+    .help-tip:hover { border-color:var(--primary); color:var(--primary); }
   </style>
 </head>
 <body>
@@ -174,9 +187,19 @@
         </div>
       </header>
 
-      <div class="input-section">
-        <label>Input</label>
-        <textarea id="inputUri" placeholder="인코딩 또는 디코딩할 텍스트를 입력하세요... (파일을 끌어다 놓을 수 있어요)"></textarea>
+      <div class="io-grid">
+        <div class="input-section">
+          <div class="sec-head"><label>Input</label></div>
+          <textarea id="inputUri" placeholder="인코딩 또는 디코딩할 텍스트를 입력하세요... (파일을 끌어다 놓을 수 있어요)"></textarea>
+        </div>
+
+        <div class="output-section">
+          <div class="sec-head">
+            <label>Result</label>
+            <button class="btn btn-sm" onclick="copyResult()">📋 복사</button>
+          </div>
+          <textarea id="outputUri" readonly placeholder="결과가 여기에 표시됩니다..."></textarea>
+        </div>
       </div>
 
       <div class="uri-opts">
@@ -186,18 +209,12 @@
             <option value="full">전체 URI (encodeURI)</option>
           </select>
         </label>
-        <label><input type="checkbox" id="plusSpace"> 디코딩 시 <code>+</code> → 공백 (폼 인코딩)</label>
+        <label><input type="checkbox" id="plusSpace"> 디코딩 시 <code>+</code> → 공백 (폼 인코딩)<span class="help-tip" title="application/x-www-form-urlencoded(HTML 폼) 방식은 공백을 '+'로 표현합니다.&#10;&#10;• 켜기: 디코딩 시 '+' → 공백   (예: hello+world → hello world)&#10;• 끄기: '+'를 그대로 둠         (예: a+b → a+b)&#10;&#10;※ '%2B'는 이 옵션과 무관하게 항상 '+' 기호로 디코딩됩니다.">ⓘ</span></label>
       </div>
 
       <div class="controls">
         <button class="btn btn-primary" onclick="process('decode')">🔓 디코딩</button>
         <button class="btn btn-primary" onclick="process('encode')">🔒 인코딩</button>
-      </div>
-
-      <div class="output-section">
-        <label>Result</label>
-        <textarea id="outputUri" readonly placeholder="결과가 여기에 표시됩니다..."></textarea>
-        <button class="btn" onclick="copyResult()">📋 결과 복사하기</button>
       </div>
 
       <div id="paramSection" class="param-section" style="display: none;">
