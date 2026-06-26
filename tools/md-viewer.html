@@ -377,7 +377,24 @@
       display: flex;
       flex-direction: column;
       background: var(--editor-bg);
+      position: relative;          /* 동기화 배너 앵커 */
     }
+
+    /* 다른 창의 변경을 당겨오는 '새로고침' 배너 (편집 중이라 자동 반영 못 할 때) */
+    .sync-banner {
+      position: absolute; top: 0.7rem; right: 0.9rem; z-index: 40;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 0.8rem; border-radius: 999px;
+      border: 1px solid var(--accent); background: var(--header-bg); color: var(--accent);
+      font-size: 0.78rem; font-weight: 700; cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+      animation: syncPop 0.2s ease-out;
+    }
+    .sync-banner:hover { background: var(--accent); color: #fff; }
+    .sync-banner .sync-ico { display: inline-block; animation: syncSpin 2.4s linear infinite; }
+    .sync-banner:hover .sync-ico { animation-duration: 0.8s; }
+    @keyframes syncSpin { to { transform: rotate(360deg); } }
+    @keyframes syncPop { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 
     #editor {
       flex: 1;
@@ -605,6 +622,10 @@
 
   <main>
     <div class="editor-container" id="editorContainer">
+      <button id="syncBanner" class="sync-banner" type="button" style="display:none;" onclick="pullRemote()"
+        title="다른 창에서 이 문서가 변경됐어요. 클릭하면 그 내용으로 새로고침합니다. (현재 편집 중인 내용은 대체됩니다)">
+        <span class="sync-ico">🔄</span> 다른 창에서 변경됨 · 새로고침
+      </button>
       <textarea id="editor" placeholder="여기에 마크다운을 입력하세요..."></textarea>
     </div>
     <div class="resizer" id="resizer"></div>
@@ -869,6 +890,7 @@
     function loadDoc(id) {
       const doc = docs.find(d => d.id === id);
       if (!doc) return;
+      if (typeof hideSyncBanner === 'function') hideSyncBanner();  // 문서 전환 시 새로고침 배너 닫기
       activeDocId = id;
       ensureVisible(id);   // 활성 문서는 항상 탭 바에 노출
       editor.value = doc.content;
@@ -1684,6 +1706,20 @@ function hello() {
     let syncReady = false;       // 초기 로드 완료 전엔 broadcast 하지 않음
     let applyingRemote = false;  // 원격 변경 반영 중엔 재-broadcast 하지 않음(루프 방지)
     let syncOutTimer = null, syncInTimer = null;
+    let pendingRemoteDocId = null;  // 새로고침 배너가 가리키는 문서(편집 중이라 미반영된 변경)
+
+    function showSyncBanner(id) {
+      pendingRemoteDocId = id;
+      const el = document.getElementById('syncBanner');
+      if (el) el.style.display = 'inline-flex';
+    }
+    function hideSyncBanner() {
+      pendingRemoteDocId = null;
+      const el = document.getElementById('syncBanner');
+      if (el) el.style.display = 'none';
+    }
+    // 배너 클릭 → 보호 무시하고 원격 내용으로 강제 새로고침
+    function pullRemote() { applyRemote(true); }
 
     function notifySync() {
       if (!syncBC || !syncReady || applyingRemote) return;
@@ -1699,7 +1735,8 @@ function hello() {
     }
 
     // 다른 창의 변경을 DB에서 다시 읽어 반영 (편집 중 에디터는 보호)
-    async function applyRemote() {
+    // force=true 면 보호를 무시하고 강제로 원격 내용을 반영(새로고침 배너 클릭 시)
+    async function applyRemote(force) {
       if (!dbManager.db || applyingRemote) return;
       applyingRemote = true;
       try {
@@ -1734,16 +1771,20 @@ function hello() {
           const cur = getActiveDoc();
           if (cur) {
             const remoteContent = cur.content;   // DB(다른 창)의 현재 내용
-            if (editing || localUnsaved) {
-              // 편집 중이거나 미저장 입력이 있으면 내 내용을 지킨다(되돌림/유실 방지)
+            if ((editing || localUnsaved) && !force) {
+              // 편집 중이거나 미저장 입력이 있으면 내 내용을 지키고(유실 방지),
+              // 토스트 대신 '새로고침' 배너로 동기화를 유도한다.
               if (localActive && remoteContent !== localActive.content) {
-                showToast('🔄 다른 창에서 이 문서가 변경됐어요. 편집 중이라 미반영 — 저장 시 내 내용으로 유지됩니다.', 'info');
+                showSyncBanner(activeDocId);
               }
               cur.content = editor.value;         // 모델도 내 에디터 값으로 유지
             } else if (editor.value !== remoteContent) {
-              editor.value = remoteContent;       // 안전하게 최신 내용 반영
+              editor.value = remoteContent;       // 안전(또는 강제)하게 최신 내용 반영
               updatePreview();
               if (previewMode === 'text') updatePlain();
+              hideSyncBanner();
+            } else {
+              hideSyncBanner();                   // 내용이 같아짐 → 배너 닫기
             }
           }
           renderTabs();
