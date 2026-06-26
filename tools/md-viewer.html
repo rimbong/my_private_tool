@@ -641,7 +641,7 @@
           <button class="btn" onclick="downloadPlain()">💾 다운로드</button>
         </div>
       </div>
-      <div class="preview-scroll" id="previewScroll">
+      <div class="preview-scroll" id="previewScroll" ondblclick="onPreviewDblClick(event)" title="더블클릭하면 크게 보기">
         <div id="preview" class="markdown-body"></div>
         <textarea id="plainOutput" class="plain-output" readonly style="display:none;" placeholder="마크다운 문법이 제거된 순수 텍스트가 여기에 표시됩니다..."></textarea>
       </div>
@@ -1954,6 +1954,11 @@ function hello() {
       const modal = document.getElementById('previewModal');
       modal.style.display = 'block';
       document.body.style.overflow = 'hidden'; // Prevent scrolling background
+    }
+
+    // 오른쪽 미리보기/텍스트 추출 영역을 더블클릭하면 크게 보기 실행 (모드 무관)
+    function onPreviewDblClick() {
+      openModal();
     }
 
     async function copyModalPlain() {
