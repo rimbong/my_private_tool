@@ -433,7 +433,10 @@
       flex: 1;
       overflow-y: auto;
       min-height: 0;
+      cursor: pointer;   /* 더블클릭으로 크게 보기 가능함을 알림 */
     }
+    /* 메인 텍스트 추출 영역만 pointer (모달의 #modalPlain 은 제외) */
+    #previewScroll #plainOutput { cursor: pointer; }
 
     .view-seg {
       display: inline-flex;
