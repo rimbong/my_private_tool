@@ -107,6 +107,60 @@
       opacity: 0.9;
     }
 
+    /* 드롭 동작 슬라이드 스위치 (새로 쓰기 ↔ 이어붙이기) */
+    .drop-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 0.375rem;
+      background: var(--header-bg);
+      font-size: 0.8rem;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.2s;
+    }
+    .drop-switch:hover { border-color: var(--accent); }
+    .drop-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    .drop-switch .ds-cap {
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-right: 0.1rem;
+    }
+    .drop-switch .ds-label {
+      color: var(--text-muted);
+      white-space: nowrap;
+      transition: color 0.2s, font-weight 0.2s;
+    }
+    /* 비활성(false)=새로 쓰기 강조 / 활성(true)=이어붙이기 강조 */
+    .drop-switch .ds-left { color: var(--text); font-weight: 700; }
+    .drop-switch.on .ds-left { color: var(--text-muted); font-weight: 400; }
+    .drop-switch .ds-right { color: var(--text-muted); font-weight: 400; }
+    .drop-switch.on .ds-right { color: var(--text); font-weight: 700; }
+    .drop-switch .ds-track {
+      position: relative;
+      flex: 0 0 auto;
+      width: 36px;
+      height: 18px;
+      border-radius: 999px;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+    .drop-switch.on .ds-track { background: var(--accent); }
+    .drop-switch .ds-knob {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+      transition: left 0.2s;
+    }
+    .drop-switch.on .ds-knob { left: 20px; }
+
     /* Fullscreen Modal Styles */
     .modal {
       display: none;
@@ -602,7 +656,12 @@
       <div class="action-group">
         <button class="btn" onclick="document.getElementById('fileInput').click()">파일 열기</button>
         <button class="btn" onclick="saveFile()">저장</button>
-        <button class="btn" id="dropModeToggle" onclick="toggleDropMode()" title="드래그앤드롭 시 동작 방식">📄 드롭: 새로 쓰기</button>
+        <span class="drop-switch" id="dropModeToggle" role="switch" aria-checked="false" tabindex="0" onclick="toggleDropMode()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleDropMode();}" title="드래그앤드롭 시 동작 방식: 현재 탭 덮어쓰기 ↔ 끝에 이어붙이기">
+          <span class="ds-cap">드롭</span>
+          <span class="ds-label ds-left">📄 새로 쓰기</span>
+          <span class="ds-track"><span class="ds-knob"></span></span>
+          <span class="ds-label ds-right">📎 이어붙이기</span>
+        </span>
         <button class="btn" onclick="compactInlineImages()" title="본문에 길게 박힌 data: 이미지를 짧은 토큰으로 접습니다">🖼️ 이미지 접기</button>
         <input type="file" id="fileInput" class="file-input" accept=".md,.txt" onchange="loadFile(event)">
       </div>
@@ -763,16 +822,21 @@
         return entry ? `](${entry.dataUrl})` : m;
       });
     }
-    // 이미 본문에 박힌 긴 data: 이미지를 토큰으로 압축
-    function compactInlineImages() {
+    // 텍스트에 박힌 긴 data: 이미지를 토큰으로 압축 (순수 헬퍼: { text, count } 반환)
+    function foldDataImages(text) {
       let count = 0;
-      const newText = editor.value.replace(/!\[([^\]]*)\]\((data:[^)]+)\)/g, (m, alt, dataUrl) => {
+      const out = (text || '').replace(/!\[([^\]]*)\]\((data:[^)]+)\)/g, (m, alt, dataUrl) => {
         const token = addImage(dataUrl, alt);
         count++;
         return `![${alt}](img:${token})`;
       });
+      return { text: out, count };
+    }
+    // 헤더 '이미지 접기' 버튼: 현재 편집 중인 본문을 즉시 접기
+    function compactInlineImages() {
+      const { text, count } = foldDataImages(editor.value);
       if (count) {
-        editor.value = newText;
+        editor.value = text;
         updatePreview();
         saveToDB();
         showToast(`이미지 ${count}개를 토큰으로 접었습니다.`, 'success');
@@ -783,8 +847,8 @@
 
     function toggleDropMode() {
       appendMode = !appendMode;
-      dropModeToggle.textContent = appendMode ? '📎 드롭: 이어붙이기' : '📄 드롭: 새로 쓰기';
-      dropModeToggle.classList.toggle('btn-primary', appendMode);
+      dropModeToggle.classList.toggle('on', appendMode);
+      dropModeToggle.setAttribute('aria-checked', appendMode ? 'true' : 'false');
     }
 
     /* ===== 다중 문서(탭) 관리 =====
@@ -1658,6 +1722,10 @@ function hello() {
             showToast(`이미지 '${file.name}'가 첨부되었습니다.`, 'success');
           },
           onText: (content, file) => {
+            // 인라인 base64 이미지는 토큰으로 자동 접기
+            const folded = foldDataImages(content);
+            content = folded.text;
+            const imgNote = folded.count ? ` (이미지 ${folded.count}개 접음)` : '';
             if (appendMode) {
               // 이어붙이기: 현재 문서 끝에 구분선과 함께 추가
               const prefix = editor.value.trim() ? `${editor.value.replace(/\s+$/, '')}\n\n--- [Dropped: ${file.name}] ---\n\n` : '';
@@ -1665,14 +1733,14 @@ function hello() {
               updatePreview();
               if (previewMode === 'text') updatePlain();
               saveToDB();
-              showToast(`파일 '${file.name}'의 내용이 이어붙여졌습니다.`, 'success');
+              showToast(`파일 '${file.name}'의 내용이 이어붙여졌습니다.${imgNote}`, 'success');
             } else {
               // 새로 쓰기: 현재 탭의 내용을 덮어씀 (새 탭 생성하지 않음)
               editor.value = content;
               updatePreview();
               if (previewMode === 'text') updatePlain();
               saveToDB();
-              showToast(`파일 '${file.name}'의 내용을 현재 탭에 불러왔습니다.`, 'success');
+              showToast(`파일 '${file.name}'의 내용을 현재 탭에 불러왔습니다.${imgNote}`, 'success');
             }
           }
         });
@@ -1827,14 +1895,16 @@ function hello() {
 
       const reader = new FileReader();
       reader.onload = (e) => {
+        // 인라인 base64 이미지는 토큰으로 자동 접기 (외부 .md 대응)
+        const { text, count } = foldDataImages(e.target.result);
         // 기존 문서를 덮어쓰지 않고 새 탭으로 연다
-        const doc = newDoc(e.target.result);
+        const doc = newDoc(text);
         const base = (file.name || '문서').replace(/\.[^.]+$/, '');
         if (base) { doc.title = base; doc.customTitle = true; }
         doc.updatedAt = Date.now();
         persistDoc(doc);
         renderTabs();
-        showToast(`'${file.name}'을(를) 새 탭으로 열었습니다.`, 'success');
+        showToast(count ? `'${file.name}'을(를) 열고 이미지 ${count}개를 접었습니다.` : `'${file.name}'을(를) 새 탭으로 열었습니다.`, 'success');
       };
       reader.readAsText(file);
       event.target.value = '';   // 같은 파일을 다시 열 수 있도록 초기화
