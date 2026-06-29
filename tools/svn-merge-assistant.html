@@ -764,6 +764,7 @@
       document.querySelectorAll('.tab-container').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-' + tab).classList.add('active');
       document.getElementById('area-' + tab).classList.add('active');
+      if (tab === 'memo') renderMemo();   // 메모 탭 진입 시 항상 최신 상태로 갱신
       updateProgress();
     }
 
