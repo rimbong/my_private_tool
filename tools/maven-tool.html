@@ -198,10 +198,10 @@
                 dependencies += `
         <dependency>
             <groupId>local.lib</groupId>
-            <artifactId>${artifact}</artifactId>
+            <artifactId>${escXml(artifact)}</artifactId>
             <version>1.0</version>
             <scope>system</scope>
-            <systemPath>\${project.home}/webapp/WEB-INF/lib/${fileName}</systemPath>
+            <systemPath>\${project.home}/webapp/WEB-INF/lib/${escXml(fileName)}</systemPath>
         </dependency>`;
             }
 
@@ -217,7 +217,7 @@
             <artifactId>servlet-api</artifactId>
             <version>3.0</version> <!-- Version might need adjustment -->
             <scope>system</scope>
-            <systemPath>\${tomcat.home}/${servletApi}</systemPath>
+            <systemPath>\${tomcat.home}/${escXml(servletApi)}</systemPath>
         </dependency>`;
             }
             if (jspApi) {
@@ -227,7 +227,7 @@
             <artifactId>jsp-api</artifactId>
             <version>2.2</version> <!-- Version might need adjustment -->
             <scope>system</scope>
-            <systemPath>\${tomcat.home}/${jspApi}</systemPath>
+            <systemPath>\${tomcat.home}/${escXml(jspApi)}</systemPath>
         </dependency>`;
             }
 
@@ -254,7 +254,7 @@
                 for (const dir of sortedDirs) {
                     // full path 만들기 like 'src/board', 'src/mail'
                     sources += `
-                                <source>${parentFolderName}/${dir}</source>`;
+                                <source>${escXml(parentFolderName)}/${escXml(dir)}</source>`;
                 }
             }
 
@@ -287,17 +287,17 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>${groupId}</groupId>
-    <artifactId>${artifactId}</artifactId>
+    <groupId>${escXml(groupId)}</groupId>
+    <artifactId>${escXml(artifactId)}</artifactId>
     <version>1.0.0</version>
     <packaging>war</packaging>
 
     <properties>
-        <project.home>${projectHome.split('\\').join('/')}</project.home>
+        <project.home>${escXml(projectHome.split('\\').join('/'))}</project.home>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <tomcat.home>${tomcatWasPath}</tomcat.home>
+        <tomcat.home>${escXml(tomcatWasPath)}</tomcat.home>
     </properties>
 
     <build>        

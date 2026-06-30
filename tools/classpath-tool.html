@@ -128,7 +128,8 @@
             document.querySelector(".prefix").value = "";
             document.querySelector("#fileList").value = "";
             document.querySelector(".fileCnt").innerHTML = "0개";
-            document.querySelector(".prefixTxt").innerHTML = "";
+            currentPrefix = "";
+            document.querySelector(".prefixTxt").textContent = "";
         }
 
         function enablePrefix(event) {
@@ -140,7 +141,7 @@
         }
 
         function jarWriteString(fileString) {
-            const prefix = document.querySelector(".prefixTxt").innerHTML;
+            const prefix = currentPrefix;
             const docMake = DOM_FORM_START + prefix + fileString + DOM_FORM_END;
             fileCount++;
             document.querySelector(".fileCnt").innerHTML = fileCount + "개";
@@ -152,14 +153,16 @@
 
             // Manually clear outputs instead of calling fileInit(), which clears inputs.
             fileCount = 0;
-            document.querySelector("#fileList").value = ""; 
+            document.querySelector("#fileList").value = "";
             document.querySelector(".fileCnt").innerHTML = "0개";
-            document.querySelector(".prefixTxt").innerHTML = "";
+            currentPrefix = "";
+            document.querySelector(".prefixTxt").textContent = "";
 
             const workspaceName = document.querySelector("#enablePrefix").checked && document.querySelector(".prefix").value;
             const workspaces = configObj.workSpaces || '';
             const fullPath = workspaceName ? `${workspaces}/${workspaceName}/webapp/WEB-INF/lib/` : `webapp/WEB-INF/lib/`;
-            document.querySelector(".prefixTxt").innerHTML = modifyDelimiter(fullPath);
+            currentPrefix = modifyDelimiter(fullPath);
+            document.querySelector(".prefixTxt").textContent = currentPrefix;   // 표시는 textContent(self-XSS 방지)
 
             const files = document.querySelector(".addFile").files;
             const fileArray = Array.from(files);
@@ -170,9 +173,9 @@
             const exceptArr = fileNames.filter(name => EXCEPT_FILE_ARRAY.some(except => name.includes(except)));
 
             if (exceptArr.length > 0) {
-                document.querySelector("#fileList").value += "<!-- 제외된 파일 -- >\n";
+                document.querySelector("#fileList").value += "<!-- 제외된 파일\n";
                 exceptArr.forEach(jarWriteString);
-                document.querySelector("#fileList").value += "<!-- -- >\n";
+                document.querySelector("#fileList").value += "-->\n";
             }
             acceptArr.forEach(jarWriteString);
             
@@ -202,13 +205,13 @@
                 document.querySelector("#fileList").value += docMake;
             });
 
-            document.querySelector("#fileList").value += "<!-- Tomcat 라이브러리 (주석 처리됨) -- >\n";
+            document.querySelector("#fileList").value += "<!-- Tomcat 라이브러리 (주석 처리됨)\n";
             remainingJars.forEach(jar => {
                 const tomcatfullPath = `${tomcatWasPath}/${jar}`;
                 docMake = DOM_FORM_START + tomcatfullPath + DOM_FORM_END;
                 document.querySelector("#fileList").value += docMake;
             });
-            document.querySelector("#fileList").value += "<!-- -- >\n";
+            document.querySelector("#fileList").value += "-->\n";
         }
 
         async function classpathFileDownload() {

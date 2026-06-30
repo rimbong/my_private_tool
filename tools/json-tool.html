@@ -355,7 +355,7 @@
     }
     function serializeXml(node, depth) {
       const pad = '  '.repeat(depth);
-      const attrs = Array.from(node.attributes || []).map(a => ` ${a.name}="${a.value}"`).join('');
+      const attrs = Array.from(node.attributes || []).map(a => ` ${a.name}="${escapeXml(a.value)}"`).join('');
       const elementChildren = Array.from(node.childNodes).filter(n => n.nodeType === 1);
       if (elementChildren.length === 0) {
         const text = node.textContent.trim();
@@ -401,7 +401,11 @@
       if (dir === 'toXml') {
         const v = requireJson(); if (v === undefined) return;
         setView('formatted', true);
-        outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + nodeToXml(Array.isArray(v) ? 'array' : 'root', v, 1);
+        // 최상위 배열은 다중 루트(<array>×N) = 무효 XML → 단일 루트로 감싼다
+        const xmlBody = Array.isArray(v)
+          ? `<root>\n${v.map(item => nodeToXml('item', item, 2)).join('\n')}\n</root>`
+          : nodeToXml('root', v, 1);
+        outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + xmlBody;
         setStatus('✅ JSON → XML 변환 완료', 'ok');
       } else {
         const doc = requireXmlDoc(); if (!doc) return;

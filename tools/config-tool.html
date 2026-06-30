@@ -25,7 +25,7 @@
     .button:hover { background-color: var(--button-hover-background-color); }
     .button.button-secondary { background-color: var(--button-secondary-background-color); color: var(--button-secondary-text-color); border-color: var(--button-secondary-border-color); }
     .button.button-secondary:hover { background-color: var(--button-secondary-hover-background-color); }
-    .note { font-size: 1.5rem; color: var(--muted-text-color); margin-top: 0.5rem; }
+    .note { font-size: 0.85rem; color: var(--muted-text-color); margin-top: 0.5rem; }
     mark { background-color: #fef08a; padding: 0.2em; border-radius: 0.2em; }
     .form-line { display: flex; align-items: center; gap: 1rem; }
     .form-line label { margin-bottom: 0; flex-shrink: 0; }
@@ -206,8 +206,8 @@
             download("config.js", text);
             alert('다운로드된 config.js 파일을 본 파일과 동일한 디렉토리로 옮기세요');
             
-            // Notify parent that config has been updated
-            window.parent.postMessage({ type: 'config-updated' }, '*');
+            // Notify parent that config has been updated (타깃 origin 명시)
+            window.parent.postMessage({ type: 'config-updated' }, PARENT_ORIGIN);
         }
         
         function setWorkspaceAndProjecName(configJson) { configJson['workAndProjectName'] = vmJson['workAndProjectName'] || ''; }
@@ -216,9 +216,10 @@
         function setLicense(configJson) { configJson['vmLicenseKey'] = vmJson['vmLicenseKey'] || []; }
 
         function setTomcatConfig(configJson) {
-            Object.assign(tomcatJson["home7"] || {}, tomcatJson["lib7"]);
-            Object.assign(tomcatJson["home8"] || {}, tomcatJson["lib8"]);
-            Object.assign(tomcatJson["home9"] || {}, tomcatJson["lib9"]);
+            // HOME 미입력 시 lib 목록이 throwaway {}에 병합돼 증발하던 버그 → 결과를 다시 대입
+            tomcatJson["home7"] = Object.assign(tomcatJson["home7"] || {}, tomcatJson["lib7"]);
+            tomcatJson["home8"] = Object.assign(tomcatJson["home8"] || {}, tomcatJson["lib8"]);
+            tomcatJson["home9"] = Object.assign(tomcatJson["home9"] || {}, tomcatJson["lib9"]);
 
             configJson.tomcatObj = {
                 '7': tomcatJson["home7"] || {},

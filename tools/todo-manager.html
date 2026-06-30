@@ -1695,7 +1695,7 @@
         if (!memo) { closeAssignMemoModal(); return; }
 
         const newTodo = {
-            id: 'todo-' + Date.now(),
+            id: 'todo-' + Date.now() + Math.random().toString(36).slice(2, 8),
             date: dateStr,
             title: memo.title,
             content: memo.content,
@@ -2183,7 +2183,8 @@
     }
 
     async function saveRangeTasks() {
-        const s = document.getElementById('mStart').value, e = document.getElementById('mEnd').value;
+        let s = document.getElementById('mStart').value, e = document.getElementById('mEnd').value;
+        if (s && e && s > e) { const tmp = s; s = e; e = tmp; }   // 시작>종료면 swap (미저장/일정 증발 방지)
         const data = Array.from(document.querySelectorAll('#taskInputList > div')).map(r => ({ t: r.querySelector('.t-title').value.trim(), c: r.querySelector('.t-content').value.trim(), cat: r.querySelector('.t-category')?.value || '', st: r.querySelector('.t-start')?.value || '', et: r.querySelector('.t-end')?.value || '' })).filter(x => x.t);
         if (!data.length) return;
 

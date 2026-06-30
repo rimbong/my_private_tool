@@ -393,7 +393,19 @@
         lastDiffText = ''; diffBlocks = [];
         return;
       }
-      const rows = computeDiff(splitLines(aText), splitLines(bText));
+      const aLines = splitLines(aText), bLines = splitLines(bText);
+      // O(n·m) LCS는 대용량에서 메인스레드 프리즈/탭 크래시 → 상한 가드 (~2000×2000 줄)
+      const MAX_CELLS = 4000000;
+      if (aLines.length * bLines.length > MAX_CELLS) {
+        diffView.innerHTML = `<div class="empty-msg">입력이 너무 큽니다 (${aLines.length} × ${bLines.length} 줄). 프리즈 방지를 위해 자동 비교를 건너뜁니다. 줄 수를 줄이거나 일부만 비교하세요.</div>`;
+        document.getElementById('addCount').textContent = '+0';
+        document.getElementById('delCount').textContent = '-0';
+        document.getElementById('sameMsg').textContent = '';
+        lastDiffText = ''; diffBlocks = [];
+        if (typeof showToast === 'function') showToast(`입력이 너무 커서 비교를 건너뜁니다 (${aLines.length}×${bLines.length} 줄).`, 'warning', 4000);
+        return;
+      }
+      const rows = computeDiff(aLines, bLines);
       diffBlocks = buildBlocks(rows);
       expanded.clear();
 

@@ -341,18 +341,19 @@
     function formatSql(sql) {
       let s = sql.replace(/\s+/g, ' ').trim();
       if (!s) return s;
+      // 'DELETE FROM'을 토큰으로 보호 → FROM 단독 분리 규칙이 건드리지 않게.
+      // (구형 Safari/WebView는 lookbehind를 파싱 단계에서 throw → 스크립트 전체 사망하므로 lookbehind 미사용)
+      s = s.replace(/\bDELETE\s+FROM\b/gi, '~~DELFROM~~');
       const major = [
         'SELECT', 'FROM', 'WHERE', 'GROUP BY', 'HAVING', 'ORDER BY', 'LIMIT', 'OFFSET',
-        'INSERT INTO', 'VALUES', 'UPDATE', 'SET', 'DELETE FROM', 'UNION ALL', 'UNION'
+        'INSERT INTO', 'VALUES', 'UPDATE', 'SET', 'UNION ALL', 'UNION'
       ];
       major.forEach(k => {
         const pat = k.replace(/ /g, '\\s+');
-        // DELETE FROM 의 FROM 이 다시 분리되지 않도록 FROM 단독 분리 시 앞이 DELETE면 제외
-        let re;
-        if (k === 'FROM') re = new RegExp('(?<!DELETE)\\s+' + pat + '\\s+', 'gi');
-        else re = new RegExp('\\s+' + pat + '\\s+', 'gi');
-        s = s.replace(re, '\n' + k + ' ');
+        s = s.replace(new RegExp('\\s+' + pat + '\\s+', 'gi'), '\n' + k + ' ');
       });
+      // 보호 토큰 복원 → 'DELETE FROM'도 자체 줄로
+      s = s.replace(/\s*~~DELFROM~~\s*/g, '\nDELETE FROM ');
       // JOIN 계열은 한 번에 처리(LEFT/INNER 등과 단독 JOIN 의 중복 분리 방지)
       s = s.replace(/\s+((?:LEFT|RIGHT|FULL|INNER|CROSS)(?:\s+OUTER)?\s+JOIN|JOIN)\s+/gi,
         (m, g) => '\n' + g.replace(/\s+/g, ' ').toUpperCase() + ' ');
