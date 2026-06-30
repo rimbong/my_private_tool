@@ -106,7 +106,13 @@ const mdRenderer = {
 
   render(text) {
     if (typeof marked === 'undefined') return text;
-    return marked.parse(text);
+    const html = marked.parse(text);
+    // 신뢰할 수 없는 .md(열기/드롭) 안의 raw HTML(XSS, 예: <img onerror>, <svg onload>) 차단
+    if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
+      return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+    }
+    console.warn('DOMPurify 미로딩 — 마크다운 HTML이 정화되지 않았습니다.');
+    return html;
   }
 };
 
