@@ -541,12 +541,7 @@
       }
     }
 
-    function renderAllWithScrollPreservation() {
-      // 가상 스크롤에서는 스크롤 위치가 곧 상태이므로 단순히 다시 그립니다.
-      renderAll();
-    }
-
-    function renderAll() { 
+    function renderAll() {
       refreshVirtualOffsets();
       updateVirtualDisplay('rev'); 
       updateVirtualDisplay('file'); 

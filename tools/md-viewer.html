@@ -323,8 +323,7 @@
       max-height: 82vh;
       margin: auto;
     }
-    .modal.center { align-items: center; justify-content: center; }
-    .modal.center { display: none; }            /* JS가 flex로 전환 */
+    .modal.center { align-items: center; justify-content: center; display: none; }  /* JS가 flex로 전환 */
     .dm-toolbar {
       display: flex; align-items: center; gap: 0.75rem;
       padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border);
@@ -652,7 +651,7 @@
     }
   </style>
 </head>
-<body class="light-mode">
+<body>
   <header>
     <div class="title-group">
       <h1>📝 마크다운</h1>
@@ -1812,15 +1811,12 @@ function hello() {
     let syncReady = false;       // 초기 로드 완료 전엔 broadcast 하지 않음
     let applyingRemote = false;  // 원격 변경 반영 중엔 재-broadcast 하지 않음(루프 방지)
     let syncOutTimer = null, syncInTimer = null;
-    let pendingRemoteDocId = null;  // 새로고침 배너가 가리키는 문서(편집 중이라 미반영된 변경)
 
     function showSyncBanner(id) {
-      pendingRemoteDocId = id;
       const el = document.getElementById('syncBanner');
       if (el) el.style.display = 'inline-flex';
     }
     function hideSyncBanner() {
-      pendingRemoteDocId = null;
       const el = document.getElementById('syncBanner');
       if (el) el.style.display = 'none';
     }

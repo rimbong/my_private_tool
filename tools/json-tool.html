@@ -260,10 +260,8 @@
     }
 
     /* 형식 탭: 해당 형식 액션만 노출 */
-    let activeFormat = 'json';
     function setFormat(fmt) {
       if (!fmt) return;
-      activeFormat = fmt;
       document.getElementById('fmtJson').classList.toggle('active', fmt === 'json');
       document.getElementById('fmtXml').classList.toggle('active', fmt === 'xml');
       document.getElementById('jsonActions').style.display = fmt === 'json' ? 'inline-flex' : 'none';
