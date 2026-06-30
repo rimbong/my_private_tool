@@ -421,9 +421,8 @@
       if (b) { b.textContent = wide ? '◧' : '⛶'; b.title = wide ? '사이드바 표시' : '사이드바 숨기기 (넓게 보기)'; }
       refitPanes();   // 사이드바 폭 변화 → 너비/페이지 맞춤 모드였던 패널만 재적용
     }
-    // 텍스트 레이어(선택/복사) 위 더블클릭은 단어 선택이므로 넓게보기 토글하지 않음
-    function onPaneDblClick(e) {
-      if (e.target.closest('.textLayer')) return;
+    // 페이지 어디서든 더블클릭 → 넓게보기 토글 (텍스트 위에서도 동작; 단어 선택은 부수적으로 같이 됨)
+    function onPaneDblClick() {
       toggleWide();
     }
     // 패널 폭이 바뀌었을 때(넓게보기·리사이즈), 맞춤 모드였던 패널만 현재 폭 기준으로 재맞춤(커스텀 줌은 유지)
