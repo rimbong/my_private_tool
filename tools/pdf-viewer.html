@@ -328,7 +328,9 @@
         // ON 전환 시 현재 세션 문서들을 라이브러리로 승격
         let promoted = 0;
         for (const d of docs) {
-          if (!d.saved) { try { await persistDoc(d); d.saved = true; promoted++; } catch (e) {} }
+          if (!d.saved) {
+            try { await persistDoc(d); d.saved = true; promoted++; } catch (e) {}
+          }
         }
         if (promoted) {
           renderList();
@@ -346,7 +348,11 @@
       await dbReady;   // 저장소 초기화 완료 후 진행 (저장 모드 정상 동작 보장)
       // 중복(이름+크기) → 기존 문서 활성화
       const dup = docs.find(d => d.name === file.name && d.size === file.size);
-      if (dup) { setActive(dup.id); toast('이미 열린 문서로 이동합니다.', 'info'); return; }
+      if (dup) {
+        setActive(dup.id);
+        toast('이미 열린 문서로 이동합니다.', 'info');
+        return;
+      }
 
       let buf;
       try { buf = await file.arrayBuffer(); }
@@ -386,7 +392,10 @@
           return;
         }
         const id = item.dataset.id;
-        if (e.target.closest('.pi-del')) { removeDoc(id); return; }
+        if (e.target.closest('.pi-del')) {
+          removeDoc(id);
+          return;
+        }
         setActive(id);
       });
     }
@@ -425,15 +434,22 @@
       if (!(await confirmModal(`'${d.name}'을(를) 목록에서 제거할까요?${d.saved ? ' (저장본도 삭제됩니다)' : ''}`, { danger: true, okText: '제거' }))) {
         return;
       }
-      if (d.saved) { try { await dbManager.removeItem('pdfs', id); } catch (e) {} }
+      if (d.saved) {
+        try { await dbManager.removeItem('pdfs', id); } catch (e) {}
+      }
       docs.splice(idx, 1);
-      if (activeId === id) { activeId = null; clearViewer(); }
+      if (activeId === id) {
+        activeId = null;
+        clearViewer();
+      }
       renderList();
     }
 
     function clearViewer() {
       renderToken++;
-      if (pdfDoc) { try { pdfDoc.destroy(); } catch (e) {} }
+      if (pdfDoc) {
+        try { pdfDoc.destroy(); } catch (e) {}
+      }
       pdfDoc = null; numPages = 0; baseViewport = null;
       panes.forEach(p => { if (p.io) {
         p.io.disconnect();
@@ -451,7 +467,10 @@
     function toggleWide() {
       const wide = document.body.classList.toggle('wide');
       const b = $('wideBtn');
-      if (b) { b.textContent = wide ? '◧' : '⛶'; b.title = wide ? '사이드바 표시' : '사이드바 숨기기 (넓게 보기)'; }
+      if (b) {
+        b.textContent = wide ? '◧' : '⛶';
+        b.title = wide ? '사이드바 표시' : '사이드바 숨기기 (넓게 보기)';
+      }
       refitPanes();   // 사이드바 폭 변화 → 너비/페이지 맞춤 모드였던 패널만 재적용
     }
     // 페이지 어디서든 더블클릭 → 넓게보기 토글 (텍스트 위에서도 동작; 단어 선택은 부수적으로 같이 됨)
@@ -487,9 +506,15 @@
         // blob에서 매번 새 버퍼를 읽는다(캐시 금지): pdf.js가 detach시켜 재사용 시 두 번째부터 깨짐.
         const data = new Uint8Array(await doc.blob.arrayBuffer());
         pdf = await pdfjsLib.getDocument({ data }).promise;
-        if (token !== renderToken) { try { await pdf.destroy(); } catch (e) {} return; }
+        if (token !== renderToken) {
+          try { await pdf.destroy(); } catch (e) {}
+          return;
+        }
         const p1 = await pdf.getPage(1);
-        if (token !== renderToken) { try { await pdf.destroy(); } catch (e) {} return; }
+        if (token !== renderToken) {
+          try { await pdf.destroy(); } catch (e) {}
+          return;
+        }
         baseViewport = p1.getViewport({ scale: 1 });
       } catch (e) {
         // 손상/암호화: 이전 문서를 망가뜨리지 않고(성공 후에만 교체) 깔끔히 비운다
@@ -506,7 +531,9 @@
       // 로드 성공 — 이전 문서 파괴 후 교체
       const prevDoc = pdfDoc;
       pdfDoc = pdf;
-      if (prevDoc) { try { await prevDoc.destroy(); } catch (e) {} }
+      if (prevDoc) {
+        try { await prevDoc.destroy(); } catch (e) {}
+      }
       numPages = pdf.numPages;
       doc.pageCount = numPages;
       if (doc.saved) {
@@ -574,7 +601,10 @@
       activeIdx = i < 0 ? 0 : i;
       panes.forEach(p => p.el.classList.toggle('active-pane', splitOn && p === activePane()));
       const ap = activePane();
-      if (ap) { setPageInput(ap.currentPage); updateZoomLabel(); }
+      if (ap) {
+        setPageInput(ap.currentPage);
+        updateZoomLabel();
+      }
     }
 
     /* 좌우 분할 토글 (같은 PDF를 나란히) */
@@ -765,7 +795,10 @@
       return;
     }
       let n = parseInt($('pageInput').value, 10);
-      if (isNaN(n)) { setPageInput(p.currentPage); return; }   // 잘못된 입력 → 현재 페이지로 복구
+      if (isNaN(n)) {
+        setPageInput(p.currentPage);
+        return;
+      }   // 잘못된 입력 → 현재 페이지로 복구
       n = Math.min(Math.max(n, 1), numPages);
       p.currentPage = n; setPageInput(n); scrollToPage(p, n);
     }
@@ -886,7 +919,10 @@
     }
     async function searchStep(dir) {
       const term = $('searchInput').value.trim();
-      if (!term) { resetSearch(); return; }
+      if (!term) {
+        resetSearch();
+        return;
+      }
       if (term !== searchState.term) {
         searchState.term = term;
         $('matchInfo').textContent = '검색 중…';
@@ -904,7 +940,10 @@
         searchState.idx = -1;
         clearHighlights();
       }
-      if (!searchState.pages.length) { $('matchInfo').textContent = '결과 없음'; return; }
+      if (!searchState.pages.length) {
+        $('matchInfo').textContent = '결과 없음';
+        return;
+      }
       searchState.idx = (searchState.idx + (dir < 0 ? -1 : 1) + searchState.pages.length) % searchState.pages.length;
       const page = searchState.pages[searchState.idx];
       $('matchInfo').textContent = `${searchState.idx + 1}/${searchState.pages.length} · ${page}p`;
