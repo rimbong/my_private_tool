@@ -234,7 +234,9 @@
     setInterval(tickNow, 1000); tickNow();
 
     function copyVal(v) {
-      if (!v) return;
+      if (!v) {
+        return;
+      }
       navigator.clipboard.writeText(v).then(
         () => showToast('복사했습니다: ' + v, 'success'),
         () => showToast('복사 실패', 'error')
@@ -318,11 +320,17 @@
       const amt = sign * (parseInt(document.getElementById('addAmount').value, 10) || 0);
       const unit = document.getElementById('addUnit').value;
       const d = new Date(base);
-      if (unit === 'minutes') d.setMinutes(d.getMinutes() + amt);
-      else if (unit === 'hours') d.setHours(d.getHours() + amt);
-      else if (unit === 'days') d.setDate(d.getDate() + amt);
-      else if (unit === 'weeks') d.setDate(d.getDate() + amt * 7);
-      else if (unit === 'months') d.setMonth(d.getMonth() + amt);
+      if (unit === 'minutes') {
+        d.setMinutes(d.getMinutes() + amt);
+      } else if (unit === 'hours') {
+        d.setHours(d.getHours() + amt);
+      } else if (unit === 'days') {
+        d.setDate(d.getDate() + amt);
+      } else if (unit === 'weeks') {
+        d.setDate(d.getDate() + amt * 7);
+      } else if (unit === 'months') {
+        d.setMonth(d.getMonth() + amt);
+      }
       showCalc('addResult', `📅 ${fmtLocal(d)} (${DOW_NAMES[d.getDay()]})  ·  epoch ${Math.floor(d.getTime() / 1000)}`);
     }
     function calcDday() {
@@ -341,7 +349,9 @@
       if (!/^-?\d+$/.test(raw)) { showTsError('숫자만 입력하세요.'); return; }
       let num = Number(raw);
       // 13자리 미만이면 초 단위로 보고 ms 로 환산 (13자리 이상은 이미 ms)
-      if (raw.replace('-', '').length < 13) num *= 1000;
+      if (raw.replace('-', '').length < 13) {
+        num *= 1000;
+      }
       // 자릿수 휴리스틱은 1970~2001 사이 '밀리초' 값(10~12자리)을 초로 오판해 ×1000 →
       // 연도가 비현실적이 됨(예: 978307200000 → 32970년). 결과 연도가 비정상이면 밀리초로 재해석하고 경고.
       if (new Date(num).getFullYear() > 9999) {
@@ -359,7 +369,9 @@
 
     function fromDate() {
       const raw = document.getElementById('dateInput').value;
-      if (!raw) return;
+      if (!raw) {
+        return;
+      }
       const d = new Date(raw);
       if (isNaN(d.getTime())) { showTsError('유효하지 않은 날짜입니다.'); return; }
       document.getElementById('epochInput').value = Math.floor(d.getTime() / 1000);
@@ -393,15 +405,21 @@
       const allowed = new Set();
       const intRe = /^\d+$/;
       expr.split(',').forEach(part => {
-        if (part === '') throw new Error('빈 항목이 있습니다.');   // 1,,3 같은 malformed 차단
+        if (part === '') {
+          throw new Error('빈 항목이 있습니다.');
+        }   // 1,,3 같은 malformed 차단
         let step = 1;
         let range = part;
         let hasStep = false;
         if (part.includes('/')) {
           const segs = part.split('/');
-          if (segs.length !== 2 || !intRe.test(segs[1])) throw new Error(`잘못된 증가값: ${part}`);
+          if (segs.length !== 2 || !intRe.test(segs[1])) {
+            throw new Error(`잘못된 증가값: ${part}`);
+          }
           step = parseInt(segs[1], 10);
-          if (!(step > 0)) throw new Error(`잘못된 증가값: ${part}`);
+          if (!(step > 0)) {
+            throw new Error(`잘못된 증가값: ${part}`);
+          }
           range = segs[0];
           hasStep = true;
         }
@@ -409,21 +427,31 @@
         if (range === '*') { lo = min; hi = max; }
         else if (range.includes('-')) {
           const segs = range.split('-');   // 1-5-7, -5 등 차단
-          if (segs.length !== 2 || !intRe.test(segs[0]) || !intRe.test(segs[1])) throw new Error(`잘못된 범위: ${part}`);
+          if (segs.length !== 2 || !intRe.test(segs[0]) || !intRe.test(segs[1])) {
+            throw new Error(`잘못된 범위: ${part}`);
+          }
           lo = parseInt(segs[0], 10); hi = parseInt(segs[1], 10);
         } else {
-          if (!intRe.test(range)) throw new Error(`숫자가 아님: ${part}`);
+          if (!intRe.test(range)) {
+            throw new Error(`숫자가 아님: ${part}`);
+          }
           lo = parseInt(range, 10);
           hi = hasStep ? max : lo;   // N/step 은 N..max (예: 5/15 → 5,20,35,50)
         }
-        if (lo < min || hi > max || lo > hi) throw new Error(`범위(${min}-${max}) 벗어남: ${part}`);
-        for (let v = lo; v <= hi; v += step) allowed.add(v);
+        if (lo < min || hi > max || lo > hi) {
+          throw new Error(`범위(${min}-${max}) 벗어남: ${part}`);
+        }
+        for (let v = lo; v <= hi; v += step) {
+          allowed.add(v);
+        }
       });
       return allowed;
     }
 
     function describeSet(expr, min, max, names) {
-      if (expr === '*') return null;
+      if (expr === '*') {
+        return null;
+      }
       const set = [...parseField(expr, min, max)].sort((a, b) => a - b);
       return set.map(v => names ? names[v] : v).join(', ');
     }
@@ -432,23 +460,34 @@
     function humanize(exprs, hasSec) {
       const e = {};
       (hasSec ? ['sec', 'min', 'hour', 'dom', 'mon', 'dow'] : ['min', 'hour', 'dom', 'mon', 'dow']).forEach((k, i) => e[k] = exprs[i]);
-      if (!hasSec) e.sec = '0';
+      if (!hasSec) {
+        e.sec = '0';
+      }
       const parts = [];
-      if (e.min === '*' && e.hour === '*') parts.push('매분');
-      else {
+      if (e.min === '*' && e.hour === '*') {
+        parts.push('매분');
+      } else {
         const minD = e.min === '*' ? '매분' : describeSet(e.min, 0, 59) + '분';
         const hrD = e.hour === '*' ? '매시' : describeSet(e.hour, 0, 23) + '시';
         parts.push(`${hrD} ${minD}`);
       }
-      if (hasSec && e.sec !== '0') parts.push(e.sec === '*' ? '매초' : describeSet(e.sec, 0, 59) + '초');
+      if (hasSec && e.sec !== '0') {
+        parts.push(e.sec === '*' ? '매초' : describeSet(e.sec, 0, 59) + '초');
+      }
       if (e.dow !== '*') {
         let dowSet = [...parseField(e.dow, 0, 7)].map(v => v === 7 ? 0 : v);   // 7=일요일 → 0
         dowSet = [...new Set(dowSet)].sort((a, b) => a - b);
         parts.push(`${dowSet.map(v => DOW_NAMES[v]).join(', ')}요일`);
       }
-      if (e.dom !== '*') parts.push(`${describeSet(e.dom, 1, 31)}일`);
-      if (e.mon !== '*') parts.push(`${describeSet(e.mon, 1, 12, MONTH_NAMES)}`);
-      if (e.dow === '*' && e.dom === '*' && e.mon === '*') parts.push('매일');
+      if (e.dom !== '*') {
+        parts.push(`${describeSet(e.dom, 1, 31)}일`);
+      }
+      if (e.mon !== '*') {
+        parts.push(`${describeSet(e.mon, 1, 12, MONTH_NAMES)}`);
+      }
+      if (e.dow === '*' && e.dom === '*' && e.mon === '*') {
+        parts.push('매일');
+      }
       return parts.join(' · ') + ' 에 실행';
     }
 
@@ -535,8 +574,11 @@
       while (results.length < count && d <= limit) {
         if (!mon.has(d.getMonth() + 1)) { d.setMonth(d.getMonth() + 1, 1); d.setHours(0, 0, 0, 0); continue; }
         let dayOk;
-        if (!domFull && !dowFull) dayOk = dom.has(d.getDate()) || dow.has(d.getDay()); // 둘 다 제한 시 OR
-        else dayOk = (domFull || dom.has(d.getDate())) && (dowFull || dow.has(d.getDay()));
+        if (!domFull && !dowFull) {
+          dayOk = dom.has(d.getDate()) || dow.has(d.getDay()); // 둘 다 제한 시 OR
+        } else {
+          dayOk = (domFull || dom.has(d.getDate())) && (dowFull || dow.has(d.getDay()));
+        }
         if (!dayOk) { d.setDate(d.getDate() + 1); d.setHours(0, 0, 0, 0); continue; }
         if (!hour.has(d.getHours())) { d.setHours(d.getHours() + 1, 0, 0, 0); continue; }
         if (!min.has(d.getMinutes())) { d.setMinutes(d.getMinutes() + 1, 0); continue; }

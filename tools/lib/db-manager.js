@@ -60,8 +60,11 @@ const dbManager = {
       request.onerror = (e) => reject(e.target.error);
       request.onblocked = () => {
         const msg = '데이터베이스가 이전 탭에 의해 열려있습니다. 모든 탭을 닫고 다시 시도해주세요.';
-        if (typeof showToast === 'function') showToast(msg, 'warning', 5000);
-        else alert(msg);
+        if (typeof showToast === 'function') {
+          showToast(msg, 'warning', 5000);
+        } else {
+          alert(msg);
+        }
         reject(new Error('IDB Blocked'));
       };
     });
@@ -108,11 +111,15 @@ const dbManager = {
 
       dataReq.onsuccess = () => {
         dataLoaded = true;
-        if (keysLoaded) finalize();
+        if (keysLoaded) {
+          finalize();
+        }
       };
       keysReq.onsuccess = () => {
         keysLoaded = true;
-        if (dataLoaded) finalize();
+        if (dataLoaded) {
+          finalize();
+        }
       };
 
       const finalize = () => {

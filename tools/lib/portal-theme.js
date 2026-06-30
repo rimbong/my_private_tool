@@ -25,13 +25,18 @@
   function apply(mode) {
     const isDark = mode === 'dark';
     const run = () => document.body && document.body.classList.toggle('dark', isDark);
-    if (document.body) run();
-    else document.addEventListener('DOMContentLoaded', run);
+    if (document.body) {
+      run();
+    } else {
+      document.addEventListener('DOMContentLoaded', run);
+    }
   }
 
   function resolveInitial() {
     const saved = getStored();
-    if (saved) return saved;
+    if (saved) {
+      return saved;
+    }
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     return prefersDark ? 'dark' : 'light';
   }
@@ -43,8 +48,12 @@
     set(mode, { broadcast = true } = {}) {
       store(mode);
       apply(mode);
-      if (broadcast) this.broadcast(mode);
-      if (typeof this.onChange === 'function') this.onChange(mode);
+      if (broadcast) {
+        this.broadcast(mode);
+      }
+      if (typeof this.onChange === 'function') {
+        this.onChange(mode);
+      }
     },
     toggle() {
       this.set(this.get() === 'dark' ? 'light' : 'dark');
@@ -57,11 +66,15 @@
     broadcast(mode) {
       const msg = { type: 'portal-theme', mode };
       try {
-        if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*');
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage(msg, '*');
+        }
       } catch (e) { /* ignore */ }
       try {
         const frame = document.getElementById('tool-frame');
-        if (frame && frame.contentWindow) frame.contentWindow.postMessage(msg, '*');
+        if (frame && frame.contentWindow) {
+          frame.contentWindow.postMessage(msg, '*');
+        }
       } catch (e) { /* ignore */ }
     }
   };
@@ -71,7 +84,9 @@
     if (e.data && e.data.type === 'portal-theme' && e.data.mode) {
       store(e.data.mode);
       apply(e.data.mode);
-      if (typeof portalTheme.onChange === 'function') portalTheme.onChange(e.data.mode);
+      if (typeof portalTheme.onChange === 'function') {
+        portalTheme.onChange(e.data.mode);
+      }
     }
   });
 

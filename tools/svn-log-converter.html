@@ -157,7 +157,9 @@ Changed paths:
       const copyAlert = document.getElementById('copyAlert');
 
       function convertSvnLog(input) {
-        if (!input.trim()) return "";
+        if (!input.trim()) {
+          return "";
+        }
         
         // svn log 구분선은 보통 72개 대시 — 고정 76개 split이면 0건 → 대시 줄 정규식으로 분리
         const blocks = input.split(/^-{10,}\s*$/m);
@@ -165,7 +167,9 @@ Changed paths:
         
         blocks.forEach(block => {
           block = block.trim();
-          if (!block) return;
+          if (!block) {
+            return;
+          }
           
           const lines = block.split('\n');
           

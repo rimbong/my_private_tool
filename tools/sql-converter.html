@@ -231,20 +231,32 @@
 
     function bindValue(param) {
       const { value, type } = param;
-      if (value === null || /^null$/i.test(String(value).trim())) return 'NULL';
+      if (value === null || /^null$/i.test(String(value).trim())) {
+        return 'NULL';
+      }
       const v = String(value);
       if (type) {
         const st = String(type).split('.').pop();   // java.lang.Integer -> Integer
-        if (NUMERIC_TYPES.test(st)) return v.trim();
-        if (BOOL_TYPES.test(st)) return v.trim();
+        if (NUMERIC_TYPES.test(st)) {
+          return v.trim();
+        }
+        if (BOOL_TYPES.test(st)) {
+          return v.trim();
+        }
         return quote(v);
       }
       // 타입 정보가 없을 때(배열 형식): 순수 정수/소수만 그대로, 나머지는 따옴표
       const t = v.trim();
-      if (t === '') return "''";
-      if (/^null$/i.test(t)) return 'NULL';
+      if (t === '') {
+        return "''";
+      }
+      if (/^null$/i.test(t)) {
+        return 'NULL';
+      }
       // 앞자리 0이 있는 값(전화번호/우편번호/사번)·지수표기는 문자열로 취급해 따옴표 유지
-      if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(t)) return t;
+      if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(t)) {
+        return t;
+      }
       return quote(t);
     }
 
@@ -261,7 +273,9 @@
     const splitCsv = (s) => s.split(',').map(x => x.trim());
 
     function parseParams(raw) {
-      if (!raw) return [];
+      if (!raw) {
+        return [];
+      }
       let s = stripLogTail(raw).trim();
 
       // iBATIS: Parameters + Types 가 함께 있으면 인덱스로 짝지어 정확한 타입 적용
@@ -275,12 +289,16 @@
 
       // "Parameters:" 접두어 제거
       const mb = s.match(/Parameters\s*:\s*([\s\S]*)$/i);
-      if (mb) s = mb[1].trim();
+      if (mb) {
+        s = mb[1].trim();
+      }
       // 한 줄로 정리 (로그가 여러 줄일 수 있음)
       s = s.replace(/\s*\n\s*/g, ' ').trim();
       // 바깥 대괄호 제거 [a, b, c]
       s = s.replace(/^\[([\s\S]*)\]$/, '$1').trim();
-      if (!s) return [];
+      if (!s) {
+        return [];
+      }
 
       // 타입 마커가 있으면 타입 인식 토크나이저 사용 (값 내부 콤마 안전)
       if (/\([A-Za-z0-9_$.]+\)/.test(s)) {
@@ -301,15 +319,24 @@
         if (/^null$/i.test(token)) { out.push({ value: null, type: null }); }
         else {
           const tm = token.match(/^([\s\S]*)\(([A-Za-z0-9_$.]+)\)$/);
-          if (tm) out.push({ value: tm[1].trim(), type: tm[2] });
-          else out.push({ value: token, type: null });
+          if (tm) {
+            out.push({ value: tm[1].trim(), type: tm[2] });
+          } else {
+            out.push({ value: token, type: null });
+          }
         }
         lastEnd = re.lastIndex;
-        if (re.lastIndex >= s.length) break;
+        if (re.lastIndex >= s.length) {
+          break;
+        }
       }
       // 정규식이 소비하지 못한 꼬리(타입 없는 값들)도 콤마로 분리해 untyped 로 추가 (파라미터 밀림 방지)
       const rest = s.slice(lastEnd).trim();
-      if (rest) rest.split(',').forEach(v => { v = v.trim(); if (v) out.push({ value: /^null$/i.test(v) ? null : v, type: null }); });
+      if (rest) {
+        rest.split(',').forEach(v => { v = v.trim(); if (v) {
+          out.push({ value: /^null$/i.test(v) ? null : v, type: null });
+        } });
+      }
       return out;
     }
 
@@ -318,11 +345,19 @@
       let inS = false, inD = false;
       for (let k = 0; k < line.length - 1; k++) {
         const c = line[k];
-        if (inS) { if (c === "'") inS = false; }
-        else if (inD) { if (c === '"') inD = false; }
-        else if (c === "'") inS = true;
-        else if (c === '"') inD = true;
-        else if (c === '/' && line[k + 1] === '/') return line.slice(0, k);
+        if (inS) { if (c === "'") {
+          inS = false;
+        } }
+        else if (inD) { if (c === '"') {
+          inD = false;
+        } }
+        else if (c === "'") {
+          inS = true;
+        } else if (c === '"') {
+          inD = true;
+        } else if (c === '/' && line[k + 1] === '/') {
+          return line.slice(0, k);
+        }
       }
       return line;
     }
@@ -339,9 +374,13 @@
       let out = '';
       for (let line of lines) {
         let t = line.trim();
-        if (!t) continue;
+        if (!t) {
+          continue;
+        }
         t = stripLineComment(t).trim();               // 문자열 밖 // 만 주석으로 제거('http://' 보존)
-        if (!t) continue;
+        if (!t) {
+          continue;
+        }
         t = t.replace(/"\s*\+\s*"/g, '');             // "abc" + "def" -> abcdef
         t = t.replace(/^"|"$/g, '');                  // 줄 양끝 따옴표 제거
         out += t + ' ';
@@ -354,9 +393,16 @@
       let n = 0, inStr = false;
       for (let k = 0; k < sql.length; k++) {
         const c = sql[k];
-        if (inStr) { if (c === "'") { if (sql[k + 1] === "'") k++; else inStr = false; } }
-        else if (c === "'") inStr = true;
-        else if (c === '?') n++;
+        if (inStr) { if (c === "'") { if (sql[k + 1] === "'") {
+          k++;
+        } else {
+          inStr = false;
+        } } }
+        else if (c === "'") {
+          inStr = true;
+        } else if (c === '?') {
+          n++;
+        }
       }
       return n;
     }
@@ -368,10 +414,17 @@
         const c = sql[k];
         if (inStr) {
           out += c;
-          if (c === "'") { if (sql[k + 1] === "'") out += sql[++k]; else inStr = false; }
+          if (c === "'") { if (sql[k + 1] === "'") {
+            out += sql[++k];
+          } else {
+            inStr = false;
+          } }
         } else if (c === "'") { inStr = true; out += c; }
-        else if (c === '?') { out += (i < params.length ? bindValue(params[i++]) : '?'); }
-        else out += c;
+        else if (c === '?') {
+          out += (i < params.length ? bindValue(params[i++]) : '?');
+        } else {
+          out += c;
+        }
       }
       return out;
     }
@@ -379,7 +432,9 @@
     /* ---------- SQL 포맷터 ---------- */
     function formatSql(sql) {
       let s = sql.replace(/\s+/g, ' ').trim();
-      if (!s) return s;
+      if (!s) {
+        return s;
+      }
       // 'DELETE FROM'을 토큰으로 보호 → FROM 단독 분리 규칙이 건드리지 않게.
       // (구형 Safari/WebView는 lookbehind를 파싱 단계에서 throw → 스크립트 전체 사망하므로 lookbehind 미사용)
       s = s.replace(/\bDELETE\s+FROM\b/gi, '~~DELFROM~~');
@@ -431,7 +486,9 @@
       if (!valueEl.value.trim()) {
         const prm = rawSql.match(/Parameters\s*:\s*[^\n]*/i);
         const typ = rawSql.match(/Types\s*:\s*[^\n]*/i);
-        if (prm) valueEl.value = [prm[0], typ ? typ[0] : ''].filter(Boolean).join('\n');
+        if (prm) {
+          valueEl.value = [prm[0], typ ? typ[0] : ''].filter(Boolean).join('\n');
+        }
       }
 
       const params = parseParams(valueEl.value);
@@ -442,7 +499,9 @@
       if ($('optSemicolon').checked && result && !result.trim().endsWith(';')) {
         result = result.trim() + ';';
       }
-      if ($('optAutoFormat').checked) result = formatSql(result);
+      if ($('optAutoFormat').checked) {
+        result = formatSql(result);
+      }
 
       resultEl.value = result;
       refreshCounts(qCount, params.length);
@@ -453,7 +512,9 @@
       } else {
         showToast('변환 완료', 'success');
       }
-      if ($('optAutoCopy').checked && result) copyText(result);
+      if ($('optAutoCopy').checked && result) {
+        copyText(result);
+      }
     }
 
     function formatResult() {
@@ -485,11 +546,19 @@
 
     /* ---------- 바인딩 매핑 표 (? → 치환값) ---------- */
     function bindKindLabel(param) {
-      if (param.type) return param.type.split('.').pop();   // 명시 타입 (String, Integer ...)
+      if (param.type) {
+        return param.type.split('.').pop();
+      }   // 명시 타입 (String, Integer ...)
       const b = bindValue(param);                            // 타입 없을 때: 추정
-      if (b === 'NULL') return 'NULL';
-      if (b === "''") return '빈문자열(추정)';
-      if (/^'[\s\S]*'$/.test(b)) return '문자열(추정)';
+      if (b === 'NULL') {
+        return 'NULL';
+      }
+      if (b === "''") {
+        return '빈문자열(추정)';
+      }
+      if (/^'[\s\S]*'$/.test(b)) {
+        return '문자열(추정)';
+      }
       return '숫자(추정)';
     }
 
@@ -540,7 +609,9 @@
 
     // 빈 폼에서 모드를 바꾸면 그 모드 샘플을 바로 보여줌(작업 중이면 건드리지 않음)
     function onModeChange() {
-      if (!sqlEl.value.trim() && !valueEl.value.trim() && $('logMode').value !== 'auto') loadSample();
+      if (!sqlEl.value.trim() && !valueEl.value.trim() && $('logMode').value !== 'auto') {
+        loadSample();
+      }
     }
 
     // 입력 시 개수 실시간 갱신(가벼운 미리보기)
@@ -552,7 +623,9 @@
       if (!valueEl.value.trim()) {
         const prm = sqlEl.value.match(/Parameters\s*:\s*[^\n]*/i);
         const typ = sqlEl.value.match(/Types\s*:\s*[^\n]*/i);
-        if (prm) pCount = parseParams([prm[0], typ ? typ[0] : ''].filter(Boolean).join('\n')).length;
+        if (prm) {
+          pCount = parseParams([prm[0], typ ? typ[0] : ''].filter(Boolean).join('\n')).length;
+        }
       }
       refreshCounts(qCount, pCount);
     }

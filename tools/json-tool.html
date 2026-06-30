@@ -233,24 +233,39 @@
     const DB_STORE = 'state', DB_KEY = 'input';
     const LEGACY_LS_KEY = 'json-xml-tool-input';
     function saveInput(val) {
-      if (!dbManager.db) return;
-      if (val) dbManager.setItem(DB_STORE, DB_KEY, val).catch(() => {});
-      else dbManager.removeItem(DB_STORE, DB_KEY).catch(() => {});
+      if (!dbManager.db) {
+        return;
+      }
+      if (val) {
+        dbManager.setItem(DB_STORE, DB_KEY, val).catch(() => {});
+      } else {
+        dbManager.removeItem(DB_STORE, DB_KEY).catch(() => {});
+      }
     }
 
     /* ---- 상태/유틸 ---- */
     function setStatus(msg, kind) { statusEl.textContent = msg; statusEl.className = 'status-bar' + (kind ? ' ' + kind : ''); }
     function fmtBytes(n) { return n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB'; }
     function describe(v) {
-      if (Array.isArray(v)) return `배열 (${v.length}개)`;
-      if (v && typeof v === 'object') return `객체 (키 ${Object.keys(v).length}개)`;
+      if (Array.isArray(v)) {
+        return `배열 (${v.length}개)`;
+      }
+      if (v && typeof v === 'object') {
+        return `객체 (키 ${Object.keys(v).length}개)`;
+      }
       return typeof v;
     }
     function detectFormat(text) {
       const t = text.trim();
-      if (!t) return null;
-      if (t[0] === '<') return 'xml';
-      if (t[0] === '{' || t[0] === '[') return 'json';
+      if (!t) {
+        return null;
+      }
+      if (t[0] === '<') {
+        return 'xml';
+      }
+      if (t[0] === '{' || t[0] === '[') {
+        return 'json';
+      }
       try { JSON.parse(t); return 'json'; } catch (e) {}
       return 'xml';
     }
@@ -261,7 +276,9 @@
 
     /* 형식 탭: 해당 형식 액션만 노출 */
     function setFormat(fmt) {
-      if (!fmt) return;
+      if (!fmt) {
+        return;
+      }
       document.getElementById('fmtJson').classList.toggle('active', fmt === 'json');
       document.getElementById('fmtXml').classList.toggle('active', fmt === 'xml');
       document.getElementById('jsonActions').style.display = fmt === 'json' ? 'inline-flex' : 'none';
@@ -289,8 +306,11 @@
       } else {
         lastValue = undefined;
         const err = xmlParseError(txt);
-        if (err) setStatus('⚠ ' + err, 'err');
-        else setStatus('✅ 유효한 XML', 'ok');
+        if (err) {
+          setStatus('⚠ ' + err, 'err');
+        } else {
+          setStatus('✅ 유효한 XML', 'ok');
+        }
       }
     }
 
@@ -325,23 +345,31 @@
 
     /* ---- JSON 액션 ---- */
     function formatJson() {
-      const v = requireJson(); if (v === undefined) return;
+      const v = requireJson(); if (v === undefined) {
+      return;
+    }
       lastValue = v; render();
       setStatus('✅ 정렬 완료 · ' + describe(v), 'ok');
     }
     function minifyJson() {
-      const v = requireJson(); if (v === undefined) return;
+      const v = requireJson(); if (v === undefined) {
+      return;
+    }
       lastValue = v; setView('formatted', true);
       outputText.value = JSON.stringify(v);
       setStatus('🗜️ 압축 완료 · ' + describe(v), 'ok');
     }
     function sortKeys() {
-      const v = requireJson(); if (v === undefined) return;
+      const v = requireJson(); if (v === undefined) {
+      return;
+    }
       lastValue = sortDeep(v); render();
       setStatus('🔤 키를 알파벳순으로 정렬했습니다.', 'ok');
     }
     function sortDeep(v) {
-      if (Array.isArray(v)) return v.map(sortDeep);
+      if (Array.isArray(v)) {
+        return v.map(sortDeep);
+      }
       if (v && typeof v === 'object') {
         return Object.keys(v).sort().reduce((o, k) => { o[k] = sortDeep(v[k]); return o; }, {});
       }
@@ -356,7 +384,9 @@
 
     /* ---- XML 액션 ---- */
     function prettyXmlAction() {
-      const doc = requireXmlDoc(); if (!doc) return;
+      const doc = requireXmlDoc(); if (!doc) {
+      return;
+    }
       setView('formatted', true);
       outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + serializeXml(doc.documentElement, 0);
       setStatus('✅ XML 정렬 완료', 'ok');
@@ -368,7 +398,9 @@
       const children = Array.from(node.childNodes).filter(n =>
         n.nodeType === 1 || ((n.nodeType === 3 || n.nodeType === 4) && n.textContent.trim() !== '')
       );
-      if (children.length === 0) return `${pad}<${node.nodeName}${attrs}/>`;
+      if (children.length === 0) {
+        return `${pad}<${node.nodeName}${attrs}/>`;
+      }
       if (children.length === 1 && children[0].nodeType !== 1) {
         return `${pad}<${node.nodeName}${attrs}>${escapeXml(children[0].textContent.trim())}</${node.nodeName}>`;
       }
@@ -402,7 +434,9 @@
     }
     // XML 압축: 태그 사이의 공백(들여쓰기/줄바꿈)만 제거 (텍스트 내용은 보존)
     function minifyXml() {
-      const doc = requireXmlDoc(); if (!doc) return;
+      const doc = requireXmlDoc(); if (!doc) {
+      return;
+    }
       setView('formatted', true);
       const xml = new XMLSerializer().serializeToString(doc.documentElement);
       outputText.value = xml.replace(/>\s+</g, '><').trim();
@@ -412,7 +446,9 @@
     /* ---- 변환 ---- */
     function convert(dir) {
       if (dir === 'toXml') {
-        const v = requireJson(); if (v === undefined) return;
+        const v = requireJson(); if (v === undefined) {
+        return;
+      }
         setView('formatted', true);
         // 최상위 배열은 다중 루트(<array>×N) = 무효 XML → 단일 루트로 감싼다
         const xmlBody = Array.isArray(v)
@@ -421,7 +457,9 @@
         outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + xmlBody;
         setStatus('✅ JSON → XML 변환 완료', 'ok');
       } else {
-        const doc = requireXmlDoc(); if (!doc) return;
+        const doc = requireXmlDoc(); if (!doc) {
+        return;
+      }
         lastValue = { [doc.documentElement.nodeName]: xmlToJson(doc.documentElement) };
         render();
         setStatus('✅ XML → JSON 변환 완료', 'ok');
@@ -430,17 +468,25 @@
     function nodeToXml(name, value, depth) {
       const pad = '  '.repeat(depth - 1);
       const safe = name.replace(/[^\w.-]/g, '_');
-      if (value === null || value === undefined) return `${pad}<${safe}/>`;
-      if (Array.isArray(value)) return value.map(v => nodeToXml(name, v, depth)).join('\n');
+      if (value === null || value === undefined) {
+        return `${pad}<${safe}/>`;
+      }
+      if (Array.isArray(value)) {
+        return value.map(v => nodeToXml(name, v, depth)).join('\n');
+      }
       if (typeof value === 'object') {
         // @키 = 속성, #text = 텍스트, 나머지 = 자식 엘리먼트 (xmlToJson 규약과 대칭)
         let attrStr = '';
         let textVal;
         const childEntries = [];
         Object.entries(value).forEach(([k, v]) => {
-          if (k[0] === '@') attrStr += ` ${k.slice(1).replace(/[^\w.-]/g, '_')}="${escapeXml(v)}"`;
-          else if (k === '#text') textVal = v;
-          else childEntries.push([k, v]);
+          if (k[0] === '@') {
+            attrStr += ` ${k.slice(1).replace(/[^\w.-]/g, '_')}="${escapeXml(v)}"`;
+          } else if (k === '#text') {
+            textVal = v;
+          } else {
+            childEntries.push([k, v]);
+          }
         });
         const hasText = textVal !== undefined && textVal !== null && textVal !== '';
         if (childEntries.length === 0) {
@@ -459,7 +505,9 @@
       // 텍스트/CDATA 노드 수집(엘리먼트와 공존하는 혼합콘텐츠 포함)
       let text = '';
       Array.from(node.childNodes).forEach(n => {
-        if (n.nodeType === 3 || n.nodeType === 4) text += n.nodeValue;   // TEXT_NODE | CDATA_SECTION_NODE
+        if (n.nodeType === 3 || n.nodeType === 4) {
+          text += n.nodeValue;
+        }   // TEXT_NODE | CDATA_SECTION_NODE
       });
       text = text.trim();
       // 단순 케이스: 속성·자식 엘리먼트 없음 → 스칼라(기존 동작 유지)
@@ -470,17 +518,28 @@
       attrs.forEach(a => { obj['@' + a.name] = a.value; });   // 속성값은 원형(문자열) 보존
       elementChildren.forEach(child => {
         const key = child.nodeName, val = xmlToJson(child);
-        if (obj[key] !== undefined) { if (!Array.isArray(obj[key])) obj[key] = [obj[key]]; obj[key].push(val); }
-        else obj[key] = val;
+        if (obj[key] !== undefined) { if (!Array.isArray(obj[key])) {
+          obj[key] = [obj[key]];
+        } obj[key].push(val); } else {
+          obj[key] = val;
+        }
       });
-      if (text !== '') obj['#text'] = coerce(text);   // 혼합콘텐츠/텍스트 보존
+      if (text !== '') {
+        obj['#text'] = coerce(text);
+      }   // 혼합콘텐츠/텍스트 보존
       return obj;
     }
     // 숫자/불리언으로 변환하되, 앞자리 0이 의미 있는 값(전화번호·사번 등)은 문자열로 보존
     function coerce(s) {
-      if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(s)) return Number(s);
-      if (s === 'true') return true;
-      if (s === 'false') return false;
+      if (/^-?(0|[1-9]\d*)(\.\d+)?$/.test(s)) {
+        return Number(s);
+      }
+      if (s === 'true') {
+        return true;
+      }
+      if (s === 'false') {
+        return false;
+      }
       return s;
     }
 
@@ -529,20 +588,28 @@
       outputText.style.display = view === 'formatted' ? 'block' : 'none';
       outputTree.style.display = view === 'tree' ? 'block' : 'none';
       treeSearch.style.display = view === 'tree' ? 'block' : 'none';
-      if (!skipRender) render();
+      if (!skipRender) {
+        render();
+      }
     }
     function render() {
-      if (lastValue === undefined) { const v = requireJson(); if (v === undefined) return; lastValue = v; }
+      if (lastValue === undefined) { const v = requireJson(); if (v === undefined) {
+        return;
+      } lastValue = v; }
       if (currentView === 'formatted') {
         outputText.value = JSON.stringify(lastValue, null, 2);
       } else {
         renderTree();
       }
     }
-    function onTreeSearch() { if (currentView === 'tree') renderTree(); }
+    function onTreeSearch() { if (currentView === 'tree') {
+      renderTree();
+    } }
     // 트리 상호작용(접기/경로복사)을 컨테이너 1곳에 위임 — 노드마다 onclick 바인딩 제거
     function setupTreeDelegation() {
-      if (outputTree._delegated) return;
+      if (outputTree._delegated) {
+        return;
+      }
       outputTree._delegated = true;
       outputTree.addEventListener('click', (e) => {
         const tog = e.target.closest('.toggle');
@@ -579,7 +646,9 @@
     }
     // 검색어를 포함하는 가지만 남긴 사본 반환 (없으면 undefined)
     function filterValue(v, term) {
-      if (v === null || typeof v !== 'object') return String(v).toLowerCase().includes(term) ? v : undefined;
+      if (v === null || typeof v !== 'object') {
+        return String(v).toLowerCase().includes(term) ? v : undefined;
+      }
       if (Array.isArray(v)) { const a = v.map(x => filterValue(x, term)).filter(x => x !== undefined); return a.length ? a : undefined; }
       const out = {}; let keep = false;
       Object.entries(v).forEach(([k, val]) => {
@@ -589,9 +658,13 @@
       return keep ? out : undefined;
     }
     function hlText(text, term) {
-      if (!term) return escHtml(text);
+      if (!term) {
+        return escHtml(text);
+      }
       const i = text.toLowerCase().indexOf(term);
-      if (i < 0) return escHtml(text);
+      if (i < 0) {
+        return escHtml(text);
+      }
       return escHtml(text.slice(0, i)) + '<span class="hl">' + escHtml(text.slice(i, i + term.length)) + '</span>' + escHtml(text.slice(i + term.length));
     }
     function escHtml(s) { return String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
@@ -639,7 +712,9 @@
       }
       return li;
     }
-    function valueClass(v) { if (v === null) return 'k-null'; switch (typeof v) { case 'string': return 'k-string'; case 'number': return 'k-number'; case 'boolean': return 'k-bool'; default: return 'k-null'; } }
+    function valueClass(v) { if (v === null) {
+      return 'k-null';
+    } switch (typeof v) { case 'string': return 'k-string'; case 'number': return 'k-number'; case 'boolean': return 'k-bool'; default: return 'k-null'; } }
 
     /* ---- 공통 ---- */
     function copyOutput() {
@@ -698,12 +773,18 @@
       document.body.classList.add('resizing');
     });
     document.addEventListener('mousemove', (e) => {
-      if (!isResizing) return;
+      if (!isResizing) {
+        return;
+      }
       const w = (e.clientX / document.body.clientWidth) * 100;
-      if (w > 15 && w < 85) inPane.style.width = w + '%';
+      if (w > 15 && w < 85) {
+        inPane.style.width = w + '%';
+      }
     });
     document.addEventListener('mouseup', () => {
-      if (!isResizing) return;
+      if (!isResizing) {
+        return;
+      }
       isResizing = false;
       resizer.classList.remove('active');
       document.body.classList.remove('resizing');

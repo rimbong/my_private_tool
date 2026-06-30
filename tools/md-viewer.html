@@ -799,7 +799,9 @@
       const token = makeToken();
       const entry = { dataUrl, name: name || 'image' };
       imageStore.set(token, entry);
-      if (dbManager.db) dbManager.setItem('images', token, entry).catch(() => {});
+      if (dbManager.db) {
+        dbManager.setItem('images', token, entry).catch(() => {});
+      }
       return token;
     }
     // 렌더된 컨테이너 안의 img:토큰 src를 실제 이미지로 치환
@@ -876,16 +878,22 @@
     // id를 탭 바에 노출 보장. 가득 차면 활성 문서를 제외하고 가장 오래 안 본 탭을 바에서 내림(문서는 보존).
     function ensureVisible(id) {
       accessTime[id] = Date.now();
-      if (visibleIds.includes(id)) return;
+      if (visibleIds.includes(id)) {
+        return;
+      }
       visibleIds.push(id);
       while (visibleIds.length > MAX_VISIBLE) {
         let victim = null, oldest = Infinity;
         for (const v of visibleIds) {
-          if (v === activeDocId || v === id) continue;
+          if (v === activeDocId || v === id) {
+            continue;
+          }
           const t = accessTime[v] || 0;
           if (t < oldest) { oldest = t; victim = v; }
         }
-        if (!victim) break;
+        if (!victim) {
+          break;
+        }
         visibleIds = visibleIds.filter(v => v !== victim);
       }
     }
@@ -900,18 +908,24 @@
         .replace(/[`*_~>#]+/g, ' ')                        // 잡 마크다운 기호
         .replace(/\s+/g, ' ')
         .trim();
-      if (t.length > 30) t = t.slice(0, 30) + '…';
+      if (t.length > 30) {
+        t = t.slice(0, 30) + '…';
+      }
       return t || '제목 없음';
     }
 
     function getActiveDoc() { return docs.find(d => d.id === activeDocId) || null; }
 
     function persistDoc(doc) {
-      if (dbManager.db) dbManager.setItem('docs', doc.id, doc).catch(() => {});
+      if (dbManager.db) {
+        dbManager.setItem('docs', doc.id, doc).catch(() => {});
+      }
       notifySync();
     }
     function persistMeta() {
-      if (!dbManager.db) return;
+      if (!dbManager.db) {
+        return;
+      }
       dbManager.setItem('content', 'doc_order', docs.map(d => d.id)).catch(() => {});
       dbManager.setItem('content', 'active_doc', activeDocId).catch(() => {});
       dbManager.setItem('content', 'visible_docs', visibleIds).catch(() => {});
@@ -919,11 +933,15 @@
     }
 
     function setupTabDelegation(list) {
-      if (list._delegated) return;
+      if (list._delegated) {
+        return;
+      }
       list._delegated = true;
       list.addEventListener('click', (e) => {
         const tab = e.target.closest('.doc-tab[data-id]');
-        if (!tab || !list.contains(tab)) return;
+        if (!tab || !list.contains(tab)) {
+          return;
+        }
         const id = tab.dataset.id;
         if (e.target.closest('.doc-tab-del')) { purgeTab(id, e); return; }
         if (e.target.closest('.doc-tab-close')) { (e.shiftKey ? purgeTab(id, e) : hideTab(id, e)); return; }
@@ -931,7 +949,9 @@
       });
       list.addEventListener('dblclick', (e) => {
         const tab = e.target.closest('.doc-tab[data-id]');
-        if (tab && list.contains(tab)) renameDoc(tab.dataset.id);
+        if (tab && list.contains(tab)) {
+          renameDoc(tab.dataset.id);
+        }
       });
     }
     function renderTabs() {
@@ -965,29 +985,43 @@
         list.appendChild(tab);
       });
       const activeTab = list.querySelector('.doc-tab.active');
-      if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      if (activeTab && activeTab.scrollIntoView) {
+        activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      }
 
       const countEl = document.getElementById('docTotalCount');
-      if (countEl) countEl.textContent = docs.length;
+      if (countEl) {
+        countEl.textContent = docs.length;
+      }
       // 다이얼로그가 열려 있으면 목록도 동기화
       const dm = document.getElementById('docManagerModal');
-      if (dm && dm.style.display === 'flex') renderDocManager();
+      if (dm && dm.style.display === 'flex') {
+        renderDocManager();
+      }
     }
 
     function loadDoc(id) {
       const doc = docs.find(d => d.id === id);
-      if (!doc) return;
-      if (typeof hideSyncBanner === 'function') hideSyncBanner();  // 문서 전환 시 새로고침 배너 닫기
+      if (!doc) {
+        return;
+      }
+      if (typeof hideSyncBanner === 'function') {
+        hideSyncBanner();
+      }  // 문서 전환 시 새로고침 배너 닫기
       activeDocId = id;
       ensureVisible(id);   // 활성 문서는 항상 탭 바에 노출
       editor.value = doc.content;
       updatePreview();
-      if (previewMode === 'text') updatePlain();
+      if (previewMode === 'text') {
+        updatePlain();
+      }
       renderTabs();
     }
 
     function switchDoc(id) {
-      if (id === activeDocId) return;
+      if (id === activeDocId) {
+        return;
+      }
       saveToDB();          // 현재 편집 내용 보존(메모리+DB)
       loadDoc(id);
       persistMeta();
@@ -1002,7 +1036,9 @@
       ensureVisible(doc.id);
       editor.value = content;
       updatePreview();
-      if (previewMode === 'text') updatePlain();
+      if (previewMode === 'text') {
+        updatePlain();
+      }
       renderTabs();
       persistDoc(doc);
       persistMeta();
@@ -1012,9 +1048,13 @@
 
     async function renameDoc(id) {
       const doc = docs.find(d => d.id === id);
-      if (!doc) return;
+      if (!doc) {
+        return;
+      }
       const name = await promptModal('문서 이름을 입력하세요 (비우면 자동 이름으로 복귀):', doc.title);
-      if (name === null) return;
+      if (name === null) {
+        return;
+      }
       const trimmed = name.trim();
       if (trimmed) { doc.customTitle = true; doc.title = trimmed; }
       else { doc.customTitle = false; doc.title = deriveTitle(doc.content); }
@@ -1024,16 +1064,26 @@
     }
 
     async function deleteDoc(id, e) {
-      if (e) e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+      }
       const idx = docs.findIndex(d => d.id === id);
-      if (idx === -1) return;
+      if (idx === -1) {
+        return;
+      }
       const doc = docs[idx];
-      if (!(await confirmModal(`'${doc.title}' 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`, { danger: true, okText: '삭제' }))) return;
-      if (id !== activeDocId) saveToDB();   // 활성 문서 편집분 보존
+      if (!(await confirmModal(`'${doc.title}' 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`, { danger: true, okText: '삭제' }))) {
+        return;
+      }
+      if (id !== activeDocId) {
+        saveToDB();
+      }   // 활성 문서 편집분 보존
       docs.splice(idx, 1);
       visibleIds = visibleIds.filter(v => v !== id);
       delete accessTime[id];
-      if (dbManager.db) dbManager.removeItem('docs', id).catch(() => {});
+      if (dbManager.db) {
+        dbManager.removeItem('docs', id).catch(() => {});
+      }
       if (activeDocId === id) {
         if (docs.length === 0) {
           const blank = { id: genDocId(), title: '제목 없음', content: '', customTitle: false, updatedAt: Date.now() };
@@ -1054,11 +1104,17 @@
     // 탭 ✕: 내용 있는 탭은 숨김(보존 → 📚 전체에서 다시 열기 가능),
     //       내용 없는 탭은 목록에 남기지 않고 영구 제거.
     function hideTab(id, e) {
-      if (e) e.stopPropagation();
-      if (!visibleIds.includes(id)) return;
+      if (e) {
+        e.stopPropagation();
+      }
+      if (!visibleIds.includes(id)) {
+        return;
+      }
 
       const isActive = id === activeDocId;
-      if (isActive) saveToDB();   // 활성 문서면 현재 편집분을 doc에 반영한 뒤 판단
+      if (isActive) {
+        saveToDB();
+      }   // 활성 문서면 현재 편집분을 doc에 반영한 뒤 판단
 
       const doc = docs.find(d => d.id === id);
       const empty = !doc || !(doc.content && doc.content.trim());
@@ -1070,26 +1126,40 @@
       }
 
       if (isActive) {
-        if (visibleIds.length > 0) loadDoc(visibleIds[0]);  // 남은 탭으로 전환(숨긴 문서 미소환)
-        else newDoc();                                       // 마지막 탭 → 빈 새 탭
+        if (visibleIds.length > 0) {
+          loadDoc(visibleIds[0]);  // 남은 탭으로 전환(숨긴 문서 미소환)
+        } else {
+          newDoc();
+        }                                       // 마지막 탭 → 빈 새 탭
       } else {
         renderTabs();
       }
       persistMeta();
-      if (!empty) showToast('탭에서 숨겼습니다. 📚 전체에서 다시 열 수 있어요.', 'info');
+      if (!empty) {
+        showToast('탭에서 숨겼습니다. 📚 전체에서 다시 열 수 있어요.', 'info');
+      }
     }
 
     // 확인창 없이 탭에서 바로 영구 삭제 (🗑 클릭 또는 Shift+✕)
     function purgeTab(id, e) {
-      if (e) e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+      }
       const idx = docs.findIndex(d => d.id === id);
-      if (idx === -1) return;
+      if (idx === -1) {
+        return;
+      }
       const isActive = id === activeDocId;
-      if (!isActive) saveToDB();            // 활성 문서 편집분 보존
+      if (!isActive) {
+        saveToDB();
+      }            // 활성 문서 편집분 보존
       removeDocCore(id);                    // docs/visibleIds/accessTime/DB 에서 제거
       if (isActive) {
-        if (visibleIds.length > 0) loadDoc(visibleIds[0]); // 남은 탭으로 전환
-        else newDoc();                                      // 마지막 탭 → 빈 새 탭
+        if (visibleIds.length > 0) {
+          loadDoc(visibleIds[0]); // 남은 탭으로 전환
+        } else {
+          newDoc();
+        }                                      // 마지막 탭 → 빈 새 탭
       } else {
         renderTabs();
       }
@@ -1099,17 +1169,31 @@
 
     /* ===== 문서 관리 다이얼로그 ===== */
     function timeAgo(ts) {
-      if (!ts) return '';
+      if (!ts) {
+        return '';
+      }
       const s = Math.floor((Date.now() - ts) / 1000);
-      if (s < 60) return '방금';
-      const m = Math.floor(s / 60); if (m < 60) return m + '분 전';
-      const h = Math.floor(m / 60); if (h < 24) return h + '시간 전';
-      const d = Math.floor(h / 24); if (d < 7) return d + '일 전';
-      const w = Math.floor(d / 7); if (w < 5) return w + '주 전';
+      if (s < 60) {
+        return '방금';
+      }
+      const m = Math.floor(s / 60); if (m < 60) {
+      return m + '분 전';
+    }
+      const h = Math.floor(m / 60); if (h < 24) {
+      return h + '시간 전';
+    }
+      const d = Math.floor(h / 24); if (d < 7) {
+      return d + '일 전';
+    }
+      const w = Math.floor(d / 7); if (w < 5) {
+      return w + '주 전';
+    }
       return Math.floor(d / 30) + '개월 전';
     }
     function docPreview(content) {
-      if (!content) return '';
+      if (!content) {
+        return '';
+      }
       const t = content
         .replace(/```[\s\S]*?```/g, ' ')              // 코드블록
         .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')         // 이미지
@@ -1150,29 +1234,44 @@
     function getManagerDocs() {
       const term = (document.getElementById('docSearch').value || '').trim().toLowerCase();
       let list = docs.slice();
-      if (dmFilter === 'visible') list = list.filter(d => visibleIds.includes(d.id));
-      else if (dmFilter === 'hidden') list = list.filter(d => !visibleIds.includes(d.id));
-      if (term) list = list.filter(d => (d.title || '').toLowerCase().includes(term) || (d.content || '').toLowerCase().includes(term));
+      if (dmFilter === 'visible') {
+        list = list.filter(d => visibleIds.includes(d.id));
+      } else if (dmFilter === 'hidden') {
+        list = list.filter(d => !visibleIds.includes(d.id));
+      }
+      if (term) {
+        list = list.filter(d => (d.title || '').toLowerCase().includes(term) || (d.content || '').toLowerCase().includes(term));
+      }
       return list;
     }
 
     function setupDocManagerDelegation(listEl) {
-      if (listEl._delegated) return;
+      if (listEl._delegated) {
+        return;
+      }
       listEl._delegated = true;
       listEl.addEventListener('click', (e) => {
         const item = e.target.closest('.dm-item[data-id]');
-        if (!item || !listEl.contains(item)) return;
+        if (!item || !listEl.contains(item)) {
+          return;
+        }
         const id = item.dataset.id;
-        if (e.target.closest('.dm-check')) return;           // 체크박스는 change 에서 처리
+        if (e.target.closest('.dm-check')) {
+          return;
+        }           // 체크박스는 change 에서 처리
         const act = e.target.closest('button.dm-act');
         if (act) { e.stopPropagation(); act.dataset.action === 'rename' ? renameDoc(id) : deleteDoc(id, e); return; }
         if (e.target.closest('.dm-main')) { dmSelectMode ? toggleSelectDoc(id) : openFromManager(id); }
       });
       listEl.addEventListener('change', (e) => {
         const chk = e.target.closest('.dm-check');
-        if (!chk) return;
+        if (!chk) {
+          return;
+        }
         const item = chk.closest('.dm-item[data-id]');
-        if (!item) return;
+        if (!item) {
+          return;
+        }
         dmSelectMode ? toggleSelectDoc(item.dataset.id) : toggleVisibleFromManager(item.dataset.id);
       });
     }
@@ -1193,7 +1292,9 @@
       // 일괄 작업 바 동기화
       document.getElementById('dmSelCount').textContent = dmSelected.size;
       const selAll = document.getElementById('dmSelAll');
-      if (selAll) selAll.checked = filtered.length > 0 && filtered.every(d => dmSelected.has(d.id));
+      if (selAll) {
+        selAll.checked = filtered.length > 0 && filtered.every(d => dmSelected.has(d.id));
+      }
 
       listEl.innerHTML = '';
       if (!filtered.length) {
@@ -1283,7 +1384,9 @@
 
     function toggleSelectMode() {
       dmSelectMode = !dmSelectMode;
-      if (!dmSelectMode) dmSelected.clear();
+      if (!dmSelectMode) {
+        dmSelected.clear();
+      }
       document.getElementById('dmBulkBar').style.display = dmSelectMode ? 'flex' : 'none';
       const tgl = document.getElementById('dmSelectToggle');
       tgl.classList.toggle('btn-primary', dmSelectMode);
@@ -1292,14 +1395,21 @@
     }
 
     function toggleSelectDoc(id) {
-      if (dmSelected.has(id)) dmSelected.delete(id); else dmSelected.add(id);
+      if (dmSelected.has(id)) {
+        dmSelected.delete(id);
+      } else {
+        dmSelected.add(id);
+      }
       renderDocManager();
     }
 
     function toggleSelectAll(checked) {
       const ids = getManagerDocs().map(d => d.id);
-      if (checked) ids.forEach(id => dmSelected.add(id));
-      else ids.forEach(id => dmSelected.delete(id));
+      if (checked) {
+        ids.forEach(id => dmSelected.add(id));
+      } else {
+        ids.forEach(id => dmSelected.delete(id));
+      }
       renderDocManager();
     }
 
@@ -1308,17 +1418,24 @@
       if (!dmSelected.size) { showToast('선택된 문서가 없습니다.', 'info'); return; }
       let added = 0, skipped = 0;
       for (const id of dmSelected) {
-        if (visibleIds.includes(id)) continue;
+        if (visibleIds.includes(id)) {
+          continue;
+        }
         if (visibleIds.length >= MAX_VISIBLE) { skipped++; continue; }
         visibleIds.push(id);
         accessTime[id] = Date.now();
         added++;
       }
       renderTabs(); persistMeta(); renderDocManager();
-      if (added && skipped) showToast(`${added}개 표시 · ${skipped}개는 ${MAX_VISIBLE}개 제한으로 제외됐어요.`, 'warning');
-      else if (added) showToast(`${added}개를 탭에 표시했어요.`, 'success');
-      else if (skipped) showToast(`탭은 최대 ${MAX_VISIBLE}개까지 표시할 수 있어요.`, 'warning');
-      else showToast('이미 모두 탭에 표시 중입니다.', 'info');
+      if (added && skipped) {
+        showToast(`${added}개 표시 · ${skipped}개는 ${MAX_VISIBLE}개 제한으로 제외됐어요.`, 'warning');
+      } else if (added) {
+        showToast(`${added}개를 탭에 표시했어요.`, 'success');
+      } else if (skipped) {
+        showToast(`탭은 최대 ${MAX_VISIBLE}개까지 표시할 수 있어요.`, 'warning');
+      } else {
+        showToast('이미 모두 탭에 표시 중입니다.', 'info');
+      }
     }
 
     // 선택한 문서들을 탭에서 숨김 (현재 보고 있는 문서는 유지)
@@ -1330,19 +1447,27 @@
         if (visibleIds.includes(id)) { visibleIds = visibleIds.filter(v => v !== id); hid++; }
       }
       renderTabs(); persistMeta(); renderDocManager();
-      if (hid) showToast(`${hid}개를 탭에서 숨겼어요.` + (keptActive ? ' (현재 문서는 유지)' : ''), 'info');
-      else if (keptActive) showToast('현재 보고 있는 문서는 숨길 수 없어요.', 'info');
-      else showToast('숨길 탭이 없습니다.', 'info');
+      if (hid) {
+        showToast(`${hid}개를 탭에서 숨겼어요.` + (keptActive ? ' (현재 문서는 유지)' : ''), 'info');
+      } else if (keptActive) {
+        showToast('현재 보고 있는 문서는 숨길 수 없어요.', 'info');
+      } else {
+        showToast('숨길 탭이 없습니다.', 'info');
+      }
     }
 
     // 데이터만 제거 (확인창/토스트 없이) — 일괄 삭제용 코어
     function removeDocCore(id) {
       const idx = docs.findIndex(d => d.id === id);
-      if (idx === -1) return;
+      if (idx === -1) {
+        return;
+      }
       docs.splice(idx, 1);
       visibleIds = visibleIds.filter(v => v !== id);
       delete accessTime[id];
-      if (dbManager.db) dbManager.removeItem('docs', id).catch(() => {});
+      if (dbManager.db) {
+        dbManager.removeItem('docs', id).catch(() => {});
+      }
       notifySync();
     }
 
@@ -1350,9 +1475,13 @@
     async function bulkDelete() {
       if (!dmSelected.size) { showToast('선택된 문서가 없습니다.', 'info'); return; }
       const ids = [...dmSelected];
-      if (!(await confirmModal(`${ids.length}개 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`, { danger: true, okText: '삭제' }))) return;
+      if (!(await confirmModal(`${ids.length}개 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`, { danger: true, okText: '삭제' }))) {
+        return;
+      }
       const deletingActive = ids.includes(activeDocId);
-      if (!deletingActive) saveToDB();   // 활성 문서 편집분 보존
+      if (!deletingActive) {
+        saveToDB();
+      }   // 활성 문서 편집분 보존
       ids.forEach(removeDocCore);
       dmSelected.clear();
       if (docs.length === 0) {
@@ -1376,12 +1505,16 @@
       // 다이얼로그는 닫지 않고 '현재(활성) 문서'만 이동시킨다.
       // switchDoc → renderTabs가 (모달이 열려 있으면) renderDocManager를 호출해
       // 목록의 '● 현재' 표시와 활성 하이라이트가 갱신된다.
-      if (id === activeDocId) return;
+      if (id === activeDocId) {
+        return;
+      }
       switchDoc(id);
     }
 
     function toggleVisibleFromManager(id) {
-      if (id === activeDocId) return;   // 활성 문서는 항상 표시
+      if (id === activeDocId) {
+        return;
+      }   // 활성 문서는 항상 표시
       if (visibleIds.includes(id)) {
         visibleIds = visibleIds.filter(v => v !== id);
       } else {
@@ -1405,18 +1538,26 @@
     // 'docs' 스토어 + 순서/활성 메타를 읽어 docs 배열 구성 (없으면 기존 단일 문서 이관)
     async function loadAllDocs() {
       const order = await dbManager.getItem('content', 'doc_order');
-      const all = await dbManager.getAll('docs') || {};
+      const all = (await dbManager.getAll('docs')) || {};
       docs = [];
       if (Array.isArray(order) && order.length) {
-        order.forEach(id => { if (all[id]) docs.push(all[id]); });
-        Object.keys(all).forEach(id => { if (!order.includes(id)) docs.push(all[id]); });
+        order.forEach(id => { if (all[id]) {
+          docs.push(all[id]);
+        } });
+        Object.keys(all).forEach(id => { if (!order.includes(id)) {
+          docs.push(all[id]);
+        } });
       } else {
         Object.values(all).forEach(d => docs.push(d));
       }
       // 필드 정규화
       docs.forEach(d => {
-        if (typeof d.customTitle !== 'boolean') d.customTitle = false;
-        if (!d.title) d.title = deriveTitle(d.content);
+        if (typeof d.customTitle !== 'boolean') {
+          d.customTitle = false;
+        }
+        if (!d.title) {
+          d.title = deriveTitle(d.content);
+        }
       });
 
       if (docs.length === 0) {
@@ -1427,13 +1568,17 @@
         docs.push(doc);
         persistDoc(doc);
         // 이관 후 구버전 단일 문서 키는 정리
-        if (legacy && dbManager.db) dbManager.removeItem('content', 'last_content').catch(() => {});
+        if (legacy && dbManager.db) {
+          dbManager.removeItem('content', 'last_content').catch(() => {});
+        }
       }
 
       // 탭 바에 노출할 문서 집합 복원 (없으면 처음 MAX_VISIBLE개)
       const savedVisible = await dbManager.getItem('content', 'visible_docs');
       visibleIds = Array.isArray(savedVisible) ? savedVisible.filter(id => docs.some(d => d.id === id)) : [];
-      if (visibleIds.length === 0) visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
+      if (visibleIds.length === 0) {
+        visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
+      }
       // 접근 시각 시드: 저장된 순서대로 오래된→최신 (안정적인 LRU 밀어내기용)
       const seedNow = Date.now();
       visibleIds.forEach((id, i) => { accessTime[id] = seedNow - (visibleIds.length - i) * 1000; });
@@ -1501,7 +1646,9 @@ function hello() {
       for (const item of items) {
         if (item.type && item.type.startsWith('image/')) {
           const file = item.getAsFile();
-          if (!file) continue;
+          if (!file) {
+            continue;
+          }
           e.preventDefault();
           const reader = new FileReader();
           reader.onload = (ev) => {
@@ -1522,7 +1669,9 @@ function hello() {
 
     // 인라인 마크다운(굵게/기울임/링크/이미지/코드 등)을 읽기 좋은 평문으로 변환
     function inlineToText(s) {
-      if (!s) return '';
+      if (!s) {
+        return '';
+      }
       let t = s;
       t = t.replace(/!\[([^\]]*)\]\([^)]*\)/g, (m, alt) => alt ? `[이미지: ${alt}]` : '[이미지]');
       t = t.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (m, txt, url) => {
@@ -1547,8 +1696,11 @@ function hello() {
         if ((c >= 0x1100 && c <= 0x115f) || (c >= 0x2e80 && c <= 0xa4cf) ||
             (c >= 0xac00 && c <= 0xd7a3) || (c >= 0xf900 && c <= 0xfaff) ||
             (c >= 0xfe30 && c <= 0xfe4f) || (c >= 0xff00 && c <= 0xff60) ||
-            (c >= 0xffe0 && c <= 0xffe6) || (c >= 0x20000 && c <= 0x3fffd)) w += 2;
-        else w += 1;
+            (c >= 0xffe0 && c <= 0xffe6) || (c >= 0x20000 && c <= 0x3fffd)) {
+          w += 2;
+        } else {
+          w += 1;
+        }
       }
       return w;
     }
@@ -1561,16 +1713,25 @@ function hello() {
       for (let w of words) {
         while (dispWidth(w) > max) {
           let part = '';
-          for (const ch of w) { if (dispWidth(part + ch) > max) break; part += ch; }
+          for (const ch of w) { if (dispWidth(part + ch) > max) {
+            break;
+          } part += ch; }
           if (cur) { lines.push(cur); cur = ''; }
           lines.push(part);
           w = w.slice(part.length);
         }
-        if (!cur) cur = w;
-        else if (dispWidth(cur + ' ' + w) <= max) cur += ' ' + w;
-        else { lines.push(cur); cur = w; }
+        if (!cur) {
+          cur = w;
+        } else if (dispWidth(cur + ' ' + w) <= max) {
+          cur += ' ' + w;
+        } else {
+          lines.push(cur);
+          cur = w;
+        }
       }
-      if (cur) lines.push(cur);
+      if (cur) {
+        lines.push(cur);
+      }
       return lines.length ? lines : [''];
     }
 
@@ -1600,7 +1761,9 @@ function hello() {
           const indent = ' '.repeat(dispWidth(head));
           const wrapped = wrapDisp(val, VALW);
           out.push(head + (wrapped[0] || ''));
-          for (let k = 1; k < wrapped.length; k++) out.push(indent + wrapped[k]);
+          for (let k = 1; k < wrapped.length; k++) {
+            out.push(indent + wrapped[k]);
+          }
         });
         out.push('');
       });
@@ -1609,7 +1772,9 @@ function hello() {
 
     // 마크다운 전체를 가독성 있는 평문으로 변환 (표 → 리스트, 헤더 → 구분선 등)
     function markdownToText(md) {
-      if (!md) return '';
+      if (!md) {
+        return '';
+      }
       const lines = md.replace(/\r\n?/g, '\n').split('\n');
       const out = [];
       let i = 0;
@@ -1629,7 +1794,9 @@ function hello() {
           i++;
           while (i < lines.length && !lines[i].trim().startsWith(token)) { code.push(lines[i]); i++; }
           i++; // 닫는 펜스 건너뜀
-          if (code.length) out.push(code.join('\n'));
+          if (code.length) {
+            out.push(code.join('\n'));
+          }
           continue;
         }
 
@@ -1642,7 +1809,9 @@ function hello() {
             dataRows.push(splitRow(lines[i]));
             i++;
           }
-          if (dataRows.length) out.push(tableToBlocks(headers, dataRows));
+          if (dataRows.length) {
+            out.push(tableToBlocks(headers, dataRows));
+          }
           continue;
         }
 
@@ -1700,7 +1869,9 @@ function hello() {
       document.getElementById('textTools').style.display = isText ? 'flex' : 'none';
       preview.style.display = isText ? 'none' : 'block';
       plainOutput.style.display = isText ? 'block' : 'none';
-      if (isText) updatePlain();
+      if (isText) {
+        updatePlain();
+      }
     }
 
     async function copyPlain() {
@@ -1735,7 +1906,9 @@ function hello() {
 
     const debouncedUpdate = debounce(() => {
       updatePreview();
-      if (previewMode === 'text') updatePlain();
+      if (previewMode === 'text') {
+        updatePlain();
+      }
       saveToDB();
     }, 300);
 
@@ -1768,14 +1941,18 @@ function hello() {
               const prefix = editor.value.trim() ? `${editor.value.replace(/\s+$/, '')}\n\n--- [Dropped: ${file.name}] ---\n\n` : '';
               editor.value = prefix + content;
               updatePreview();
-              if (previewMode === 'text') updatePlain();
+              if (previewMode === 'text') {
+                updatePlain();
+              }
               saveToDB();
               showToast(`파일 '${file.name}'의 내용이 이어붙여졌습니다.${imgNote}`, 'success');
             } else {
               // 새로 쓰기: 현재 탭의 내용을 덮어씀 (새 탭 생성하지 않음)
               editor.value = content;
               updatePreview();
-              if (previewMode === 'text') updatePlain();
+              if (previewMode === 'text') {
+                updatePlain();
+              }
               saveToDB();
               showToast(`파일 '${file.name}'의 내용을 현재 탭에 불러왔습니다.${imgNote}`, 'success');
             }
@@ -1796,13 +1973,19 @@ function hello() {
 
     function saveToDB() {
       const doc = getActiveDoc();
-      if (!doc) return;
+      if (!doc) {
+        return;
+      }
       const prevTitle = doc.title;
       doc.content = editor.value;
-      if (!doc.customTitle) doc.title = deriveTitle(doc.content);
+      if (!doc.customTitle) {
+        doc.title = deriveTitle(doc.content);
+      }
       doc.updatedAt = Date.now();
       persistDoc(doc);
-      if (doc.title !== prevTitle) renderTabs();  // 자동 제목이 바뀌면 탭 갱신
+      if (doc.title !== prevTitle) {
+        renderTabs();
+      }  // 자동 제목이 바뀌면 탭 갱신
     }
 
     /* ===== 탭/창 간 실시간 동기화 (같은 브라우저, 서버 불필요) =====
@@ -1817,17 +2000,23 @@ function hello() {
 
     function showSyncBanner(id) {
       const el = document.getElementById('syncBanner');
-      if (el) el.style.display = 'inline-flex';
+      if (el) {
+        el.style.display = 'inline-flex';
+      }
     }
     function hideSyncBanner() {
       const el = document.getElementById('syncBanner');
-      if (el) el.style.display = 'none';
+      if (el) {
+        el.style.display = 'none';
+      }
     }
     // 배너 클릭 → 보호 무시하고 원격 내용으로 강제 새로고침
     function pullRemote() { applyRemote(true); }
 
     function notifySync() {
-      if (!syncBC || !syncReady || applyingRemote) return;
+      if (!syncBC || !syncReady || applyingRemote) {
+        return;
+      }
       clearTimeout(syncOutTimer);
       syncOutTimer = setTimeout(() => {
         try { syncBC.postMessage({ from: tabId, t: Date.now() }); } catch (e) {}
@@ -1842,7 +2031,9 @@ function hello() {
     // 다른 창의 변경을 DB에서 다시 읽어 반영 (편집 중 에디터는 보호)
     // force=true 면 보호를 무시하고 강제로 원격 내용을 반영(새로고침 배너 클릭 시)
     async function applyRemote(force) {
-      if (!dbManager.db || applyingRemote) return;
+      if (!dbManager.db || applyingRemote) {
+        return;
+      }
       applyingRemote = true;
       try {
         const prevActive = activeDocId;
@@ -1851,18 +2042,26 @@ function hello() {
         // 디바운스 저장 대기 중인 미저장 입력 여부 (DB로 되돌리면 유실되므로 보호 대상)
         const localUnsaved = !!localActive && editor.value !== localActive.content;
 
-        const all = await dbManager.getAll('docs') || {};
+        const all = (await dbManager.getAll('docs')) || {};
         const order = await dbManager.getItem('content', 'doc_order');
         const savedVisible = await dbManager.getItem('content', 'visible_docs');
 
         const rebuilt = [];
         if (Array.isArray(order) && order.length) {
-          order.forEach(id => { if (all[id]) rebuilt.push(all[id]); });
-          Object.keys(all).forEach(id => { if (!order.includes(id)) rebuilt.push(all[id]); });
+          order.forEach(id => { if (all[id]) {
+            rebuilt.push(all[id]);
+          } });
+          Object.keys(all).forEach(id => { if (!order.includes(id)) {
+            rebuilt.push(all[id]);
+          } });
         } else {
           Object.values(all).forEach(d => rebuilt.push(d));
         }
-        rebuilt.forEach(d => { if (typeof d.customTitle !== 'boolean') d.customTitle = false; if (!d.title) d.title = deriveTitle(d.content); });
+        rebuilt.forEach(d => { if (typeof d.customTitle !== 'boolean') {
+          d.customTitle = false;
+        } if (!d.title) {
+          d.title = deriveTitle(d.content);
+        } });
         docs = rebuilt;
 
         visibleIds = Array.isArray(savedVisible)
@@ -1871,8 +2070,12 @@ function hello() {
 
         if (docs.some(d => d.id === prevActive)) {
           activeDocId = prevActive;                       // 이 창이 보던 문서는 그대로 유지
-          if (!visibleIds.includes(activeDocId)) ensureVisible(activeDocId);
-          if (visibleIds.length === 0) visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
+          if (!visibleIds.includes(activeDocId)) {
+            ensureVisible(activeDocId);
+          }
+          if (visibleIds.length === 0) {
+            visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
+          }
           const cur = getActiveDoc();
           if (cur) {
             const remoteContent = cur.content;   // DB(다른 창)의 현재 내용
@@ -1886,7 +2089,9 @@ function hello() {
             } else if (editor.value !== remoteContent) {
               editor.value = remoteContent;       // 안전(또는 강제)하게 최신 내용 반영
               updatePreview();
-              if (previewMode === 'text') updatePlain();
+              if (previewMode === 'text') {
+                updatePlain();
+              }
               hideSyncBanner();
             } else {
               hideSyncBanner();                   // 내용이 같아짐 → 배너 닫기
@@ -1894,7 +2099,9 @@ function hello() {
           }
           renderTabs();
         } else if (docs.length) {
-          if (visibleIds.length === 0) visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
+          if (visibleIds.length === 0) {
+            visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
+          }
           loadDoc(visibleIds[0] || docs[0].id);           // 보던 문서가 삭제됨 → 남은 문서로
         } else {
           newDoc();                                        // 전부 사라짐 → 빈 새 문서
@@ -1910,12 +2117,16 @@ function hello() {
       try {
         syncBC = new BroadcastChannel(SYNC_NAME);
         syncBC.onmessage = (ev) => {
-          if (!ev || !ev.data || ev.data.from === tabId) return;   // 자기 자신 메시지는 무시
+          if (!ev || !ev.data || ev.data.from === tabId) {
+            return;
+          }   // 자기 자신 메시지는 무시
           scheduleRemoteReload();
         };
       } catch (e) { syncBC = null; }   // BroadcastChannel 미지원 시 동기화만 비활성(나머지는 정상)
       // 숨겼다 다시 보는 창은 한 번 더 최신화(놓친 메시지 대비)
-      document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleRemoteReload(); });
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) {
+        scheduleRemoteReload();
+      } });
       syncReady = true;
     }
 
@@ -1925,7 +2136,9 @@ function hello() {
     // File Operations
     function loadFile(event) {
       const file = event.target.files[0];
-      if (!file) return;
+      if (!file) {
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -2016,7 +2229,9 @@ function hello() {
     });
 
     document.addEventListener('mousemove', (e) => {
-      if (!isResizing) return;
+      if (!isResizing) {
+        return;
+      }
       
       const containerWidth = document.body.clientWidth;
       const newWidth = (e.clientX / containerWidth) * 100;
@@ -2046,8 +2261,11 @@ function hello() {
       mp.style.display = isText ? 'block' : 'none';
       document.getElementById('modalTextCopy').style.display = isText ? '' : 'none';
       document.getElementById('modalTip').style.display = isText ? 'none' : '';
-      if (isText) mp.value = markdownToText(editor.value);
-      else document.getElementById('modalPreview').innerHTML = preview.innerHTML; // 이미 실제 이미지로 치환된 상태
+      if (isText) {
+        mp.value = markdownToText(editor.value);
+      } else {
+        document.getElementById('modalPreview').innerHTML = preview.innerHTML;
+      } // 이미 실제 이미지로 치환된 상태
     }
 
     function setModalMode(mode) {
@@ -2066,7 +2284,9 @@ function hello() {
     // 오른쪽 미리보기/텍스트 추출 영역을 더블클릭하면 크게 보기 실행 (모드 무관)
     function onPreviewDblClick(e) {
       // 텍스트 추출 textarea(#plainOutput) 안에서는 단어 선택(복사)이 우선 → 크게보기 미발동
-      if (e && e.target && e.target.id === 'plainOutput') return;
+      if (e && e.target && e.target.id === 'plainOutput') {
+        return;
+      }
       openModal();
     }
 
@@ -2132,7 +2352,9 @@ function hello() {
 
     window.addEventListener('click', (e) => {
       const modal = document.getElementById('previewModal');
-      if (e.target === modal) closeModal();
+      if (e.target === modal) {
+        closeModal();
+      }
     });
   </script>
 </body>

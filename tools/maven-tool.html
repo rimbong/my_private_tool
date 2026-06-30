@@ -176,7 +176,9 @@
         }
 
         function generatePomXml() {
-            if (!checkConfig()) return;
+            if (!checkConfig()) {
+              return;
+            }
 
             const groupId = document.getElementById('groupId').value;
             const artifactId = document.getElementById('artifactId').value;
@@ -335,8 +337,12 @@
 
     // 포털 config 주입 (origin 검증) — 상태만 갱신
     window.addEventListener('message', (event) => {
-        if (!event.data || event.data.type !== 'config-data') return;
-        if (event.origin !== window.location.origin) return;
+        if (!event.data || event.data.type !== 'config-data') {
+          return;
+        }
+        if (event.origin !== window.location.origin) {
+          return;
+        }
         applyConfig(event.data.data);
     });
 

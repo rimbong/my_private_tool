@@ -7,11 +7,15 @@
  * 스타일/DOM은 최초 1회만 주입.
  */
 (function () {
-  if (window.confirmModal) return; // 중복 로드 방지
+  if (window.confirmModal) {
+    return;
+  } // 중복 로드 방지
 
   let injected = false;
   function ensureStyle() {
-    if (injected) return;
+    if (injected) {
+      return;
+    }
     injected = true;
     const style = document.createElement('style');
     style.textContent = `
@@ -81,12 +85,16 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
       const prevFocus = document.activeElement;
       let done = false;
       function close(result) {
-        if (done) return;
+        if (done) {
+          return;
+        }
         done = true;
         overlay.classList.remove('cm-show');
         document.removeEventListener('keydown', onKey, true);
         setTimeout(() => {
-          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+          if (overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+          }
           if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (e) {} }
         }, 160);
         resolve(result);
@@ -103,7 +111,9 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
         } else if (e.key === 'Tab') {
           // 포커스 트랩: 모달 내부(입력/취소/확인)에서만 순환, 뒤 페이지로 빠지지 않게
           const f = [input, cancelBtn, okBtn].filter(Boolean);
-          if (!f.length) return;
+          if (!f.length) {
+            return;
+          }
           e.preventDefault(); e.stopImmediatePropagation();
           let idx = f.indexOf(document.activeElement);
           if (idx === -1) { f[e.shiftKey ? f.length - 1 : 0].focus(); return; }
@@ -113,13 +123,21 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
       }
       okBtn.addEventListener('click', onOk);
       cancelBtn.addEventListener('click', onCancel);
-      overlay.addEventListener('mousedown', e => { if (e.target === overlay) onCancel(); });
+      overlay.addEventListener('mousedown', e => {
+        if (e.target === overlay) {
+          onCancel();
+        }
+      });
       document.addEventListener('keydown', onKey, true);
 
       requestAnimationFrame(() => {
         overlay.classList.add('cm-show');
-        if (input) { input.focus(); input.select(); }
-        else okBtn.focus();
+        if (input) {
+          input.focus();
+          input.select();
+        } else {
+          okBtn.focus();
+        }
       });
     });
   }

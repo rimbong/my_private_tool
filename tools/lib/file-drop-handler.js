@@ -13,7 +13,9 @@ const fileDropHandler = {
    * @param {string} options.hoverClass - CSS class to toggle on dragover (optional)
    */
   init(target, options = {}) {
-    if (!target) return;
+    if (!target) {
+      return;
+    }
 
     const { onImage, onText, onOther, hoverClass = 'drag-hover' } = options;
 
@@ -56,7 +58,9 @@ const fileDropHandler = {
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        if (onImage) onImage(e.target.result, file);
+        if (onImage) {
+          onImage(e.target.result, file);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -64,14 +68,19 @@ const fileDropHandler = {
     else if (file.type === 'text/markdown' || file.type === 'text/plain' || file.name.endsWith('.md')) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        if (onText) onText(e.target.result, file);
+        if (onText) {
+          onText(e.target.result, file);
+        }
       };
       reader.readAsText(file);
     }
     // 3. Others
     else {
-      if (onOther) onOther(file);
-      else console.log('Dropped file:', file.name, file.type);
+      if (onOther) {
+        onOther(file);
+      } else {
+        console.log('Dropped file:', file.name, file.type);
+      }
     }
   },
 

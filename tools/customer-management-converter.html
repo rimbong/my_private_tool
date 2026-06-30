@@ -99,7 +99,9 @@
             
             tdArr = tdArr.filter(td => td.style && td.style.display !== 'none');
             
-            if (tdArr.length < 4) return '오류: 예상보다 적은 수의 셀(td)이 있습니다.';
+            if (tdArr.length < 4) {
+              return '오류: 예상보다 적은 수의 셀(td)이 있습니다.';
+            }
 
             return `□ ${tdArr[2].innerHTML.trim()} (진행중)\n- [${tdArr[0].innerHTML.trim()}] ${tdArr[3].innerHTML.trim()}`;
         });

@@ -301,16 +301,23 @@
 
     function normalize(line) {
       let s = line;
-      if (document.getElementById('optWS').checked) s = s.replace(/\s+/g, '');
-      else if (document.getElementById('optTrim').checked) s = s.replace(/\s+$/, '');
-      if (document.getElementById('optCase').checked) s = s.toLowerCase();
+      if (document.getElementById('optWS').checked) {
+        s = s.replace(/\s+/g, '');
+      } else if (document.getElementById('optTrim').checked) {
+        s = s.replace(/\s+$/, '');
+      }
+      if (document.getElementById('optCase').checked) {
+        s = s.toLowerCase();
+      }
       return s;
     }
 
     function splitLines(text) {
       let lines = text.replace(/\r\n?/g, '\n').split('\n');
       // 마지막 빈 줄이 1개면 제거 (편집기 개행 보정)
-      if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+      if (lines.length > 1 && lines[lines.length - 1] === '') {
+        lines.pop();
+      }
       return lines;
     }
 
@@ -332,8 +339,11 @@
       const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
       for (let i = n - 1; i >= 0; i--) {
         for (let j = m - 1; j >= 0; j--) {
-          if (a[i] === b[j]) dp[i][j] = dp[i + 1][j + 1] + 1;
-          else dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+          if (a[i] === b[j]) {
+            dp[i][j] = dp[i + 1][j + 1] + 1;
+          } else {
+            dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+          }
         }
       }
       const rows = [];
@@ -366,11 +376,17 @@
       // 토큰 매칭은 normalize 옵션(대소문자/공백 무시)을 반영하되 표시는 원본 토큰으로(W2)
       const ic = document.getElementById('optCase').checked;
       const iw = document.getElementById('optWS').checked;
-      const norm = t => { if (iw && /^\s+$/.test(t)) return ''; return ic ? t.toLowerCase() : t; };
+      const norm = t => { if (iw && /^\s+$/.test(t)) {
+        return '';
+      } return ic ? t.toLowerCase() : t; };
       const na = ta.map(norm), nb = tb.map(norm);
       const n = ta.length, m = tb.length;
       const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
-      for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = na[i] === nb[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      for (let i = n - 1; i >= 0; i--) {
+        for (let j = m - 1; j >= 0; j--) {
+          dp[i][j] = na[i] === nb[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+        }
+      }
       let i = 0, j = 0, aOut = '', bOut = '';
       while (i < n && j < m) {
         if (na[i] === nb[j]) { aOut += esc(ta[i]); bOut += esc(tb[j]); i++; j++; }
@@ -408,7 +424,9 @@
         document.getElementById('delCount').textContent = '-0';
         document.getElementById('sameMsg').textContent = '';
         lastDiffText = ''; diffBlocks = [];
-        if (typeof showToast === 'function') showToast(`입력이 너무 커서 비교를 건너뜁니다 (${aLines.length}×${bLines.length} 줄).`, 'warning', 4000);
+        if (typeof showToast === 'function') {
+          showToast(`입력이 너무 커서 비교를 건너뜁니다 (${aLines.length}×${bLines.length} 줄).`, 'warning', 4000);
+        }
         return;
       }
       const rows = computeDiff(aLines, bLines);
@@ -418,8 +436,9 @@
       let added = 0, deleted = 0;
       const copyLines = [];
       rows.forEach(r => {
-        if (r.type === 'same') copyLines.push('  ' + r.a);
-        else if (r.type === 'del') { deleted++; copyLines.push('- ' + r.a); }
+        if (r.type === 'same') {
+          copyLines.push('  ' + r.a);
+        } else if (r.type === 'del') { deleted++; copyLines.push('- ' + r.a); }
         else { added++; copyLines.push('+ ' + r.b); }
       });
       lastDiffText = copyLines.join('\n');
@@ -441,7 +460,9 @@
           const dels = [], adds = [];
           while (i < rows.length && rows[i].type !== 'same') { (rows[i].type === 'del' ? dels : adds).push(rows[i]); i++; }
           const pairs = Math.min(dels.length, adds.length), wd = [];
-          for (let k = 0; k < pairs; k++) wd.push(inlineDiff(dels[k].a, adds[k].b));
+          for (let k = 0; k < pairs; k++) {
+            wd.push(inlineDiff(dels[k].a, adds[k].b));
+          }
           blocks.push({ type: 'change', dels, adds, wd, pairs });
         }
       }
@@ -450,9 +471,13 @@
 
     // 동일 블록 접기: [상단 context][접힘마커][하단 context]
     function foldSame(rows, idx, hasPrev, hasNext) {
-      if (expanded.has(idx)) return { head: rows, hidden: 0, tail: [] };
+      if (expanded.has(idx)) {
+        return { head: rows, hidden: 0, tail: [] };
+      }
       const keepTop = hasPrev ? CONTEXT : 0, keepBottom = hasNext ? CONTEXT : 0;
-      if (rows.length <= keepTop + keepBottom + 2) return { head: rows, hidden: 0, tail: [] };
+      if (rows.length <= keepTop + keepBottom + 2) {
+        return { head: rows, hidden: 0, tail: [] };
+      }
       return { head: rows.slice(0, keepTop), hidden: rows.length - keepTop - keepBottom, tail: keepBottom ? rows.slice(rows.length - keepBottom) : [] };
     }
     function collapseRow(idx, count) {
@@ -462,7 +487,9 @@
     function renderResult() {
       document.getElementById('segUnified').classList.toggle('active', viewMode === 'unified');
       document.getElementById('segSplit').classList.toggle('active', viewMode === 'split');
-      if (!diffBlocks.length) return;
+      if (!diffBlocks.length) {
+        return;
+      }
       diffView.innerHTML = viewMode === 'split' ? renderSplit() : renderUnified();
       changeAnchors = Array.from(diffView.querySelectorAll('[data-change]'));
       curChange = -1;
@@ -475,7 +502,9 @@
         if (b.type === 'same') {
           const f = foldSame(b.rows, idx, idx > 0, idx < diffBlocks.length - 1);
           f.head.forEach(r => out.push(sameRowU(r)));
-          if (f.hidden > 0) out.push(collapseRow(idx, f.hidden));
+          if (f.hidden > 0) {
+            out.push(collapseRow(idx, f.hidden));
+          }
           f.tail.forEach(r => out.push(sameRowU(r)));
         } else {
           let first = true;
@@ -494,7 +523,9 @@
         if (b.type === 'same') {
           const f = foldSame(b.rows, idx, idx > 0, idx < diffBlocks.length - 1);
           f.head.forEach(r => out.push(`<tr>${cell(r.ai, esc(r.a), '')}${cell(r.bi, esc(r.b), '')}</tr>`));
-          if (f.hidden > 0) out.push(collapseRow(idx, f.hidden));
+          if (f.hidden > 0) {
+            out.push(collapseRow(idx, f.hidden));
+          }
           f.tail.forEach(r => out.push(`<tr>${cell(r.ai, esc(r.a), '')}${cell(r.bi, esc(r.b), '')}</tr>`));
         } else {
           const maxLen = Math.max(b.dels.length, b.adds.length);
@@ -572,33 +603,45 @@
       const src = (c.left && c.left.trim()) ? c.left : (c.right || '');
       const firstLine = src.split('\n').map(l => l.trim()).find(l => l) || '';
       let t = firstLine.replace(/[`*_~>#|]+/g, ' ').replace(/\s+/g, ' ').trim();
-      if (t.length > 28) t = t.slice(0, 28) + '…';
+      if (t.length > 28) {
+        t = t.slice(0, 28) + '…';
+      }
       return t || '빈 비교';
     }
 
     function getActiveCompare() { return compares.find(c => c.id === activeCompareId) || null; }
 
     function persistCompare(c) {
-      if (dbManager.db) dbManager.setItem('compares', c.id, c).catch(() => {});
+      if (dbManager.db) {
+        dbManager.setItem('compares', c.id, c).catch(() => {});
+      }
     }
     function persistCompareMeta() {
-      if (!dbManager.db) return;
+      if (!dbManager.db) {
+        return;
+      }
       dbManager.setItem('meta', 'compare_order', compares.map(c => c.id)).catch(() => {});
       dbManager.setItem('meta', 'active_compare', activeCompareId).catch(() => {});
     }
 
     function setupTabDelegation(list) {
-      if (list._delegated) return;
+      if (list._delegated) {
+        return;
+      }
       list._delegated = true;
       list.addEventListener('click', (e) => {
         const tab = e.target.closest('.doc-tab[data-id]');
-        if (!tab || !list.contains(tab)) return;
+        if (!tab || !list.contains(tab)) {
+          return;
+        }
         if (e.target.closest('.doc-tab-close')) { deleteCompare(tab.dataset.id, e); return; }
         switchCompare(tab.dataset.id);
       });
       list.addEventListener('dblclick', (e) => {
         const tab = e.target.closest('.doc-tab[data-id]');
-        if (tab && list.contains(tab)) renameCompare(tab.dataset.id);
+        if (tab && list.contains(tab)) {
+          renameCompare(tab.dataset.id);
+        }
       });
     }
     function renderCompareTabs() {
@@ -625,12 +668,16 @@
         list.appendChild(tab);
       });
       const activeTab = list.querySelector('.doc-tab.active');
-      if (activeTab && activeTab.scrollIntoView) activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      if (activeTab && activeTab.scrollIntoView) {
+        activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      }
     }
 
     function loadCompare(id) {
       const c = compares.find(x => x.id === id);
-      if (!c) return;
+      if (!c) {
+        return;
+      }
       activeCompareId = id;
       left.value = c.left || '';
       right.value = c.right || '';
@@ -639,7 +686,9 @@
     }
 
     function switchCompare(id) {
-      if (id === activeCompareId) return;
+      if (id === activeCompareId) {
+        return;
+      }
       saveActiveCompare();   // 현재 편집 내용 보존
       loadCompare(id);
       persistCompareMeta();
@@ -661,9 +710,13 @@
 
     async function renameCompare(id) {
       const c = compares.find(x => x.id === id);
-      if (!c) return;
+      if (!c) {
+        return;
+      }
       const name = await promptModal('비교 이름을 입력하세요 (비우면 자동 이름으로 복귀):', c.title);
-      if (name === null) return;
+      if (name === null) {
+        return;
+      }
       const trimmed = name.trim();
       if (trimmed) { c.customTitle = true; c.title = trimmed; }
       else { c.customTitle = false; c.title = deriveCompareTitle(c); }
@@ -673,15 +726,25 @@
     }
 
     async function deleteCompare(id, e) {
-      if (e) e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+      }
       const idx = compares.findIndex(c => c.id === id);
-      if (idx === -1) return;
+      if (idx === -1) {
+        return;
+      }
       const c = compares[idx];
       const hasContent = (c.left && c.left.trim()) || (c.right && c.right.trim());
-      if (hasContent && !(await confirmModal(`'${c.title}' 비교를 닫을까요? 되돌릴 수 없습니다.`, { danger: true, okText: '닫기' }))) return;
-      if (id !== activeCompareId) saveActiveCompare();   // 활성 비교 편집분 보존
+      if (hasContent && !(await confirmModal(`'${c.title}' 비교를 닫을까요? 되돌릴 수 없습니다.`, { danger: true, okText: '닫기' }))) {
+        return;
+      }
+      if (id !== activeCompareId) {
+        saveActiveCompare();
+      }   // 활성 비교 편집분 보존
       compares.splice(idx, 1);
-      if (dbManager.db) dbManager.removeItem('compares', id).catch(() => {});
+      if (dbManager.db) {
+        dbManager.removeItem('compares', id).catch(() => {});
+      }
       if (activeCompareId === id) {
         if (compares.length === 0) {
           const blank = { id: genCompareId(), title: '빈 비교', left: '', right: '', customTitle: false, updatedAt: Date.now() };
@@ -702,33 +765,51 @@
     // 현재 편집 중인 A/B 를 활성 비교에 저장 (자동 제목 갱신 포함)
     function saveActiveCompare() {
       const c = getActiveCompare();
-      if (!c) return;
+      if (!c) {
+        return;
+      }
       const prevTitle = c.title;
       c.left = left.value;
       c.right = right.value;
-      if (!c.customTitle) c.title = deriveCompareTitle(c);
+      if (!c.customTitle) {
+        c.title = deriveCompareTitle(c);
+      }
       c.updatedAt = Date.now();
       persistCompare(c);
-      if (c.title !== prevTitle) renderCompareTabs();  // 자동 제목이 바뀌면 탭 갱신
+      if (c.title !== prevTitle) {
+        renderCompareTabs();
+      }  // 자동 제목이 바뀌면 탭 갱신
     }
 
     // 'compares' 스토어 + 순서/활성 메타를 읽어 compares 배열 구성
     async function loadAllCompares() {
       const order = await dbManager.getItem('meta', 'compare_order');
-      const all = await dbManager.getAll('compares') || {};
+      const all = (await dbManager.getAll('compares')) || {};
       compares = [];
       if (Array.isArray(order) && order.length) {
-        order.forEach(id => { if (all[id]) compares.push(all[id]); });
-        Object.keys(all).forEach(id => { if (!order.includes(id)) compares.push(all[id]); });
+        order.forEach(id => { if (all[id]) {
+          compares.push(all[id]);
+        } });
+        Object.keys(all).forEach(id => { if (!order.includes(id)) {
+          compares.push(all[id]);
+        } });
       } else {
         Object.values(all).forEach(c => compares.push(c));
       }
       // 필드 정규화
       compares.forEach(c => {
-        if (typeof c.customTitle !== 'boolean') c.customTitle = false;
-        if (typeof c.left !== 'string') c.left = '';
-        if (typeof c.right !== 'string') c.right = '';
-        if (!c.title) c.title = deriveCompareTitle(c);
+        if (typeof c.customTitle !== 'boolean') {
+          c.customTitle = false;
+        }
+        if (typeof c.left !== 'string') {
+          c.left = '';
+        }
+        if (typeof c.right !== 'string') {
+          c.right = '';
+        }
+        if (!c.title) {
+          c.title = deriveCompareTitle(c);
+        }
       });
 
       if (compares.length === 0) {

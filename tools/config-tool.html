@@ -150,7 +150,9 @@
 
         function handlePathChange(event) {
             const fullPath = event.target.value;
-            if (!fullPath) return;
+            if (!fullPath) {
+              return;
+            }
 
             const pathParts = fullPath.replace(/\\/g, '/').split('/');
             let wsIndex = -1;
@@ -266,8 +268,12 @@
 
     // 포털에서 config 주입 (origin 검증) — 상태만 갱신
     window.addEventListener('message', (event) => {
-        if (!event.data || event.data.type !== 'config-data') return;
-        if (event.origin !== window.location.origin) return;   // 신뢰 출처만 수용
+        if (!event.data || event.data.type !== 'config-data') {
+          return;
+        }
+        if (event.origin !== window.location.origin) {
+          return;
+        }   // 신뢰 출처만 수용
         applyConfig(event.data.data);
     });
 

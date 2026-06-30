@@ -240,7 +240,9 @@
 
     // 입력 시 실시간 디코딩 시도 (선택 사항) — 디바운스로 키 입력마다 디코딩 방지
     const debounce = (fn, ms = 200) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-    const debouncedLiveDecode = debounce(() => { if (inputEl.value.includes('%')) process('decode', true); }, 200);
+    const debouncedLiveDecode = debounce(() => { if (inputEl.value.includes('%')) {
+      process('decode', true);
+    } }, 200);
     inputEl.addEventListener('input', debouncedLiveDecode);
 
     function process(mode, silent = false) {
@@ -255,7 +257,9 @@
         let result = '';
         if (mode === 'decode') {
           let s = input;
-          if (document.getElementById('plusSpace').checked) s = s.replace(/\+/g, ' ');
+          if (document.getElementById('plusSpace').checked) {
+            s = s.replace(/\+/g, ' ');
+          }
           result = decodeURIComponent(s);
         } else {
           // 인코딩은 원본(raw)으로 — trim하면 앞뒤 공백(%20)이 유실됨
@@ -330,7 +334,9 @@
     }
 
     async function copyResult() {
-      if (!outputEl.value) return;
+      if (!outputEl.value) {
+        return;
+      }
       try {
         await navigator.clipboard.writeText(outputEl.value);
         showToast('결과가 클립보드에 복사되었습니다.', 'success');

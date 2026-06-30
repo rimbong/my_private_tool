@@ -895,9 +895,13 @@
     function timeLabel(t) { return t.startTime ? (t.endTime ? `${t.startTime}~${t.endTime}` : t.startTime) : ''; }
     // 정렬: 미처리 먼저 → 시간 빠른 순 → 생성순
     function compareTasks(a, b) {
-        if (!!a.completed !== !!b.completed) return a.completed ? 1 : -1; // 완료된 일정은 아래로
+        if (!!a.completed !== !!b.completed) {
+          return a.completed ? 1 : -1;
+        } // 완료된 일정은 아래로
         const ta = a.startTime || '99:99', tb = b.startTime || '99:99';
-        if (ta !== tb) return ta < tb ? -1 : 1;
+        if (ta !== tb) {
+          return ta < tb ? -1 : 1;
+        }
         return (a.createdAt || 0) - (b.createdAt || 0);
     }
     // 내보내기용 시작/종료 시점 계산. 시간 있으면 'YYYYMMDDTHHMMSS'(로컬), 없으면 종일 'YYYYMMDD'(종료 배타적).
@@ -928,18 +932,28 @@
         // 'YYYY-MM-DD' 를 로컬 자정으로 파싱(UTC 파싱과 혼용 시 경계 오류 방지)
         const parseLocal = (str) => { const p = str.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); };
         const s = parseLocal(start), e = parseLocal(end);
-        if (isNaN(s) || isNaN(e) || e < s) return dates;
+        if (isNaN(s) || isNaN(e) || e < s) {
+          return dates;
+        }
         if (repeat === 'daily') {
-            for (let d = new Date(s); d <= e && dates.length < 366; d.setDate(d.getDate() + 1)) dates.push(formatDate(d));
+            for (let d = new Date(s); d <= e && dates.length < 366; d.setDate(d.getDate() + 1)) {
+              dates.push(formatDate(d));
+            }
         } else if (repeat === 'weekly') {
-            for (let d = new Date(s); d <= e && dates.length < 366; d.setDate(d.getDate() + 7)) dates.push(formatDate(d));
+            for (let d = new Date(s); d <= e && dates.length < 366; d.setDate(d.getDate() + 7)) {
+              dates.push(formatDate(d));
+            }
         } else if (repeat === 'monthly') {
             const dom = s.getDate();
             let y = s.getFullYear(), m = s.getMonth();
             for (let guard = 0; guard < 400 && dates.length < 366; guard++) {
-                if (new Date(y, m, 1) > e) break;
+                if (new Date(y, m, 1) > e) {
+                  break;
+                }
                 const d = new Date(y, m, dom);
-                if (d.getMonth() === m && d >= s && d <= e) dates.push(formatDate(d)); // getMonth 일치 = 해당 월에 그 일자가 존재
+                if (d.getMonth() === m && d >= s && d <= e) {
+                  dates.push(formatDate(d));
+                } // getMonth 일치 = 해당 월에 그 일자가 존재
                 m++; if (m > 11) { m = 0; y++; }
             }
         }
@@ -959,14 +973,20 @@
 
     // 일정 이동(리스케줄): from→target 만큼 날짜 이동 (기간 일정은 길이 유지)
     async function rescheduleTask(id, startBucket, fromDay, targetDay) {
-        if (!targetDay || fromDay === targetDay) return;
+        if (!targetDay || fromDay === targetDay) {
+          return;
+        }
         const arr = todos[startBucket] || [];
         const idx = arr.findIndex(t => t.id === id);
-        if (idx === -1) return;
+        if (idx === -1) {
+          return;
+        }
         const task = arr[idx];
 
         const deltaDays = Math.round((new Date(targetDay) - new Date(fromDay)) / 86400000);
-        if (deltaDays === 0) return;
+        if (deltaDays === 0) {
+          return;
+        }
         const shift = (dateStr) => { const d = new Date(dateStr); d.setDate(d.getDate() + deltaDays); return formatDate(d); };
 
         const newStart = shift(task.date);
@@ -974,15 +994,25 @@
 
         // 메모리상 버킷 이동 (DB는 키가 id라 재키 불필요)
         arr.splice(idx, 1);
-        if (arr.length === 0) delete todos[startBucket]; else todos[startBucket] = arr;
+        if (arr.length === 0) {
+          delete todos[startBucket];
+        } else {
+          todos[startBucket] = arr;
+        }
         task.date = newStart;
-        if (newEnd) task.endDate = newEnd;
-        if (!todos[newStart]) todos[newStart] = [];
+        if (newEnd) {
+          task.endDate = newEnd;
+        }
+        if (!todos[newStart]) {
+          todos[newStart] = [];
+        }
         todos[newStart].push(task);
 
         await dbManager.setItem('todos', id, task);
         // 드로어가 열려 있으면 이동한 날짜로 따라가기
-        if (document.getElementById('dailyDrawer').classList.contains('open')) selectedDate = new Date(newStart);
+        if (document.getElementById('dailyDrawer').classList.contains('open')) {
+          selectedDate = new Date(newStart);
+        }
         refreshCurrentView(); handleSearch();
         showToast(`'${task.title}' 일정을 ${newStart}${newEnd ? ` ~ ${newEnd}` : ''}(으)로 옮겼습니다.`, 'success');
     }
@@ -995,9 +1025,13 @@
             onThemeChange: (mode) => {
                 const icon = mode === 'dark' ? '☀️' : '🌙';
                 const btn = document.getElementById('themeToggle');
-                if (btn) btn.innerText = icon;
+                if (btn) {
+                  btn.innerText = icon;
+                }
                 const taskBtn = document.getElementById('taskThemeToggle');
-                if (taskBtn) taskBtn.innerText = icon;
+                if (taskBtn) {
+                  taskBtn.innerText = icon;
+                }
             }
         });
 
@@ -1011,7 +1045,9 @@
         // Load scheduled tasks
         const allTodos = await dbManager.getAll('todos');
         Object.values(allTodos).forEach(t => { 
-            if (!todos[t.date]) todos[t.date] = []; 
+            if (!todos[t.date]) {
+              todos[t.date] = [];
+            } 
             todos[t.date].push(t); 
         });
 
@@ -1090,9 +1126,15 @@
     /* --- Core UI Refresh Logic --- */
     function refreshCurrentView() {
         renderCalendar();
-        if (currentView === 'today') renderTodayView();
-        if (currentView === 'week') renderWeekView();
-        if (currentView === 'memo') renderMemoBoard();
+        if (currentView === 'today') {
+          renderTodayView();
+        }
+        if (currentView === 'week') {
+          renderWeekView();
+        }
+        if (currentView === 'memo') {
+          renderMemoBoard();
+        }
         
         if (document.getElementById('dailyDrawer').classList.contains('open')) {
             renderDrawerContent();
@@ -1110,14 +1152,18 @@
         
         document.getElementById(`tab-${view}`).classList.add('active');
         const viewEl = document.getElementById(`${view}View`);
-        if (viewEl) viewEl.classList.add('active-view');
+        if (viewEl) {
+          viewEl.classList.add('active-view');
+        }
         
         refreshCurrentView();
     }
 
     /* --- Calendar Rendering --- */
     function getDragRange() {
-        if (!isDragging || !dragStart || !dragEnd) return null;
+        if (!isDragging || !dragStart || !dragEnd) {
+          return null;
+        }
         return {
             start: dragStart < dragEnd ? dragStart : dragEnd,
             end: dragStart < dragEnd ? dragEnd : dragStart
@@ -1151,7 +1197,9 @@
                 const timePrefix = t.startTime ? `<b style="font-weight:700;">${t.startTime}</b> ` : '';
                 html += `<div class="todo-item-mini ${t.completed ? 'completed' : ''} ${isSpan(t) ? 'span' : ''}" draggable="true" data-id="${t.id}" data-start="${t.date}" data-from="${d}"${catStyle}>${timePrefix}${escHtml(t.title)}</div>`;
             });
-            if (dayItems.length > 3) html += `<div style="font-size:9px; color:#94a3b8; padding-left:4px; pointer-events:none;">+ more</div>`;
+            if (dayItems.length > 3) {
+              html += `<div style="font-size:9px; color:#94a3b8; padding-left:4px; pointer-events:none;">+ more</div>`;
+            }
             cell.innerHTML = html; 
             grid.appendChild(cell);
         }
@@ -1182,14 +1230,20 @@
         const grid = document.getElementById('calendarGrid');
         grid.addEventListener('mousedown', e => {
             // 미니 일정 위에서 시작한 건 '일정 이동(드래그)'이므로 범위 선택을 시작하지 않음
-            if (e.target.closest('.todo-item-mini')) return;
+            if (e.target.closest('.todo-item-mini')) {
+              return;
+            }
             const cell = e.target.closest('.day-cell:not(.other-month)');
-            if (!cell) return;
+            if (!cell) {
+              return;
+            }
             isDragging = true; wasDragged = false; dragStart = dragEnd = cell.dataset.date;
             updateCalendarClasses();
         });
         grid.addEventListener('mouseover', e => {
-            if (!isDragging) return;
+            if (!isDragging) {
+              return;
+            }
             const cell = e.target.closest('.day-cell:not(.other-month)');
             if (cell && dragEnd !== cell.dataset.date) { 
                 dragEnd = cell.dataset.date; 
@@ -1197,7 +1251,9 @@
             }
         });
         window.addEventListener('mouseup', () => {
-            if (!isDragging) return;
+            if (!isDragging) {
+              return;
+            }
             isDragging = false;
             const didDrag = (dragStart !== dragEnd && dragEnd !== null);
             if (didDrag) {
@@ -1210,7 +1266,9 @@
         // --- 일정 이동(드래그 앤 드롭으로 날짜 변경) ---
         grid.addEventListener('dragstart', e => {
             const mini = e.target.closest('.todo-item-mini');
-            if (!mini || !mini.dataset.id) return;
+            if (!mini || !mini.dataset.id) {
+              return;
+            }
             isDragging = false; // 범위 선택 상태 방지
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', JSON.stringify({ id: mini.dataset.id, start: mini.dataset.start, from: mini.dataset.from }));
@@ -1218,20 +1276,28 @@
         });
         grid.addEventListener('dragover', e => {
             const cell = e.target.closest('.day-cell:not(.other-month)');
-            if (!cell) return;
+            if (!cell) {
+              return;
+            }
             e.preventDefault();
             e.dataTransfer.dropEffect = 'move';
-            if (dropTargetCell && dropTargetCell !== cell) dropTargetCell.classList.remove('drop-target');
+            if (dropTargetCell && dropTargetCell !== cell) {
+              dropTargetCell.classList.remove('drop-target');
+            }
             cell.classList.add('drop-target'); dropTargetCell = cell;
         });
         grid.addEventListener('drop', async e => {
             const cell = e.target.closest('.day-cell:not(.other-month)');
             clearDropTarget();
-            if (!cell) return;
+            if (!cell) {
+              return;
+            }
             e.preventDefault();
             let payload;
             try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
-            if (!payload || !payload.id) return;
+            if (!payload || !payload.id) {
+              return;
+            }
             await rescheduleTask(payload.id, payload.start, payload.from, cell.dataset.date);
         });
         grid.addEventListener('dragend', () => {
@@ -1242,17 +1308,24 @@
 
         // Event Delegation for Calendar Grid
         grid.addEventListener('click', e => {
-            if (wasDragged) return;
+            if (wasDragged) {
+              return;
+            }
             const cell = e.target.closest('.day-cell:not(.other-month)');
-            if (!cell) return; // 바깥 클릭은 전역 핸들러가 닫기 처리
+            if (!cell) {
+              return;
+            } // 바깥 클릭은 전역 핸들러가 닫기 처리
             const newD = cell.dataset.date;
             const drawerOpen = document.getElementById('dailyDrawer').classList.contains('open');
             const sameDay = formatDate(selectedDate) === newD;
             selectedDate = new Date(newD);
             updateCalendarClasses(); updateSelectedDateLabel();
             // 단일 클릭으로 해당 날짜 열기. 이미 열린 같은 날을 다시 클릭하면 닫기(토글).
-            if (drawerOpen && sameDay) closeDrawer();
-            else openDrawer();
+            if (drawerOpen && sameDay) {
+              closeDrawer();
+            } else {
+              openDrawer();
+            }
         });
 
         // Global Click Delegation for Drawer/Modal outside-click closing
@@ -1270,7 +1343,9 @@
         // Event Delegation for Task Lists (Drawer, Range List, Today View)
         const handleCardAction = (e) => {
             const card = e.target.closest('.todo-card-big');
-            if (!card) return;
+            if (!card) {
+              return;
+            }
 
             const { id, date } = card.dataset;
             e.stopPropagation();
@@ -1315,7 +1390,9 @@
         // 오늘 할 일(체크리스트): 체크=완료 토글 / 🗑=삭제 / 그 외 클릭=상세
         document.getElementById('todayTasksList').addEventListener('click', (e) => {
             const row = e.target.closest('.today-row');
-            if (!row) return;
+            if (!row) {
+              return;
+            }
             const { id, date } = row.dataset;
             if (e.target.closest('.check-circle')) { toggleStatus(id, date); return; }
             if (e.target.closest('[data-action="del"]')) { deleteTask(id, date); return; }
@@ -1325,7 +1402,9 @@
         // 주간 뷰(컴팩트 행): 체크박스=완료 토글 / 그 외 클릭=상세 보기
         document.getElementById('weekList').addEventListener('click', (e) => {
             const row = e.target.closest('.week-row');
-            if (!row) return;
+            if (!row) {
+              return;
+            }
             const { id, date } = row.dataset;
             if (e.target.closest('.check-circle')) {
                 toggleStatus(id, date);
@@ -1337,10 +1416,16 @@
         // 카드 더블클릭 시 상세(크게 보기) 모달 열기
         const handleCardDblClick = (e) => {
             const card = e.target.closest('.todo-card-big');
-            if (!card) return;
+            if (!card) {
+              return;
+            }
             // 편집 중이거나 버튼/입력 요소를 더블클릭한 경우는 무시
-            if (card.classList.contains('editing')) return;
-            if (e.target.closest('button, input, textarea, [data-action]')) return;
+            if (card.classList.contains('editing')) {
+              return;
+            }
+            if (e.target.closest('button, input, textarea, [data-action]')) {
+              return;
+            }
             openTaskDetailModal(card.dataset.id, card.dataset.date);
         };
         document.getElementById('drawerContent').addEventListener('dblclick', handleCardDblClick);
@@ -1349,7 +1434,9 @@
         // Event Delegation for Search Results
         document.getElementById('searchResults').addEventListener('click', e => {
             const item = e.target.closest('.search-result-item');
-            if (!item || e.target.type === 'checkbox') return;
+            if (!item || e.target.type === 'checkbox') {
+              return;
+            }
 
             const { type, id, date } = item.dataset;
             closeSearchPanel();
@@ -1367,9 +1454,15 @@
 
         // 바깥 클릭 시 FAB 메뉴 / 빠른 메모 / 검색 패널 닫기
         document.addEventListener('click', (e) => {
-            if (!e.target.closest('#fabBtn') && !e.target.closest('#fabMenu')) closeFab();
-            if (!e.target.closest('#quickMemoPop') && !e.target.closest('#fabBtn') && !e.target.closest('#fabMenu')) closeQuickMemoPop();
-            if (!e.target.closest('.header-search')) closeSearchPanel();
+            if (!e.target.closest('#fabBtn') && !e.target.closest('#fabMenu')) {
+              closeFab();
+            }
+            if (!e.target.closest('#quickMemoPop') && !e.target.closest('#fabBtn') && !e.target.closest('#fabMenu')) {
+              closeQuickMemoPop();
+            }
+            if (!e.target.closest('.header-search')) {
+              closeSearchPanel();
+            }
         });
 
         window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); closeTaskDetailModal(); closeAssignMemoModal(); closeExportModal(); closeFab(); closeQuickMemoPop(); closeSearchPanel(); } });
@@ -1385,7 +1478,9 @@
 
         if (id) {
             const memo = stickyMemos.find(m => m.id === id);
-            if (!memo) return;
+            if (!memo) {
+              return;
+            }
             idInput.value = id;
             titleInput.value = memo.title;
             contentInput.value = memo.content;
@@ -1407,7 +1502,9 @@
 
     function openMemoDetailModal(id) {
         const memo = stickyMemos.find(m => m.id === id);
-        if (!memo) return;
+        if (!memo) {
+          return;
+        }
 
         const modal = document.getElementById('memoDetailModal');
         modal.dataset.content = memo.content; // Store raw content for accurate rendering
@@ -1436,8 +1533,12 @@
         const modal = document.getElementById('memoDetailModal');
 
         // Guard: Prevent redundant rendering if already in the requested view
-        if (view === 'md' && tabMD.classList.contains('active')) return;
-        if (view === 'plain' && tabPlain.classList.contains('active')) return;
+        if (view === 'md' && tabMD.classList.contains('active')) {
+          return;
+        }
+        if (view === 'plain' && tabPlain.classList.contains('active')) {
+          return;
+        }
 
         if (view === 'md') {
             const content = modal.dataset.content || ''; // Use raw content from dataset
@@ -1446,13 +1547,17 @@
             mdArea.style.display = 'block';
             tabPlain.classList.remove('active');
             tabMD.classList.add('active');
-            if (themeBtn) themeBtn.style.display = 'inline-flex';
+            if (themeBtn) {
+              themeBtn.style.display = 'inline-flex';
+            }
         } else {
             plainArea.style.display = 'block';
             mdArea.style.display = 'none';
             tabPlain.classList.add('active');
             tabMD.classList.remove('active');
-            if (themeBtn) themeBtn.style.display = 'none';
+            if (themeBtn) {
+              themeBtn.style.display = 'none';
+            }
         }
     }
 
@@ -1463,7 +1568,9 @@
     /* --- Task Detail (크게 보기) Modal --- */
     function openTaskDetailModal(id, date) {
         const task = (todos[date] || []).find(t => t.id === id);
-        if (!task) return;
+        if (!task) {
+          return;
+        }
 
         const modal = document.getElementById('taskDetailModal');
         modal.dataset.content = task.content || ''; // 마크다운 렌더링용 원본 저장
@@ -1500,8 +1607,12 @@
         const themeBtn = document.getElementById('taskThemeToggle');
         const modal = document.getElementById('taskDetailModal');
 
-        if (view === 'md' && tabMD.classList.contains('active')) return;
-        if (view === 'plain' && tabPlain.classList.contains('active')) return;
+        if (view === 'md' && tabMD.classList.contains('active')) {
+          return;
+        }
+        if (view === 'plain' && tabPlain.classList.contains('active')) {
+          return;
+        }
 
         if (view === 'md') {
             const content = modal.dataset.content || '';
@@ -1510,20 +1621,26 @@
             mdArea.style.display = 'block';
             tabPlain.classList.remove('active');
             tabMD.classList.add('active');
-            if (themeBtn) themeBtn.style.display = 'inline-flex';
+            if (themeBtn) {
+              themeBtn.style.display = 'inline-flex';
+            }
         } else {
             plainArea.style.display = 'block';
             mdArea.style.display = 'none';
             tabPlain.classList.add('active');
             tabMD.classList.remove('active');
-            if (themeBtn) themeBtn.style.display = 'none';
+            if (themeBtn) {
+              themeBtn.style.display = 'none';
+            }
         }
     }
 
     function copyTaskFromDetail() {
         const modal = document.getElementById('taskDetailModal');
         const task = (todos[modal.dataset.taskDate] || []).find(t => t.id === modal.dataset.taskId);
-        if (task) copyText(`${task.title}\n${task.content || ''}`);
+        if (task) {
+          copyText(`${task.title}\n${task.content || ''}`);
+        }
     }
 
     // 상세 모달의 보기/수정 모드 전환
@@ -1542,7 +1659,9 @@
         const modal = document.getElementById('taskDetailModal');
         const id = modal.dataset.taskId, dateStr = modal.dataset.taskDate;
         const task = (todos[dateStr] || []).find(t => t.id === id);
-        if (!task) return;
+        if (!task) {
+          return;
+        }
         document.getElementById('etTitle').value = task.title || '';
         document.getElementById('etCategory').innerHTML = categoryOptionsHtml(task.category);
         document.getElementById('etDateStart').value = task.date;
@@ -1562,7 +1681,9 @@
         const title = document.getElementById('etTitle').value.trim();
         if (!title) { showToast('제목을 입력하세요.', 'warning'); return; }
         const task = (todos[dateStr] || []).find(t => t.id === id);
-        if (!task) return;
+        if (!task) {
+          return;
+        }
         await applyTaskEdit(task, dateStr, {
             title,
             content: document.getElementById('etContent').value.trim(),
@@ -1588,7 +1709,9 @@
         const title = document.getElementById('memoTitleInput').value.trim();
         const content = document.getElementById('memoContentInput').value.trim();
 
-        if (!content && !title) return;
+        if (!content && !title) {
+          return;
+        }
 
         if (id) {
             // Edit
@@ -1616,7 +1739,9 @@
     async function addQuickMemo() {
         const input = document.getElementById('quickMemoInput');
         const text = input.value.trim();
-        if (!text) return;
+        if (!text) {
+          return;
+        }
 
         const memo = {
             id: 'memo-' + Date.now() + Math.random().toString(36).substr(2,9),
@@ -1629,17 +1754,24 @@
         stickyMemos.unshift(memo);
         input.value = '';
         closeQuickMemoPop();
-        if (currentView === 'memo') renderMemoBoard();
-        else showToast('메모 보드(인박스)에 저장되었습니다.', 'success');
+        if (currentView === 'memo') {
+          renderMemoBoard();
+        } else {
+          showToast('메모 보드(인박스)에 저장되었습니다.', 'success');
+        }
     }
 
     // 메모 카드 액션: 컨테이너 1곳에 위임(렌더마다 per-card 바인딩 제거 + 인라인 onclick 주입 제거)
     function setupMemoGridDelegation(grid) {
-        if (grid._delegated) return;
+        if (grid._delegated) {
+          return;
+        }
         grid._delegated = true;
         grid.addEventListener('click', (e) => {
             const btn = e.target.closest('button[data-action]');
-            if (!btn || !grid.contains(btn)) return;
+            if (!btn || !grid.contains(btn)) {
+              return;
+            }
             const id = btn.dataset.id;
             switch (btn.dataset.action) {
                 case 'assign': assignMemoToCalendar(id); break;
@@ -1650,7 +1782,9 @@
         });
         grid.addEventListener('dblclick', (e) => {
             const card = e.target.closest('.memo-card[data-id]');
-            if (card && grid.contains(card)) openMemoDetailModal(card.dataset.id);
+            if (card && grid.contains(card)) {
+              openMemoDetailModal(card.dataset.id);
+            }
         });
     }
 
@@ -1692,7 +1826,9 @@
 
     function copyMemo(id) {
         const memo = stickyMemos.find(m => m.id === id);
-        if (memo) copyText(memo.content);
+        if (memo) {
+          copyText(memo.content);
+        }
     }
 
     async function deleteStickyMemo(id) {
@@ -1707,7 +1843,9 @@
 
     function assignMemoToCalendar(id) {
         const memo = stickyMemos.find(m => m.id === id);
-        if (!memo) return;
+        if (!memo) {
+          return;
+        }
         const modal = document.getElementById('assignMemoModal');
         modal.dataset.memoId = id;
         document.getElementById('assignMemoDate').value = formatDate(selectedDate);
@@ -1736,7 +1874,9 @@
         };
 
         await dbManager.setItem('todos', newTodo.id, newTodo);
-        if (!todos[dateStr]) todos[dateStr] = [];
+        if (!todos[dateStr]) {
+          todos[dateStr] = [];
+        }
         todos[dateStr].push(newTodo);
 
         const tx = dbManager.db.transaction('stickyMemos', 'readwrite');
@@ -1764,7 +1904,9 @@
         Object.keys(todos).forEach(startStr => {
             todos[startStr].forEach(t => {
                 const end = t.endDate || t.date;
-                if (t.date <= dStr && dStr <= end) out.push(t);
+                if (t.date <= dStr && dStr <= end) {
+                  out.push(t);
+                }
             });
         });
         return out;
@@ -1788,7 +1930,9 @@
         const timeChip = tl
             ? `<span class="status-badge" style="background:#0ea5e91a; color:#0284c7; border:1px solid #0ea5e955;">⏰ ${tl}</span>`
             : '';
-        if (cat.id) card.style.borderLeft = `4px solid ${cat.color}`;
+        if (cat.id) {
+          card.style.borderLeft = `4px solid ${cat.color}`;
+        }
         card.innerHTML = `
             <div class="view-mode">
                 <div class="todo-card-header">
@@ -1848,7 +1992,9 @@
         // Show/hide batch bar based on items
         document.getElementById('drawerBatchBar').style.display = day.length > 0 ? 'flex' : 'none';
         const selectAll = document.getElementById('drawerSelectAll');
-        if (selectAll) selectAll.checked = false;
+        if (selectAll) {
+          selectAll.checked = false;
+        }
 
         if (!day.length) { cont.innerHTML = '<div style="text-align:center; padding:3rem; color:#94a3b8;">일정이 없습니다.</div>'; return; }
         day.sort(compareTasks).forEach(t => cont.appendChild(createTaskCard(t)));
@@ -1907,7 +2053,9 @@
         const todayStr = formatDate(new Date());
 
         const lbl = document.getElementById('weekRangeLabel');
-        if (lbl) lbl.innerText = `${formatDate(start)} ~ ${formatDate(end)}`;
+        if (lbl) {
+          lbl.innerText = `${formatDate(start)} ~ ${formatDate(end)}`;
+        }
 
         const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
         for (let i = 0; i < 7; i++) {
@@ -1977,7 +2125,9 @@
 
         document.getElementById('rangeBatchBar').style.display = list.length > 0 ? 'flex' : 'none';
         const selectAll = document.getElementById('rangeSelectAll');
-        if (selectAll) selectAll.checked = false;
+        if (selectAll) {
+          selectAll.checked = false;
+        }
 
         if (!list.length) { cont.innerHTML = '<div style="text-align:center; padding:3rem;">일정이 없습니다.</div>'; return; }
         list.sort((a,b) => a.date.localeCompare(b.date) || compareTasks(a,b)).forEach(t => {
@@ -2006,7 +2156,9 @@
             showToast('선택된 항목이 없습니다.', 'warning');
             return;
         }
-        if (!(await confirmModal(`${selected.length}개의 항목을 삭제할까요?`, { danger: true, okText: '삭제' }))) return;
+        if (!(await confirmModal(`${selected.length}개의 항목을 삭제할까요?`, { danger: true, okText: '삭제' }))) {
+          return;
+        }
 
         // 하나의 트랜잭션으로 통합 처리 (todos와 stickyMemos 동시 잠금)
         const tx = dbManager.db.transaction(['todos', 'stickyMemos'], 'readwrite');
@@ -2049,7 +2201,9 @@
         selected.forEach(item => {
             if (item.type !== 'memo' && !item.id.startsWith('memo-') && item.date) {
                 const task = todos[item.date]?.find(t => t.id === item.id);
-                if (task) targetTasks.push(task);
+                if (task) {
+                  targetTasks.push(task);
+                }
             }
         });
 
@@ -2104,11 +2258,17 @@
         if (newEnd < newStart) { const tmp = newStart; newStart = newEnd; newEnd = tmp; } // 거꾸로 입력 보정
         const oldStart = task.date;
         task.date = newStart;
-        if (newEnd && newEnd !== newStart) task.endDate = newEnd; else delete task.endDate;
+        if (newEnd && newEnd !== newStart) {
+          task.endDate = newEnd;
+        } else {
+          delete task.endDate;
+        }
         if (oldStart !== newStart) {
             // 시작일이 바뀌면 메모리 버킷 이동(IndexedDB는 id 기준이라 그대로)
             todos[oldStart] = (todos[oldStart] || []).filter(t => t.id !== task.id);
-            if (!todos[newStart]) todos[newStart] = [];
+            if (!todos[newStart]) {
+              todos[newStart] = [];
+            }
             todos[newStart].push(task);
         }
         await dbSafeSet('todos', task.id, task);
@@ -2117,9 +2277,13 @@
     async function saveEditCard(card) {
         const id = card.dataset.id, dateStr = card.dataset.date;
         const title = card.querySelector('.edit-title').value.trim();
-        if (!title) return;
+        if (!title) {
+          return;
+        }
         const task = todos[dateStr].find(t => t.id === id);
-        if (!task) return;
+        if (!task) {
+          return;
+        }
         await applyTaskEdit(task, dateStr, {
             title,
             content: card.querySelector('.edit-content').value.trim(),
@@ -2134,7 +2298,9 @@
     }
     async function toggleStatus(id, d) {
       const t = (todos[d] || []).find(x => x.id === id);
-      if (!t) return;
+      if (!t) {
+        return;
+      }
       t.completed = !t.completed;
       await dbSafeSet('todos', id, t);
       refreshCurrentView(); handleSearch();
@@ -2163,9 +2329,13 @@
       document.getElementById('taskInputList').innerHTML = '';
       // 반복/연속 토글 초기화
       const repSel = document.getElementById('repeatSelect');
-      if (repSel) repSel.value = '';
+      if (repSel) {
+        repSel.value = '';
+      }
       const spanT = document.getElementById('spanToggle');
-      if (spanT) spanT.checked = true;
+      if (spanT) {
+        spanT.checked = true;
+      }
       onRepeatChange();
       addTaskRow();
       document.getElementById('rangeModal').style.display = 'flex';
@@ -2174,9 +2344,13 @@
     function onRepeatChange() {
       const rep = document.getElementById('repeatSelect')?.value || '';
       const hint = document.getElementById('repeatHint');
-      if (hint) hint.style.display = rep ? 'inline' : 'none';
+      if (hint) {
+        hint.style.display = rep ? 'inline' : 'none';
+      }
       const wrap = document.getElementById('spanToggleWrap');
-      if (wrap) wrap.style.display = rep ? 'none' : 'flex'; // 반복이면 '연속 일정' 옵션 숨김
+      if (wrap) {
+        wrap.style.display = rep ? 'none' : 'flex';
+      } // 반복이면 '연속 일정' 옵션 숨김
     }
 
     function closeRangeModal() {
@@ -2201,7 +2375,9 @@
       document.getElementById('mTabManage').classList.toggle('active', tab === 'manage');
       document.getElementById('mContentAdd').style.display = tab === 'add' ? 'flex' : 'none';
       document.getElementById('mContentManage').style.display = tab === 'manage' ? 'flex' : 'none';
-      if (tab === 'manage') renderRangeManageList();
+      if (tab === 'manage') {
+        renderRangeManageList();
+      }
     }
 
     function addTaskRow(t='', c='', cat='', st='', et='') {
@@ -2218,7 +2394,9 @@
         let s = document.getElementById('mStart').value, e = document.getElementById('mEnd').value;
         if (s && e && s > e) { const tmp = s; s = e; e = tmp; }   // 시작>종료면 swap (미저장/일정 증발 방지)
         const data = Array.from(document.querySelectorAll('#taskInputList > div')).map(r => ({ t: r.querySelector('.t-title').value.trim(), c: r.querySelector('.t-content').value.trim(), cat: r.querySelector('.t-category')?.value || '', st: r.querySelector('.t-start')?.value || '', et: r.querySelector('.t-end')?.value || '' })).filter(x => x.t);
-        if (!data.length) return;
+        if (!data.length) {
+          return;
+        }
 
         const repeat = document.getElementById('repeatSelect')?.value || '';
         // 여러 날짜이고 토글이 켜져 있으면 '연속(기간) 일정' 1건으로 저장
@@ -2230,7 +2408,9 @@
             if (!dates.length) { showToast('반복 발생일이 없습니다. 기간을 확인하세요.', 'warning'); return; }
             const seriesId = 'series-' + Date.now() + Math.random().toString(36).substr(2,6);
             for (const dd of dates) {
-                if (!todos[dd]) todos[dd] = [];
+                if (!todos[dd]) {
+                  todos[dd] = [];
+                }
                 for (let item of data) {
                     const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: dd, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, repeat, seriesId, completed: false, createdAt: Date.now() };
                     todos[dd].push(obj); await dbSafeSet('todos', obj.id, obj);
@@ -2242,7 +2422,9 @@
         }
 
         if (asSpan) {
-            if (!todos[s]) todos[s] = [];
+            if (!todos[s]) {
+              todos[s] = [];
+            }
             for (let item of data) {
                 const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: s, endDate: e, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, completed: false, createdAt: Date.now() };
                 todos[s].push(obj); await dbSafeSet('todos', obj.id, obj);
@@ -2251,7 +2433,9 @@
             // 매일 개별 등록 (기존 방식)
             let curr = new Date(s);
             while (curr <= new Date(e)) {
-                const d = formatDate(curr); if (!todos[d]) todos[d] = [];
+                const d = formatDate(curr); if (!todos[d]) {
+              todos[d] = [];
+            }
                 for (let item of data) {
                     const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: d, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, completed: false, createdAt: Date.now() };
                     todos[d].push(obj); await dbSafeSet('todos', obj.id, obj);
@@ -2273,7 +2457,9 @@
     selectedDate = new Date();
     renderCalendar();
     updateSelectedDateLabel();
-    if (currentView === 'today') renderTodayView();
+    if (currentView === 'today') {
+      renderTodayView();
+    }
     if (currentView === 'week') { weekAnchor = new Date(); renderWeekView(); }
   }
 
@@ -2288,10 +2474,14 @@
         done = 0;
     Object.keys(todos).forEach(d => {
         const date = new Date(d);
-        if (date.getFullYear() === y && date.getMonth() === m) todos[d].forEach(t => {
-            total++;
-            if (t.completed) done++;
-        });
+        if (date.getFullYear() === y && date.getMonth() === m) {
+          todos[d].forEach(t => {
+              total++;
+              if (t.completed) {
+                done++;
+              }
+          });
+        }
     });
     const p = total ? Math.round((done / total) * 100) : 0;
     document.getElementById('progressPercent').innerText = `${p}%`;
@@ -2312,7 +2502,9 @@
         ta.value = t; ta.style.position = 'fixed'; ta.style.top = '-9999px'; ta.style.opacity = '0';
         document.body.appendChild(ta); ta.focus(); ta.select();
         const ok = document.execCommand('copy'); document.body.removeChild(ta);
-        if (!ok) throw new Error('copy failed');
+        if (!ok) {
+          throw new Error('copy failed');
+        }
       }
       showToast('복사되었습니다.', 'success');
     } catch (err) {
@@ -2368,7 +2560,9 @@
         item.style.gap = '0.5rem';
         item.dataset.type = m.type;
         item.dataset.id = m.data.id;
-        if (m.type === 'todo') item.dataset.date = m.data.date;
+        if (m.type === 'todo') {
+          item.dataset.date = m.data.date;
+        }
         
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
@@ -2481,9 +2675,15 @@
     const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
     const passFilter = (t) => {
-      if (status === 'done' && !t.completed) return false;
-      if (status === 'todo' && t.completed) return false;
-      if (cat !== '__all' && (t.category || '') !== cat) return false;
+      if (status === 'done' && !t.completed) {
+        return false;
+      }
+      if (status === 'todo' && t.completed) {
+        return false;
+      }
+      if (cat !== '__all' && (t.category || '') !== cat) {
+        return false;
+      }
       return true;
     };
 
@@ -2496,7 +2696,9 @@
       const tasks = todosOnDate(ds).filter(passFilter).sort(compareTasks);
       if (tasks.length) {
         byDate.push({ dateStr: ds, tasks });
-        tasks.forEach(t => { if (!seen.has(t.id)) { seen.add(t.id); total++; if (t.completed) done++; } });
+        tasks.forEach(t => { if (!seen.has(t.id)) { seen.add(t.id); total++; if (t.completed) {
+          done++;
+        } } });
       }
     }
 
@@ -2538,7 +2740,9 @@
       stickyMemos.forEach(m => {
         md += `### 📝 ${m.title}\n`;
         md += `> 작성일: ${new Date(m.createdAt).toLocaleString()}\n\n`;
-        if (m.content) md += `${m.content}\n\n`;
+        if (m.content) {
+          md += `${m.content}\n\n`;
+        }
       });
     }
 
@@ -2556,7 +2760,9 @@
 
   function addToGoogleCalendar(id, dateStr) {
     const task = todos[dateStr]?.find(t => t.id === id);
-    if (!task) return;
+    if (!task) {
+      return;
+    }
 
     const title = encodeURIComponent(task.title);
     const details = encodeURIComponent(task.content || '');
@@ -2630,7 +2836,9 @@
 
   function importData(input) {
     const file = input.files[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
@@ -2652,8 +2860,12 @@
                 const tx = dbManager.db.transaction(['todos', 'stickyMemos'], 'readwrite');
                 const todoStore = tx.objectStore('todos');
                 const memoStore = tx.objectStore('stickyMemos');
-                for (let t of importedTodos) todoStore.put(t, t.id);
-                for (let m of importedMemos) memoStore.put(m, m.id);
+                for (let t of importedTodos) {
+                  todoStore.put(t, t.id);
+                }
+                for (let m of importedMemos) {
+                  memoStore.put(m, m.id);
+                }
                 await new Promise((resolve, reject) => {
                     tx.oncomplete = resolve;
                     tx.onerror = (e) => reject(e.target.error);

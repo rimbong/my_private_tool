@@ -50,7 +50,9 @@ async function copyText(text) {
     let ok = false;
     try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
     document.body.removeChild(textArea);
-    if (!ok) throw new Error('클립보드 복사에 실패했습니다.');   // 호출부 catch에서 에러 토스트 표시
+    if (!ok) {
+      throw new Error('클립보드 복사에 실패했습니다.');
+    }   // 호출부 catch에서 에러 토스트 표시
 }
 
 /**
@@ -59,11 +61,15 @@ async function copyText(text) {
 function onAlert(el, text) {
     return new Promise((resolve) => {
         const originalText = el.innerText;
-        if (text) el.innerText = text;
+        if (text) {
+          el.innerText = text;
+        }
         el.classList.add('alert');
         setTimeout(() => {
             el.classList.remove('alert');
-            if (text) el.innerText = originalText;
+            if (text) {
+              el.innerText = originalText;
+            }
             resolve();
         }, 1000);
     });

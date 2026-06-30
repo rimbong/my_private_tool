@@ -63,7 +63,9 @@ const mdRenderer = {
       const link = document.createElement('link');
       link.id = id;
       link.rel = 'stylesheet';
-      if (href) link.href = href;
+      if (href) {
+        link.href = href;
+      }
       document.head.appendChild(link);
     }
   },
@@ -105,7 +107,9 @@ const mdRenderer = {
   },
 
   render(text) {
-    if (typeof marked === 'undefined') return text;
+    if (typeof marked === 'undefined') {
+      return text;
+    }
     const html = marked.parse(text);
     // 신뢰할 수 없는 .md(열기/드롭) 안의 raw HTML(XSS, 예: <img onerror>, <svg onload>) 차단
     if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {

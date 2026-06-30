@@ -157,7 +157,9 @@
         }
 
         async function showJarList() {
-            if (!checkConfig()) return;
+            if (!checkConfig()) {
+              return;
+            }
 
             // Manually clear outputs instead of calling fileInit(), which clears inputs.
             fileCount = 0;
@@ -223,10 +225,14 @@
         }
 
         async function classpathFileDownload() {
-            if (!checkConfig()) return;
+            if (!checkConfig()) {
+              return;
+            }
             try {
                 const file = document.getElementById("classpath").files[0];
-                if (!file) return;
+                if (!file) {
+                  return;
+                }
 
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -255,8 +261,12 @@
 
     // 포털 config 주입 (origin 검증) — 상태만 갱신
     window.addEventListener('message', (event) => {
-        if (!event.data || event.data.type !== 'config-data') return;
-        if (event.origin !== window.location.origin) return;
+        if (!event.data || event.data.type !== 'config-data') {
+          return;
+        }
+        if (event.origin !== window.location.origin) {
+          return;
+        }
         applyConfig(event.data.data);
     });
 

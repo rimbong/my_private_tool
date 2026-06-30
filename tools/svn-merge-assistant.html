@@ -265,14 +265,18 @@
     // 텍스트를 먼저 이스케이프한 뒤, 검색어 매치를 <mark>로 감싼다(크래시·XSS 동시 차단)
     function highlightTerm(text, term) {
       const safe = escHtml(text);
-      if (!term) return safe;
+      if (!term) {
+        return safe;
+      }
       try { return safe.replace(new RegExp('(' + escRe(escHtml(term)) + ')', 'gi'), '<mark class="highlight">$1</mark>'); }
       catch (e) { return safe; }
     }
 
     // 탭 간 동기화 채널
     const syncChannel = new BroadcastChannel('svn_merge_sync');
-    syncChannel.onmessage = (e) => { if (e.data.type === 'update') syncData(); };
+    syncChannel.onmessage = (e) => { if (e.data.type === 'update') {
+      syncData();
+    } };
 
     // 가상 스크롤 상태 관리
     const virtualState = {
@@ -317,18 +321,24 @@
     window.addEventListener('keydown', (e) => {
       // 1. 입력창 포커스 시 단축키 무시 (Esc 제외)
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-        if (e.key === 'Escape') document.activeElement.blur();
+        if (e.key === 'Escape') {
+          document.activeElement.blur();
+        }
         return;
       }
       
       // 2. 모달이 열려있는 경우
       if (document.getElementById('memoModal').style.display === 'flex') {
-        if (e.key === 'Escape') closeMemo();
+        if (e.key === 'Escape') {
+          closeMemo();
+        }
         return;
       }
 
       const state = virtualState[currentTab];
-      if (!state || currentTab === 'memo') return;
+      if (!state || currentTab === 'memo') {
+        return;
+      }
 
       switch(e.key.toLowerCase()) {
         case '/': // 검색창 포커스
@@ -339,13 +349,19 @@
     });
 
     async function syncData(isManual = false) {
-      if (isManual) document.getElementById('syncBtn').classList.add('syncing');
+      if (isManual) {
+        document.getElementById('syncBtn').classList.add('syncing');
+      }
       
       mergeStatus = await dbManager.getAll('mergeStatus');
       mergeMemos = await dbManager.getAll('mergeMemos');
       
-      if (svnData.length > 0) renderAll();
-      if (isManual) setTimeout(() => { document.getElementById('syncBtn').classList.remove('syncing'); }, 500);
+      if (svnData.length > 0) {
+        renderAll();
+      }
+      if (isManual) {
+        setTimeout(() => { document.getElementById('syncBtn').classList.remove('syncing'); }, 500);
+      }
     }
 
     function saveSettings() {
@@ -363,8 +379,12 @@
       
       const labelEl = document.getElementById('sortLabel');
       const iconEl = document.getElementById('sortIcon');
-      if (labelEl) labelEl.innerText = (sortOrder === 'desc') ? '내림차순' : '오름차순';
-      if (iconEl) iconEl.innerText = (sortOrder === 'desc') ? '▼' : '▲';
+      if (labelEl) {
+        labelEl.innerText = (sortOrder === 'desc') ? '내림차순' : '오름차순';
+      }
+      if (iconEl) {
+        iconEl.innerText = (sortOrder === 'desc') ? '▼' : '▲';
+      }
       document.getElementById('localPath').value = config.localPath || '';
       
       if (config.sidebar_collapsed === true) {
@@ -391,8 +411,12 @@
       
       const labelEl = document.getElementById('sortLabel');
       const iconEl = document.getElementById('sortIcon');
-      if (labelEl) labelEl.innerText = (sortOrder === 'desc') ? '내림차순' : '오름차순';
-      if (iconEl) iconEl.innerText = (sortOrder === 'desc') ? '▼' : '▲';
+      if (labelEl) {
+        labelEl.innerText = (sortOrder === 'desc') ? '내림차순' : '오름차순';
+      }
+      if (iconEl) {
+        iconEl.innerText = (sortOrder === 'desc') ? '▼' : '▲';
+      }
       document.getElementById('sortBtn').title = `리비전 ${(sortOrder === 'desc') ? '내림차순' : '오름차순'} 정렬`;
       
       // 데이터 재정렬
@@ -407,7 +431,9 @@
 
     function processLog() {
       const input = document.getElementById('logInput').value;
-      if (!input.trim()) return;
+      if (!input.trim()) {
+        return;
+      }
       
       setTimeout(() => dbManager.setItem('rawData', 'log', input), 500);
       
@@ -417,35 +443,51 @@
       const extensions = new Set();
 
       blocks.forEach(block => {
-        block = block.trim(); if (!block) return;
+        block = block.trim(); if (!block) {
+        return;
+      }
         const lines = block.split('\n');
                 
         // r번호 파싱 (기존 로직 복구)
         const revMatch = lines[0].match(/^r(\d+)/);
-        if (!revMatch) return;
+        if (!revMatch) {
+          return;
+        }
 
         const rev = parseInt(revMatch[1]);
         let files = [], isPath = false, msgLines = [];
         
         lines.forEach((line, idx) => {
-          if (idx === 0) return;
+          if (idx === 0) {
+            return;
+          }
           if (line.includes('Changed paths:')) { isPath = true; return; }
           if (isPath && line.trim() === "") { isPath = false; return; }
           if (isPath) {
             const m = line.trim().match(/^[MADRUC ]+\s+(.*)$/);
             if (m) {
               const f = m[1]; files.push(f);
-              if (!fileMap[f]) fileMap[f] = { revs: [], latestRev: 0, msg: "" };
+              if (!fileMap[f]) {
+                fileMap[f] = { revs: [], latestRev: 0, msg: "" };
+              }
               fileMap[f].revs.push(rev);
-              if (rev > fileMap[f].latestRev) fileMap[f].latestRev = rev;
+              if (rev > fileMap[f].latestRev) {
+                fileMap[f].latestRev = rev;
+              }
               const ext = f.split('.').pop().toLowerCase();
-              if (ext && ext.length < 10) extensions.add(ext);
+              if (ext && ext.length < 10) {
+                extensions.add(ext);
+              }
             }
-          } else if (line.trim()) msgLines.push(line.trim());
+          } else if (line.trim()) {
+            msgLines.push(line.trim());
+          }
         });
         const msg = msgLines.join(' ');
         svnData.push({ rev, msg, files });
-        files.forEach(f => { if(fileMap[f].latestRev === rev) fileMap[f].msg = msg; });
+        files.forEach(f => { if (fileMap[f].latestRev === rev) {
+          fileMap[f].msg = msg;
+        } });
       });
       
       // 설정된 정렬 순서 적용
@@ -454,7 +496,9 @@
       virtualState.rev.data = svnData;
       virtualState.file.data = Object.keys(fileMap).sort();
 
-      if (svnData.length === 0) showToast('파싱된 리비전이 없습니다. svn log 형식을 확인하세요.', 'warning', 4000);
+      if (svnData.length === 0) {
+        showToast('파싱된 리비전이 없습니다. svn log 형식을 확인하세요.', 'warning', 4000);
+      }
       renderExtensionFilters(Array.from(extensions).sort());
       renderAll();
     }
@@ -476,7 +520,9 @@
       elements.forEach(el => {
         el.classList.toggle('merged', isMerged);
         const cb = el.querySelector('input[type="checkbox"]');
-        if (cb) cb.checked = isMerged;
+        if (cb) {
+          cb.checked = isMerged;
+        }
       });
       const [rev, ...pathParts] = key.split(':');
       const path = pathParts.join(':');
@@ -484,7 +530,9 @@
       if (info) {
         const allMerged = info.revs.every(r => mergeStatus[`${r}:${path}`]);
         const fileEls = document.querySelectorAll(`[data-file-key="${path}"]`);
-        fileEls.forEach(el => { el.classList.toggle('merged', allMerged); const cb = el.querySelector('input[type="checkbox"]'); if (cb) cb.checked = allMerged; });
+        fileEls.forEach(el => { el.classList.toggle('merged', allMerged); const cb = el.querySelector('input[type="checkbox"]'); if (cb) {
+          cb.checked = allMerged;
+        } });
       }
       updateProgress();
     }
@@ -498,7 +546,9 @@
     }
 
     async function toggleFileAllMerge(filePath, isChecked) {
-      const info = fileMap[filePath]; if (!info) return;
+      const info = fileMap[filePath]; if (!info) {
+      return;
+    }
       const tx = dbManager.db.transaction('mergeStatus', 'readwrite');
       const store = tx.objectStore('mergeStatus');
       info.revs.forEach(r => { 
@@ -543,7 +593,9 @@
         
         const indicators = document.querySelectorAll(`[data-memo-key="${currentMemoKey}"]`);
         indicators.forEach(ind => { ind.classList.toggle('active', !!text); ind.title = text || '메모 작성'; });
-        if (currentTab === 'memo') renderMemo();
+        if (currentTab === 'memo') {
+          renderMemo();
+        }
         syncChannel.postMessage({ type: 'update' });
         closeMemo();
       }
@@ -566,7 +618,9 @@
       virtualState.rev.data.forEach(item => {
         const displayFiles = applyFilters(item.files, item.rev);
         // 필터 결과가 없고 검색/필터링 중이면 제외
-        if (displayFiles.length === 0 && (filterRemaining || searchTerm || extensionFilter)) return;
+        if (displayFiles.length === 0 && (filterRemaining || searchTerm || extensionFilter)) {
+          return;
+        }
 
         const height = 80 + (displayFiles.length * 34); // 헤더(80) + 파일당(34)
         const offset = currentOffset;
@@ -585,9 +639,15 @@
       // 2. 파일 데이터 필터링 및 높이 계산
       const filteredFile = virtualState.file.data.filter(f => {
         const info = fileMap[f];
-        if (filterRemaining && info.revs.every(r => mergeStatus[`${r}:${f}`])) return false;
-        if (extensionFilter && !f.toLowerCase().endsWith('.' + extensionFilter)) return false;
-        if (searchTerm && !f.toLowerCase().includes(searchTerm) && !info.revs.some(r => r.toString().includes(searchTerm))) return false;
+        if (filterRemaining && info.revs.every(r => mergeStatus[`${r}:${f}`])) {
+          return false;
+        }
+        if (extensionFilter && !f.toLowerCase().endsWith('.' + extensionFilter)) {
+          return false;
+        }
+        if (searchTerm && !f.toLowerCase().includes(searchTerm) && !info.revs.some(r => r.toString().includes(searchTerm))) {
+          return false;
+        }
         return true;
       });
       virtualState.file.filtered = filteredFile;
@@ -596,7 +656,9 @@
 
     function updateVirtualDisplay(type) {
       const container = document.getElementById(`area-${type}`);
-      if (!container) return;
+      if (!container) {
+        return;
+      }
 
       // 초기 구조 생성 (최초 1회)
       if (!container.querySelector('.virtual-viewport')) {
@@ -614,17 +676,28 @@
         // 카드 액션은 컨테이너 1곳에 위임 — 인라인 onclick 문자열 보간(escJs) 제거, 경로는 data-*로 안전 전달
         container.addEventListener('click', (e) => {
           const t = e.target.closest('[data-act]');
-          if (!t || !container.contains(t)) return;
+          if (!t || !container.contains(t)) {
+            return;
+          }
           const act = t.dataset.act, path = t.dataset.path;
-          if (act === 'memo') openMemo(Number(t.dataset.rev), path);
-          else if (act === 'copy-abs') copyPath(e, path, 'abs');
-          else if (act === 'copy-rel') copyPath(e, path, 'rel');
+          if (act === 'memo') {
+            openMemo(Number(t.dataset.rev), path);
+          } else if (act === 'copy-abs') {
+            copyPath(e, path, 'abs');
+          } else if (act === 'copy-rel') {
+            copyPath(e, path, 'rel');
+          }
         });
         container.addEventListener('change', (e) => {
           const t = e.target.closest('input.main-check[data-act]');
-          if (!t || !container.contains(t)) return;
-          if (t.dataset.act === 'toggle-rev') toggleMerge(Number(t.dataset.rev), t.dataset.path);
-          else if (t.dataset.act === 'toggle-file') toggleFileAllMerge(t.dataset.path, t.checked);
+          if (!t || !container.contains(t)) {
+            return;
+          }
+          if (t.dataset.act === 'toggle-rev') {
+            toggleMerge(Number(t.dataset.rev), t.dataset.path);
+          } else if (t.dataset.act === 'toggle-file') {
+            toggleFileAllMerge(t.dataset.path, t.checked);
+          }
         });
       }
 
@@ -678,8 +751,11 @@
       let low = 0, high = offsets.length - 1;
       while (low <= high) {
         const mid = Math.floor((low + high) / 2);
-        if (offsets[mid].offset <= top) low = mid + 1;
-        else high = mid - 1;
+        if (offsets[mid].offset <= top) {
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
       }
       return high < 0 ? 0 : high;
     }
@@ -734,8 +810,12 @@
       const area = document.getElementById('area-memo'); area.innerHTML = "";
       const memoKeys = Object.keys(mergeMemos).filter(key => {
         const [rev, ...pathParts] = key.split(':'); const path = pathParts.join(':');
-        if (searchTerm && !rev.includes(searchTerm) && !path.toLowerCase().includes(searchTerm) && !mergeMemos[key].toLowerCase().includes(searchTerm)) return false;
-        if (extensionFilter && !path.toLowerCase().endsWith('.' + extensionFilter)) return false;
+        if (searchTerm && !rev.includes(searchTerm) && !path.toLowerCase().includes(searchTerm) && !mergeMemos[key].toLowerCase().includes(searchTerm)) {
+          return false;
+        }
+        if (extensionFilter && !path.toLowerCase().endsWith('.' + extensionFilter)) {
+          return false;
+        }
         return true;
       });
       if (memoKeys.length === 0) { area.innerHTML = '<div style="text-align:center; padding:3rem; color:#6b7280;">메모가 없습니다.</div>'; return; }
@@ -768,7 +848,9 @@
         document.getElementById('progressInfo').innerText = `${p}% (${mergedF}/${uniquePaths.length})`;
       } else {
         let totalR = 0, mergedR = 0;
-        svnData.forEach(item => { totalR += item.files.length; item.files.forEach(f => { if(mergeStatus[`${item.rev}:${f}`]) mergedR++; }); });
+        svnData.forEach(item => { totalR += item.files.length; item.files.forEach(f => { if (mergeStatus[`${item.rev}:${f}`]) {
+          mergedR++;
+        } }); });
         const p = totalR === 0 ? 0 : Math.round((mergedR / totalR) * 100);
         document.getElementById('progressLabel').innerText = "리비전 진행률";
         document.getElementById('progress-bar').style.width = p + '%';
@@ -806,7 +888,9 @@
       document.querySelectorAll('.tab-container').forEach(c => c.classList.remove('active'));
       document.getElementById('tab-' + tab).classList.add('active');
       document.getElementById('area-' + tab).classList.add('active');
-      if (tab === 'memo') renderMemo();   // 메모 탭 진입 시 항상 최신 상태로 갱신
+      if (tab === 'memo') {
+        renderMemo();
+      }   // 메모 탭 진입 시 항상 최신 상태로 갱신
       updateProgress();
     }
 
@@ -862,7 +946,9 @@
     }
 
     function importData(input) {
-      const file = input.files[0]; if (!file) return;
+      const file = input.files[0]; if (!file) {
+      return;
+    }
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
@@ -883,15 +969,23 @@
               }
             } else {
               // 2. 구 버전 포맷 호환 처리
-              if (data.rawLog) await dbManager.setItem('rawData', 'log', data.rawLog);
+              if (data.rawLog) {
+                await dbManager.setItem('rawData', 'log', data.rawLog);
+              }
               if (data.config) {
-                for (const [k, v] of Object.entries(data.config)) await dbManager.setItem('config', k, v);
+                for (const [k, v] of Object.entries(data.config)) {
+                  await dbManager.setItem('config', k, v);
+                }
               }
               if (data.mergeStatus) {
-                for (const [k, v] of Object.entries(data.mergeStatus)) await dbManager.setItem('mergeStatus', k, v);
+                for (const [k, v] of Object.entries(data.mergeStatus)) {
+                  await dbManager.setItem('mergeStatus', k, v);
+                }
               }
               if (data.mergeMemos) {
-                for (const [k, v] of Object.entries(data.mergeMemos)) await dbManager.setItem('mergeMemos', k, v);
+                for (const [k, v] of Object.entries(data.mergeMemos)) {
+                  await dbManager.setItem('mergeMemos', k, v);
+                }
               }
             }
 
