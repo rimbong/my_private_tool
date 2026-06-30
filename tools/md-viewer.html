@@ -889,7 +889,10 @@
             continue;
           }
           const t = accessTime[v] || 0;
-          if (t < oldest) { oldest = t; victim = v; }
+          if (t < oldest) {
+            oldest = t;
+            victim = v;
+          }
         }
         if (!victim) {
           break;
@@ -943,8 +946,14 @@
           return;
         }
         const id = tab.dataset.id;
-        if (e.target.closest('.doc-tab-del')) { purgeTab(id, e); return; }
-        if (e.target.closest('.doc-tab-close')) { (e.shiftKey ? purgeTab(id, e) : hideTab(id, e)); return; }
+        if (e.target.closest('.doc-tab-del')) {
+          purgeTab(id, e);
+          return;
+        }
+        if (e.target.closest('.doc-tab-close')) {
+          (e.shiftKey ? purgeTab(id, e) : hideTab(id, e));
+          return;
+        }
         switchDoc(id);
       });
       list.addEventListener('dblclick', (e) => {
@@ -1056,8 +1065,14 @@
         return;
       }
       const trimmed = name.trim();
-      if (trimmed) { doc.customTitle = true; doc.title = trimmed; }
-      else { doc.customTitle = false; doc.title = deriveTitle(doc.content); }
+      if (trimmed) {
+        doc.customTitle = true;
+        doc.title = trimmed;
+      }
+      else {
+        doc.customTitle = false;
+        doc.title = deriveTitle(doc.content);
+      }
       doc.updatedAt = Date.now();
       renderTabs();
       persistDoc(doc);
@@ -1260,8 +1275,14 @@
           return;
         }           // 체크박스는 change 에서 처리
         const act = e.target.closest('button.dm-act');
-        if (act) { e.stopPropagation(); act.dataset.action === 'rename' ? renameDoc(id) : deleteDoc(id, e); return; }
-        if (e.target.closest('.dm-main')) { dmSelectMode ? toggleSelectDoc(id) : openFromManager(id); }
+        if (act) {
+          e.stopPropagation();
+          act.dataset.action === 'rename' ? renameDoc(id) : deleteDoc(id, e);
+          return;
+        }
+        if (e.target.closest('.dm-main')) {
+          dmSelectMode ? toggleSelectDoc(id) : openFromManager(id);
+        }
       });
       listEl.addEventListener('change', (e) => {
         const chk = e.target.closest('.dm-check');
@@ -1415,13 +1436,19 @@
 
     // 선택한 문서들을 탭에 표시 (5개 제한 내에서)
     function bulkShow() {
-      if (!dmSelected.size) { showToast('선택된 문서가 없습니다.', 'info'); return; }
+      if (!dmSelected.size) {
+        showToast('선택된 문서가 없습니다.', 'info');
+        return;
+      }
       let added = 0, skipped = 0;
       for (const id of dmSelected) {
         if (visibleIds.includes(id)) {
           continue;
         }
-        if (visibleIds.length >= MAX_VISIBLE) { skipped++; continue; }
+        if (visibleIds.length >= MAX_VISIBLE) {
+          skipped++;
+          continue;
+        }
         visibleIds.push(id);
         accessTime[id] = Date.now();
         added++;
@@ -1440,11 +1467,20 @@
 
     // 선택한 문서들을 탭에서 숨김 (현재 보고 있는 문서는 유지)
     function bulkHide() {
-      if (!dmSelected.size) { showToast('선택된 문서가 없습니다.', 'info'); return; }
+      if (!dmSelected.size) {
+        showToast('선택된 문서가 없습니다.', 'info');
+        return;
+      }
       let hid = 0, keptActive = false;
       for (const id of dmSelected) {
-        if (id === activeDocId) { keptActive = true; continue; }
-        if (visibleIds.includes(id)) { visibleIds = visibleIds.filter(v => v !== id); hid++; }
+        if (id === activeDocId) {
+          keptActive = true;
+          continue;
+        }
+        if (visibleIds.includes(id)) {
+          visibleIds = visibleIds.filter(v => v !== id);
+          hid++;
+        }
       }
       renderTabs(); persistMeta(); renderDocManager();
       if (hid) {
@@ -1473,7 +1509,10 @@
 
     // 선택한 문서들을 영구 삭제
     async function bulkDelete() {
-      if (!dmSelected.size) { showToast('선택된 문서가 없습니다.', 'info'); return; }
+      if (!dmSelected.size) {
+        showToast('선택된 문서가 없습니다.', 'info');
+        return;
+      }
       const ids = [...dmSelected];
       if (!(await confirmModal(`${ids.length}개 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`, { danger: true, okText: '삭제' }))) {
         return;
@@ -1716,7 +1755,10 @@ function hello() {
           for (const ch of w) { if (dispWidth(part + ch) > max) {
             break;
           } part += ch; }
-          if (cur) { lines.push(cur); cur = ''; }
+          if (cur) {
+            lines.push(cur);
+            cur = '';
+          }
           lines.push(part);
           w = w.slice(part.length);
         }
@@ -1792,7 +1834,10 @@ function hello() {
           const token = fence[1];
           const code = [];
           i++;
-          while (i < lines.length && !lines[i].trim().startsWith(token)) { code.push(lines[i]); i++; }
+          while (i < lines.length && !lines[i].trim().startsWith(token)) {
+            code.push(lines[i]);
+            i++;
+          }
           i++; // 닫는 펜스 건너뜀
           if (code.length) {
             out.push(code.join('\n'));
@@ -1832,17 +1877,33 @@ function hello() {
         }
 
         // 수평선
-        if (/^\s{0,3}([-*_])\s*(\1\s*){2,}$/.test(line)) { out.push('─'.repeat(40)); i++; continue; }
+        if (/^\s{0,3}([-*_])\s*(\1\s*){2,}$/.test(line)) {
+          out.push('─'.repeat(40));
+          i++;
+          continue;
+        }
 
         // 인용구
         const q = line.match(/^\s*>\s?(.*)$/);
-        if (q) { out.push(`│ ${inlineToText(q[1])}`); i++; continue; }
+        if (q) {
+          out.push(`│ ${inlineToText(q[1])}`);
+          i++;
+          continue;
+        }
 
         // 불릿/번호 리스트 (들여쓰기 보존, 불릿은 • 로 통일)
         const ul = line.match(/^(\s*)[-*+]\s+(.+)$/);
-        if (ul) { out.push(`${ul[1]}• ${inlineToText(ul[2])}`); i++; continue; }
+        if (ul) {
+          out.push(`${ul[1]}• ${inlineToText(ul[2])}`);
+          i++;
+          continue;
+        }
         const ol = line.match(/^(\s*)(\d+)\.\s+(.+)$/);
-        if (ol) { out.push(`${ol[1]}${ol[2]}. ${inlineToText(ol[3])}`); i++; continue; }
+        if (ol) {
+          out.push(`${ol[1]}${ol[2]}. ${inlineToText(ol[3])}`);
+          i++;
+          continue;
+        }
 
         // 일반 문단
         out.push(inlineToText(line));
@@ -1875,7 +1936,10 @@ function hello() {
     }
 
     async function copyPlain() {
-      if (!plainOutput.value) { showToast('추출할 텍스트가 없습니다.', 'warning'); return; }
+      if (!plainOutput.value) {
+        showToast('추출할 텍스트가 없습니다.', 'warning');
+        return;
+      }
       try {
         await navigator.clipboard.writeText(plainOutput.value);
         showToast('순수 텍스트를 복사했습니다.', 'success');
@@ -1885,7 +1949,10 @@ function hello() {
     }
 
     function downloadPlain() {
-      if (!plainOutput.value) { showToast('다운로드할 텍스트가 없습니다.', 'warning'); return; }
+      if (!plainOutput.value) {
+        showToast('다운로드할 텍스트가 없습니다.', 'warning');
+        return;
+      }
       const blob = new Blob([plainOutput.value], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2147,7 +2214,10 @@ function hello() {
         // 기존 문서를 덮어쓰지 않고 새 탭으로 연다
         const doc = newDoc(text);
         const base = (file.name || '문서').replace(/\.[^.]+$/, '');
-        if (base) { doc.title = base; doc.customTitle = true; }
+        if (base) {
+          doc.title = base;
+          doc.customTitle = true;
+        }
         doc.updatedAt = Date.now();
         persistDoc(doc);
         renderTabs();
@@ -2292,7 +2362,10 @@ function hello() {
 
     async function copyModalPlain() {
       const v = document.getElementById('modalPlain').value;
-      if (!v) { showToast('추출할 텍스트가 없습니다.', 'warning'); return; }
+      if (!v) {
+        showToast('추출할 텍스트가 없습니다.', 'warning');
+        return;
+      }
       try {
         await navigator.clipboard.writeText(v);
         showToast('순수 텍스트를 복사했습니다.', 'success');
