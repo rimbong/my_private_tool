@@ -262,7 +262,12 @@
     .week-empty { font-size: 0.8rem; color: #cbd5e1; padding: 0.35rem 0.5rem; }
     .week-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.5rem; border-radius: 10px; cursor: pointer; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; user-select: none; }
     .week-row:hover { background: #f8fafc; border-color: var(--border); }
-    .week-check { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+    /* 완료 체크 서클 (◯ → ✅) — 주간·오늘 컴팩트 목록 공용 */
+    .check-circle { width: 20px; height: 20px; flex-shrink: 0; padding: 0; border-radius: 50%; border: 2px solid #cbd5e1; background: transparent; cursor: pointer; position: relative; transition: background 0.15s, border-color 0.15s; }
+    .check-circle:hover { border-color: #16a34a; }
+    .check-circle.done { background: #16a34a; border-color: #16a34a; }
+    .check-circle.done::after { content: ''; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+    body.dark .check-circle { border-color: #44505c; }
     .week-time { font-size: 0.78rem; font-weight: 700; color: #0284c7; min-width: 44px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
     .week-span { flex-shrink: 0; font-size: 0.8rem; }
     .week-title { flex: 1; min-width: 0; font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -275,7 +280,7 @@
     .today-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0.75rem 1.5rem 1.5rem; }
     .today-row { display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.6rem 0.5rem; border-radius: 12px; cursor: pointer; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; user-select: none; }
     .today-row:hover { background: #f8fafc; border-color: var(--border); }
-    .today-check { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin-top: 0.15rem; }
+    .today-row .check-circle { margin-top: 0.1rem; }
     .today-body { flex: 1; min-width: 0; }
     .today-head { display: flex; align-items: center; gap: 0.55rem; }
     .today-row .week-time { min-width: 44px; }
@@ -1298,7 +1303,7 @@
             const row = e.target.closest('.today-row');
             if (!row) return;
             const { id, date } = row.dataset;
-            if (e.target.classList.contains('today-check')) { toggleStatus(id, date); return; }
+            if (e.target.closest('.check-circle')) { toggleStatus(id, date); return; }
             if (e.target.closest('[data-action="del"]')) { deleteTask(id, date); return; }
             openTaskDetailModal(id, date);
         });
@@ -1308,7 +1313,7 @@
             const row = e.target.closest('.week-row');
             if (!row) return;
             const { id, date } = row.dataset;
-            if (e.target.classList.contains('week-check')) {
+            if (e.target.closest('.check-circle')) {
                 toggleStatus(id, date);
             } else {
                 openTaskDetailModal(id, date);
@@ -1835,7 +1840,7 @@
         const previewLine = (task.content || '').split('\n').map(s => s.trim()).find(Boolean) || '';
         const sub = previewLine ? `<div class="today-sub">${esc(previewLine)}</div>` : '';
         row.innerHTML = `
-            <input type="checkbox" class="today-check" ${task.completed ? 'checked' : ''} title="완료/진행 전환">
+            <button type="button" class="check-circle${task.completed ? ' done' : ''}" aria-label="완료/진행 전환" title="완료/진행 전환"></button>
             <div class="today-body">
                 <div class="today-head">
                     <span class="week-time">${tl}</span>
@@ -1903,7 +1908,7 @@
         const catChip = cat.id ? `<span class="week-cat" style="color:${cat.color};">● ${cat.name}</span>` : '';
         const safeTitle = (task.title || '').replace(/"/g, '&quot;');
         row.innerHTML = `
-            <input type="checkbox" class="week-check" ${task.completed ? 'checked' : ''} title="완료/진행 전환">
+            <button type="button" class="check-circle${task.completed ? ' done' : ''}" aria-label="완료/진행 전환" title="완료/진행 전환"></button>
             <span class="week-time">${tl}</span>
             ${span}
             <span class="week-title" title="${safeTitle}">${task.title || '(제목 없음)'}</span>
