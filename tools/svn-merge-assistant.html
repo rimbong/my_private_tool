@@ -148,6 +148,14 @@
     .highlight { background-color: #fef08a; color: #111827; font-weight: bold; border-radius: 2px; padding: 0 2px; }
     .file-item.focused { outline: 2px solid var(--primary); outline-offset: -2px; background: #eff6ff; }
     .rev-card.focused { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
+
+    /* 모바일: 고정 380px 사이드바가 좁은 화면을 잠식하므로, 사이드바를 오버레이로 전환해 콘텐츠가 전체 폭을 쓰게 함 */
+    @media (max-width: 768px) {
+      :root { --sidebar-width: min(86vw, 340px); }
+      .sidebar { position: absolute; top: 0; left: 0; height: 100%; box-shadow: 2px 0 14px rgba(0,0,0,0.18); }
+      header { padding: 0.75rem 1rem; }
+      .tabs { padding: 1rem 1rem 0 1rem; }
+    }
   </style>
 </head>
 <body>
