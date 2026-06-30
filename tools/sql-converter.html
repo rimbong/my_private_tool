@@ -556,8 +556,10 @@
       }
       refreshCounts(qCount, pCount);
     }
-    valueEl.addEventListener('input', livePreview);
-    sqlEl.addEventListener('input', livePreview);
+    const debounce = (fn, ms = 200) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+    const debouncedPreview = debounce(livePreview, 200);   // 키 입력마다 전체 재파싱 방지
+    valueEl.addEventListener('input', debouncedPreview);
+    sqlEl.addEventListener('input', debouncedPreview);
 
     // Ctrl+Enter 로 변환
     [valueEl, sqlEl].forEach(el => el.addEventListener('keydown', (e) => {

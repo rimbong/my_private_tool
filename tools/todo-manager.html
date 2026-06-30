@@ -466,7 +466,7 @@
     </div>
 
     <div class="header-search">
-      <input type="text" id="searchInput" placeholder="🔍 전체 일정·메모 검색..." autocomplete="off" oninput="handleSearch()" onfocus="handleSearch()">
+      <input type="text" id="searchInput" placeholder="🔍 전체 일정·메모 검색..." autocomplete="off" oninput="handleSearchDebounced()" onfocus="handleSearch()">
       <div id="searchPanel" class="search-panel">
         <div id="searchBatchBar" class="search-batch-bar" style="display:none;">
           <label style="font-size:0.75rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:0.3rem;">
@@ -547,7 +547,7 @@
           <div style="padding: 2rem; border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:1rem;">
               <h2 style="margin:0; font-size:1.6rem; font-weight:800; white-space:nowrap;">📝 메모 보드 / Inbox</h2>
               <div style="display:flex; gap:1rem; align-items:center; flex:1; justify-content:flex-end;">
-                  <input type="text" id="memoSearchInput" placeholder="보드 내 메모 검색..." style="width:250px; max-width:100%;" oninput="renderMemoBoard()">
+                  <input type="text" id="memoSearchInput" placeholder="보드 내 메모 검색..." style="width:250px; max-width:100%;" oninput="renderMemoBoardDebounced()">
                   <button class="btn btn-primary" onclick="openMemoModal()" style="white-space:nowrap;">+ 신규 메모 작성</button>
               </div>
           </div>
@@ -2317,6 +2317,10 @@
     }
   }
 
+  // 입력마다 전체 일정/메모를 풀스캔하는 비용을 줄임 (oninput 에서 사용, onfocus 는 즉시)
+  const _todoDebounce = (fn, ms = 200) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+  const handleSearchDebounced = _todoDebounce(() => handleSearch(), 200);
+  const renderMemoBoardDebounced = _todoDebounce(() => renderMemoBoard(), 200);
   function handleSearch() {
     const term = document.getElementById('searchInput').value.toLowerCase(),
         res = document.getElementById('searchResults');

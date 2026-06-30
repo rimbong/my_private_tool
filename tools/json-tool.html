@@ -271,10 +271,12 @@
       document.getElementById('convJson').style.display = fmt === 'json' ? 'inline-flex' : 'none';
       document.getElementById('convXml').style.display = fmt === 'xml' ? 'inline-flex' : 'none';
     }
+    const debounce = (fn, ms = 250) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+    // 입력마다 Blob+parse 전부 도는 비용을 줄임: 크기 표시는 즉시, 저장/검증은 디바운스
+    const debouncedPersistValidate = debounce(() => { saveInput(input.value); autoValidate(); }, 250);
     input.addEventListener('input', () => {
       document.getElementById('inSize').textContent = fmtBytes(new Blob([input.value]).size);
-      saveInput(input.value);
-      autoValidate();
+      debouncedPersistValidate();
     });
 
     function autoValidate() {
