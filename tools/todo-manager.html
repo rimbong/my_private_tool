@@ -271,6 +271,25 @@
     .week-row.done .week-time { color: #94a3b8; }
     body.dark .week-row:hover { background: #161b22; }
 
+    /* 오늘 할 일: 체크리스트 + 내용 미리보기 */
+    .today-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0.75rem 1.5rem 1.5rem; }
+    .today-row { display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.6rem 0.5rem; border-radius: 12px; cursor: pointer; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; user-select: none; }
+    .today-row:hover { background: #f8fafc; border-color: var(--border); }
+    .today-check { width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin-top: 0.15rem; }
+    .today-body { flex: 1; min-width: 0; }
+    .today-head { display: flex; align-items: center; gap: 0.55rem; }
+    .today-row .week-time { min-width: 44px; }
+    .today-row .week-title { font-size: 1rem; }
+    .today-sub { font-size: 0.82rem; color: #94a3b8; margin-top: 0.15rem; padding-left: calc(44px + 0.55rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .today-del { flex-shrink: 0; background: transparent; border: none; cursor: pointer; font-size: 0.85rem; padding: 0.15rem 0.3rem; border-radius: 6px; opacity: 0; transition: opacity 0.12s, background 0.12s; }
+    .today-row:hover .today-del { opacity: 0.6; }
+    .today-del:hover { opacity: 1 !important; background: #fee2e2; }
+    .today-row.done .week-title { text-decoration: line-through; color: #94a3b8; }
+    .today-row.done .week-time { color: #94a3b8; }
+    .today-row.done .today-sub { color: #cbd5e1; }
+    body.dark .today-row:hover { background: #161b22; }
+    body.dark .today-del:hover { background: #3b1d1d; }
+
     /* --- Modal Styles --- */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); align-items: center; justify-content: center; backdrop-filter: blur(8px); }
     .modal-content { background: white; padding: 2.5rem; border-radius: 32px; width: 750px; max-width: 90vw; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 1.5rem; }
@@ -423,7 +442,6 @@
     body.dark textarea { background: #0d1117; color: var(--text-main); border-color: var(--border); }
     /* 인라인 스타일 보정 (배치바 / 진행바 / 상세 텍스트) */
     body.dark #searchBatchBar,
-    body.dark #todayBatchBar,
     body.dark #drawerBatchBar,
     body.dark #rangeBatchBar { background: #21262d !important; border-color: var(--border) !important; }
     body.dark .progress-info > div:last-child { background: #21262d !important; }
@@ -500,16 +518,7 @@
               <h2 id="todayViewTitle" style="margin:0; font-size:1.6rem; font-weight:800;">오늘의 일정</h2>
               <button class="btn btn-primary" onclick="openRangeModal()">+ 추가하기</button>
           </div>
-          <div id="todayBatchBar" style="display:none; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; background:#fff; border-bottom:1px solid var(--border);">
-              <label style="font-size:0.8rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
-                  <input type="checkbox" id="todaySelectAll" onchange="toggleSelectAll('todayTasksList', this.checked)"> 전체 선택
-              </label>
-              <div style="display:flex; gap:0.5rem;">
-                  <button class="btn btn-ghost" style="padding:0.3rem 0.7rem; font-size:0.75rem;" onclick="batchToggleStatus('todayTasksList')">상태 전환</button>
-                  <button class="btn btn-danger" style="padding:0.3rem 0.7rem; font-size:0.75rem;" onclick="batchDelete('todayTasksList')">삭제</button>
-              </div>
-          </div>
-          <div id="todayTasksList" class="drawer-content"></div>
+          <div id="todayTasksList" class="today-list"></div>
       </div>
 
       <div id="weekView" class="today-container">
@@ -1284,7 +1293,15 @@
         };
 
         document.getElementById('drawerContent').addEventListener('click', handleCardAction);
-        document.getElementById('todayTasksList').addEventListener('click', handleCardAction);
+        // 오늘 할 일(체크리스트): 체크=완료 토글 / 🗑=삭제 / 그 외 클릭=상세
+        document.getElementById('todayTasksList').addEventListener('click', (e) => {
+            const row = e.target.closest('.today-row');
+            if (!row) return;
+            const { id, date } = row.dataset;
+            if (e.target.classList.contains('today-check')) { toggleStatus(id, date); return; }
+            if (e.target.closest('[data-action="del"]')) { deleteTask(id, date); return; }
+            openTaskDetailModal(id, date);
+        });
         document.getElementById('rangeTasksList').addEventListener('click', handleCardAction);
         // 주간 뷰(컴팩트 행): 체크박스=완료 토글 / 그 외 클릭=상세 보기
         document.getElementById('weekList').addEventListener('click', (e) => {
@@ -1308,7 +1325,6 @@
             openTaskDetailModal(card.dataset.id, card.dataset.date);
         };
         document.getElementById('drawerContent').addEventListener('dblclick', handleCardDblClick);
-        document.getElementById('todayTasksList').addEventListener('dblclick', handleCardDblClick);
         document.getElementById('rangeTasksList').addEventListener('dblclick', handleCardDblClick);
 
         // Event Delegation for Search Results
@@ -1800,13 +1816,37 @@
         const d = formatDate(new Date()), cont = document.getElementById('todayTasksList');
         cont.innerHTML = '';
         const day = todosOnDate(d);
-
-        // Show/hide batch bar
-        document.getElementById('todayBatchBar').style.display = day.length > 0 ? 'flex' : 'none';
-        document.getElementById('todaySelectAll').checked = false;
-
         if (!day.length) { cont.innerHTML = '<div style="text-align:center; padding:5rem; color:#94a3b8;">오늘 일정이 없습니다.</div>'; return; }
-        day.sort(compareTasks).forEach(t => cont.appendChild(createTaskCard(t)));
+        day.sort(compareTasks).forEach(t => cont.appendChild(createTodayRow(t)));
+    }
+
+    // 오늘 할 일 전용: 체크리스트 한 줄 + 내용 첫 줄 미리보기. 체크=완료, 행=상세, 🗑=삭제.
+    function createTodayRow(task) {
+        const row = document.createElement('div');
+        row.className = 'today-row' + (task.completed ? ' done' : '');
+        row.dataset.id = task.id;
+        row.dataset.date = task.date;
+        const cat = getCategory(task.category);
+        const tl = timeLabel(task);
+        const span = isSpan(task) ? `<span class="week-span" title="기간: ${rangeLabel(task)}">📆</span>` : '';
+        const catChip = cat.id ? `<span class="week-cat" style="color:${cat.color};">● ${cat.name}</span>` : '';
+        const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const safeTitle = (task.title || '').replace(/"/g, '&quot;');
+        const previewLine = (task.content || '').split('\n').map(s => s.trim()).find(Boolean) || '';
+        const sub = previewLine ? `<div class="today-sub">${esc(previewLine)}</div>` : '';
+        row.innerHTML = `
+            <input type="checkbox" class="today-check" ${task.completed ? 'checked' : ''} title="완료/진행 전환">
+            <div class="today-body">
+                <div class="today-head">
+                    <span class="week-time">${tl}</span>
+                    ${span}
+                    <span class="week-title" title="${safeTitle}">${task.title || '(제목 없음)'}</span>
+                    ${catChip}
+                    <button class="today-del" data-action="del" title="삭제">🗑</button>
+                </div>
+                ${sub}
+            </div>`;
+        return row;
     }
 
     // 주간 일정: weekAnchor가 속한 주(월~일)의 일정을 요일별로 묶어 표시
