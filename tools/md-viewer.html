@@ -8,6 +8,7 @@
   <script src="lib/highlight.min.js"></script>
   <script src="lib/db-manager.js"></script>
   <script src="lib/file-drop-handler.js"></script>
+  <script src="lib/purify.min.js"></script>
   <script src="lib/md-renderer.js"></script>
   <script src="lib/toast-utils.js"></script>
   <script src="lib/portal-theme.js"></script>
@@ -490,7 +491,8 @@
       cursor: pointer;   /* 더블클릭으로 크게 보기 가능함을 알림 */
     }
     /* 메인 텍스트 추출 영역만 pointer (모달의 #modalPlain 은 제외) */
-    #previewScroll #plainOutput { cursor: pointer; }
+    /* 텍스트 추출 textarea는 선택(복사)이 목적 → 텍스트 커서 유지 (pointer 강제 금지) */
+    #previewScroll #plainOutput { cursor: text; }
 
     .view-seg {
       display: inline-flex;
@@ -822,10 +824,12 @@
         return entry ? `](${entry.dataUrl})` : m;
       });
     }
-    // 텍스트에 박힌 긴 data: 이미지를 토큰으로 압축 (순수 헬퍼: { text, count } 반환)
+    // 텍스트에 박힌 긴 base64 data: 이미지를 토큰으로 압축.
+    // 부작용: addImage가 imageStore/IndexedDB에 기록함(순수 함수 아님). { text, count } 반환.
+    // base64 한정: URL-encoded data:(SVG의 translate()/rgb() 등 ')' 포함)을 잘못 자르지 않도록.
     function foldDataImages(text) {
       let count = 0;
-      const out = (text || '').replace(/!\[([^\]]*)\]\((data:[^)]+)\)/g, (m, alt, dataUrl) => {
+      const out = (text || '').replace(/!\[([^\]]*)\]\((data:[^,()\s]+;base64,[A-Za-z0-9+/=]+)\)/g, (m, alt, dataUrl) => {
         const token = addImage(dataUrl, alt);
         count++;
         return `![${alt}](img:${token})`;
@@ -2030,7 +2034,9 @@ function hello() {
     }
 
     // 오른쪽 미리보기/텍스트 추출 영역을 더블클릭하면 크게 보기 실행 (모드 무관)
-    function onPreviewDblClick() {
+    function onPreviewDblClick(e) {
+      // 텍스트 추출 textarea(#plainOutput) 안에서는 단어 선택(복사)이 우선 → 크게보기 미발동
+      if (e && e.target && e.target.id === 'plainOutput') return;
       openModal();
     }
 
