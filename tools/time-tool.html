@@ -306,7 +306,10 @@
     function showCalc(id, text) { const el = document.getElementById(id); el.textContent = text; el.style.display = 'block'; }
     function calcDiff() {
       const a = new Date(document.getElementById('diffA').value), b = new Date(document.getElementById('diffB').value);
-      if (isNaN(a) || isNaN(b)) { showToast('두 날짜를 모두 입력하세요.', 'warning'); return; }
+      if (isNaN(a) || isNaN(b)) {
+        showToast('두 날짜를 모두 입력하세요.', 'warning');
+        return;
+      }
       const totalMs = Math.abs(b - a);
       let ms = totalMs;
       const days = Math.floor(ms / 86400000); ms -= days * 86400000;
@@ -316,7 +319,10 @@
     }
     function calcAdd(sign) {
       const base = new Date(document.getElementById('addBase').value);
-      if (isNaN(base)) { showToast('기준 날짜를 입력하세요.', 'warning'); return; }
+      if (isNaN(base)) {
+        showToast('기준 날짜를 입력하세요.', 'warning');
+        return;
+      }
       const amt = sign * (parseInt(document.getElementById('addAmount').value, 10) || 0);
       const unit = document.getElementById('addUnit').value;
       const d = new Date(base);
@@ -335,7 +341,10 @@
     }
     function calcDday() {
       const t = document.getElementById('ddayTarget').value;
-      if (!t) { showToast('목표 날짜를 선택하세요.', 'warning'); return; }
+      if (!t) {
+        showToast('목표 날짜를 선택하세요.', 'warning');
+        return;
+      }
       const target = new Date(t + 'T00:00:00');
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const diff = Math.round((target - today) / 86400000);
@@ -345,8 +354,16 @@
 
     function fromEpoch() {
       const raw = document.getElementById('epochInput').value.trim();
-      if (!raw) { document.getElementById('resultGrid').style.display = 'none'; document.getElementById('tzList').style.display = 'none'; document.getElementById('tsErr').style.display='none'; return; }
-      if (!/^-?\d+$/.test(raw)) { showTsError('숫자만 입력하세요.'); return; }
+      if (!raw) {
+        document.getElementById('resultGrid').style.display = 'none';
+        document.getElementById('tzList').style.display = 'none';
+        document.getElementById('tsErr').style.display='none';
+        return;
+      }
+      if (!/^-?\d+$/.test(raw)) {
+        showTsError('숫자만 입력하세요.');
+        return;
+      }
       let num = Number(raw);
       // 13자리 미만이면 초 단위로 보고 ms 로 환산 (13자리 이상은 이미 ms)
       if (raw.replace('-', '').length < 13) {
@@ -361,7 +378,10 @@
         }
       }
       const d = new Date(num);
-      if (isNaN(d.getTime())) { showTsError('유효하지 않은 타임스탬프입니다.'); return; }
+      if (isNaN(d.getTime())) {
+        showTsError('유효하지 않은 타임스탬프입니다.');
+        return;
+      }
       // 날짜 입력칸 동기화
       syncDateInput(d);
       showResult(d);
@@ -373,7 +393,10 @@
         return;
       }
       const d = new Date(raw);
-      if (isNaN(d.getTime())) { showTsError('유효하지 않은 날짜입니다.'); return; }
+      if (isNaN(d.getTime())) {
+        showTsError('유효하지 않은 날짜입니다.');
+        return;
+      }
       document.getElementById('epochInput').value = Math.floor(d.getTime() / 1000);
       showResult(d);
     }
@@ -424,7 +447,10 @@
           hasStep = true;
         }
         let lo, hi;
-        if (range === '*') { lo = min; hi = max; }
+        if (range === '*') {
+          lo = min;
+          hi = max;
+        }
         else if (range.includes('-')) {
           const segs = range.split('-');   // 1-5-7, -5 등 차단
           if (segs.length !== 2 || !intRe.test(segs[0]) || !intRe.test(segs[1])) {
@@ -504,7 +530,12 @@
       errBox.style.display = 'none';
 
       let raw = document.getElementById('cronInput').value.trim();
-      if (!raw) { fieldsBox.style.display = 'none'; descBox.style.display = 'none'; nextWrap.style.display = 'none'; return; }
+      if (!raw) {
+        fieldsBox.style.display = 'none';
+        descBox.style.display = 'none';
+        nextWrap.style.display = 'none';
+        return;
+      }
 
       // 별칭(@daily 등) 확장
       const alias = CRON_ALIASES[raw.toLowerCase()];
@@ -531,7 +562,10 @@
       try { parsed = fields.map((f, i) => parseField(f, ranges[i][0], ranges[i][1])); }
       catch (e) { failMsg(e.message); return; }
       // DOW 7(일요일) → 0 으로 정규화
-      if (parsed[dowIdx].has(7)) { parsed[dowIdx].delete(7); parsed[dowIdx].add(0); }
+      if (parsed[dowIdx].has(7)) {
+        parsed[dowIdx].delete(7);
+        parsed[dowIdx].add(0);
+      }
 
       const sets = hasSec
         ? { sec: parsed[0], min: parsed[1], hour: parsed[2], dom: parsed[3], mon: parsed[4], dow: parsed[5] }
@@ -572,17 +606,34 @@
 
       const domFull = dom.size === 31, dowFull = dow.size === 7;
       while (results.length < count && d <= limit) {
-        if (!mon.has(d.getMonth() + 1)) { d.setMonth(d.getMonth() + 1, 1); d.setHours(0, 0, 0, 0); continue; }
+        if (!mon.has(d.getMonth() + 1)) {
+          d.setMonth(d.getMonth() + 1, 1);
+          d.setHours(0, 0, 0, 0);
+          continue;
+        }
         let dayOk;
         if (!domFull && !dowFull) {
           dayOk = dom.has(d.getDate()) || dow.has(d.getDay()); // 둘 다 제한 시 OR
         } else {
           dayOk = (domFull || dom.has(d.getDate())) && (dowFull || dow.has(d.getDay()));
         }
-        if (!dayOk) { d.setDate(d.getDate() + 1); d.setHours(0, 0, 0, 0); continue; }
-        if (!hour.has(d.getHours())) { d.setHours(d.getHours() + 1, 0, 0, 0); continue; }
-        if (!min.has(d.getMinutes())) { d.setMinutes(d.getMinutes() + 1, 0); continue; }
-        if (!sec.has(d.getSeconds())) { d.setSeconds(d.getSeconds() + 1); continue; }
+        if (!dayOk) {
+          d.setDate(d.getDate() + 1);
+          d.setHours(0, 0, 0, 0);
+          continue;
+        }
+        if (!hour.has(d.getHours())) {
+          d.setHours(d.getHours() + 1, 0, 0, 0);
+          continue;
+        }
+        if (!min.has(d.getMinutes())) {
+          d.setMinutes(d.getMinutes() + 1, 0);
+          continue;
+        }
+        if (!sec.has(d.getSeconds())) {
+          d.setSeconds(d.getSeconds() + 1);
+          continue;
+        }
         results.push(new Date(d));
         d.setSeconds(d.getSeconds() + 1);
       }
