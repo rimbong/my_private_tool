@@ -342,6 +342,14 @@
       let num = Number(raw);
       // 13자리 미만이면 초 단위로 보고 ms 로 환산 (13자리 이상은 이미 ms)
       if (raw.replace('-', '').length < 13) num *= 1000;
+      // 자릿수 휴리스틱은 1970~2001 사이 '밀리초' 값(10~12자리)을 초로 오판해 ×1000 →
+      // 연도가 비현실적이 됨(예: 978307200000 → 32970년). 결과 연도가 비정상이면 밀리초로 재해석하고 경고.
+      if (new Date(num).getFullYear() > 9999) {
+        num = Number(raw);   // ×1000 취소 — 입력은 초가 아니라 밀리초였음
+        if (typeof showToast === 'function') {
+          showToast('자릿수가 모호한 값이라 밀리초로 해석했습니다(초로 보면 연도가 비현실적).', 'warning', 4500);
+        }
+      }
       const d = new Date(num);
       if (isNaN(d.getTime())) { showTsError('유효하지 않은 타임스탬프입니다.'); return; }
       // 날짜 입력칸 동기화
