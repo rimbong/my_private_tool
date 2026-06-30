@@ -314,9 +314,14 @@
       const re = /\s*(null|[\s\S]*?\([A-Za-z0-9_$.]+\))\s*(?:,|$)/g;
       let m, guard = 0, lastEnd = 0;
       while ((m = re.exec(s)) !== null && guard++ < 5000) {
-        if (m[0] === '') { re.lastIndex++; continue; }
+        if (m[0] === '') {
+          re.lastIndex++;
+          continue;
+        }
         let token = m[1].trim();
-        if (/^null$/i.test(token)) { out.push({ value: null, type: null }); }
+        if (/^null$/i.test(token)) {
+          out.push({ value: null, type: null });
+        }
         else {
           const tm = token.match(/^([\s\S]*)\(([A-Za-z0-9_$.]+)\)$/);
           if (tm) {
@@ -419,7 +424,10 @@
           } else {
             inStr = false;
           } }
-        } else if (c === "'") { inStr = true; out += c; }
+        } else if (c === "'") {
+          inStr = true;
+          out += c;
+        }
         else if (c === '?') {
           out += (i < params.length ? bindValue(params[i++]) : '?');
         } else {
@@ -465,7 +473,11 @@
       qe.textContent = `? ${qCount}개`;
 
       const alert = $('mismatchAlert');
-      if (qCount === 0) { alert.textContent = ''; pe.className = qe.className = 'count'; return; }
+      if (qCount === 0) {
+        alert.textContent = '';
+        pe.className = qe.className = 'count';
+        return;
+      }
       if (qCount === pCount) {
         alert.textContent = `✓ ? ${qCount} = 파라미터 ${pCount}`;
         alert.className = 'ok';
@@ -480,7 +492,10 @@
     /* ---------- 메인 동작 ---------- */
     function convertSql() {
       const rawSql = sqlEl.value;
-      if (!rawSql.trim()) { showToast('SQL을 입력해주세요.', 'warning'); return; }
+      if (!rawSql.trim()) {
+        showToast('SQL을 입력해주세요.', 'warning');
+        return;
+      }
 
       // 로그 블록이면 Parameters(+ iBATIS Types) 줄을 자동으로 파라미터 칸에 채움
       if (!valueEl.value.trim()) {
@@ -519,19 +534,28 @@
 
     function formatResult() {
       const cur = resultEl.value || cleanSql(sqlEl.value);
-      if (!cur.trim()) { showToast('포맷할 내용이 없습니다.', 'warning'); return; }
+      if (!cur.trim()) {
+        showToast('포맷할 내용이 없습니다.', 'warning');
+        return;
+      }
       resultEl.value = formatSql(cur);
       showToast('포맷 완료', 'success');
     }
 
     async function copyResult() {
-      if (!resultEl.value) { showToast('복사할 결과가 없습니다.', 'warning'); return; }
+      if (!resultEl.value) {
+        showToast('복사할 결과가 없습니다.', 'warning');
+        return;
+      }
       await copyText(resultEl.value);
       showToast('클립보드에 복사되었습니다.', 'success');
     }
 
     function downloadResult() {
-      if (!resultEl.value) { showToast('저장할 결과가 없습니다.', 'warning'); return; }
+      if (!resultEl.value) {
+        showToast('저장할 결과가 없습니다.', 'warning');
+        return;
+      }
       download('converted_query.sql', resultEl.value);
     }
 
@@ -566,7 +590,10 @@
       const body = $('bindBody');
       body.innerHTML = '';
       const n = Math.max(qCount, params.length);
-      if (n === 0) { $('bindSection').style.display = 'none'; return; }
+      if (n === 0) {
+        $('bindSection').style.display = 'none';
+        return;
+      }
       for (let i = 0; i < n; i++) {
         const tr = document.createElement('tr');
         const idx = document.createElement('td'); idx.className = 'idx'; idx.textContent = i + 1;
@@ -636,7 +663,10 @@
 
     // Ctrl+Enter 로 변환
     [valueEl, sqlEl].forEach(el => el.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); convertSql(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        convertSql();
+      }
     }));
 
     // 파일 드래그앤드롭 (.sql/.log/.txt 등)
