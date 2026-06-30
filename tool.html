@@ -125,6 +125,14 @@
       body.dark #selectViewPage::after { color: #6e7681; background: #161b22; border-color: #30363d; }
     }
 
+    /* --- 터치/호버 불가 기기(태블릿·터치 노트북, ≥641px): 자동 숨김 끄고 바 고정 --- */
+    /*     호버가 없어 내비/푸터를 끌어올 수 없으므로 항상 보이게 한다 --- */
+    @media (min-width: 641px) and (hover: none) {
+      #selectViewPage { position: static; transform: none; }
+      #selectViewPage::after { display: none; }
+      footer { position: static; transform: none; box-shadow: none; }
+    }
+
     /* --- Responsive (tablet / mobile): 햄버거 메뉴로 접기 --- */
     @media (max-width: 640px) {
       #selectViewPage { padding: 0.5rem 0.6rem; gap: 0.4rem; flex-wrap: nowrap; }
