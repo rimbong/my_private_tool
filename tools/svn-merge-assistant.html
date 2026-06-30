@@ -235,6 +235,7 @@
 
   <script src="lib/db-manager.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/modal-utils.js"></script>
   <script>
     let svnData = [];
     let fileMap = {};
@@ -792,7 +793,7 @@
     }
 
     async function clearStatus() {
-      if (confirm('주의: 모든 데이터가 초기화됩니다.')) {
+      if (await confirmModal('주의: 모든 데이터가 초기화됩니다.', { danger: true, okText: '초기화' })) {
         const stores = ['config', 'rawData', 'mergeStatus', 'mergeMemos'];
         await dbManager.clearAll(stores);
         // localStorage도 함께 정리 (호환성)
@@ -848,7 +849,7 @@
       reader.onload = async (e) => {
         try {
           const data = JSON.parse(e.target.result);
-          if (confirm('데이터를 가져올까요? (기존 데이터는 덮어씌워집니다)')) {
+          if (await confirmModal('데이터를 가져올까요? (기존 데이터는 덮어씌워집니다)', { okText: '가져오기' })) {
             showLoading();
             const stores = ['config', 'rawData', 'mergeStatus', 'mergeMemos'];
             await dbManager.clearAll(stores);

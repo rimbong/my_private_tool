@@ -11,6 +11,7 @@
   <script src="lib/purify.min.js"></script>
   <script src="lib/md-renderer.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/modal-utils.js"></script>
   <script src="lib/portal-theme.js"></script>
   <style>
     :root {
@@ -994,10 +995,10 @@
       return doc;
     }
 
-    function renameDoc(id) {
+    async function renameDoc(id) {
       const doc = docs.find(d => d.id === id);
       if (!doc) return;
-      const name = prompt('문서 이름을 입력하세요 (비우면 자동 이름으로 복귀):', doc.title);
+      const name = await promptModal('문서 이름을 입력하세요 (비우면 자동 이름으로 복귀):', doc.title);
       if (name === null) return;
       const trimmed = name.trim();
       if (trimmed) { doc.customTitle = true; doc.title = trimmed; }
@@ -1007,12 +1008,12 @@
       persistDoc(doc);
     }
 
-    function deleteDoc(id, e) {
+    async function deleteDoc(id, e) {
       if (e) e.stopPropagation();
       const idx = docs.findIndex(d => d.id === id);
       if (idx === -1) return;
       const doc = docs[idx];
-      if (!confirm(`'${doc.title}' 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`)) return;
+      if (!(await confirmModal(`'${doc.title}' 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`, { danger: true, okText: '삭제' }))) return;
       if (id !== activeDocId) saveToDB();   // 활성 문서 편집분 보존
       docs.splice(idx, 1);
       visibleIds = visibleIds.filter(v => v !== id);
@@ -1314,10 +1315,10 @@
     }
 
     // 선택한 문서들을 영구 삭제
-    function bulkDelete() {
+    async function bulkDelete() {
       if (!dmSelected.size) { showToast('선택된 문서가 없습니다.', 'info'); return; }
       const ids = [...dmSelected];
-      if (!confirm(`${ids.length}개 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`)) return;
+      if (!(await confirmModal(`${ids.length}개 문서를 영구 삭제할까요? 되돌릴 수 없습니다.`, { danger: true, okText: '삭제' }))) return;
       const deletingActive = ids.includes(activeDocId);
       if (!deletingActive) saveToDB();   // 활성 문서 편집분 보존
       ids.forEach(removeDocCore);
@@ -1966,9 +1967,9 @@ function hello() {
       }
     }
 
-    function clearAll() {
+    async function clearAll() {
       // 현재 문서의 내용만 비운다 (다른 탭/공유 이미지는 보존)
-      if (confirm('현재 문서의 내용을 비우시겠습니까?')) {
+      if (await confirmModal('현재 문서의 내용을 비우시겠습니까?')) {
         editor.value = '';
         updatePreview();
         saveToDB();

@@ -240,6 +240,7 @@
   <script src="lib/db-manager.js"></script>
   <script src="lib/file-drop-handler.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/modal-utils.js"></script>
   <script src="lib/portal-theme.js"></script>
   <script>
     // pdf.js 워커: HTTP에서는 실제 워커, file://에서 스폰 실패 시 메인스레드로 자동 폴백(경고만)
@@ -393,7 +394,7 @@
       const idx = docs.findIndex(d => d.id === id);
       if (idx === -1) return;
       const d = docs[idx];
-      if (!confirm(`'${d.name}'을(를) 목록에서 제거할까요?${d.saved ? ' (저장본도 삭제됩니다)' : ''}`)) return;
+      if (!(await confirmModal(`'${d.name}'을(를) 목록에서 제거할까요?${d.saved ? ' (저장본도 삭제됩니다)' : ''}`, { danger: true, okText: '제거' }))) return;
       if (d.saved) { try { await dbManager.removeItem('pdfs', id); } catch (e) {} }
       docs.splice(idx, 1);
       if (activeId === id) { activeId = null; clearViewer(); }

@@ -230,6 +230,7 @@
   <script src="lib/portal-theme.js"></script>
   <script src="lib/file-drop-handler.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/modal-utils.js"></script>
   <script src="lib/db-manager.js"></script>
 </head>
 <body>
@@ -645,10 +646,10 @@
       return c;
     }
 
-    function renameCompare(id) {
+    async function renameCompare(id) {
       const c = compares.find(x => x.id === id);
       if (!c) return;
-      const name = prompt('비교 이름을 입력하세요 (비우면 자동 이름으로 복귀):', c.title);
+      const name = await promptModal('비교 이름을 입력하세요 (비우면 자동 이름으로 복귀):', c.title);
       if (name === null) return;
       const trimmed = name.trim();
       if (trimmed) { c.customTitle = true; c.title = trimmed; }
@@ -658,13 +659,13 @@
       persistCompare(c);
     }
 
-    function deleteCompare(id, e) {
+    async function deleteCompare(id, e) {
       if (e) e.stopPropagation();
       const idx = compares.findIndex(c => c.id === id);
       if (idx === -1) return;
       const c = compares[idx];
       const hasContent = (c.left && c.left.trim()) || (c.right && c.right.trim());
-      if (hasContent && !confirm(`'${c.title}' 비교를 닫을까요? 되돌릴 수 없습니다.`)) return;
+      if (hasContent && !(await confirmModal(`'${c.title}' 비교를 닫을까요? 되돌릴 수 없습니다.`, { danger: true, okText: '닫기' }))) return;
       if (id !== activeCompareId) saveActiveCompare();   // 활성 비교 편집분 보존
       compares.splice(idx, 1);
       if (dbManager.db) dbManager.removeItem('compares', id).catch(() => {});

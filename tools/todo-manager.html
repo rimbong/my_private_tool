@@ -854,6 +854,7 @@
   <script src="lib/purify.min.js"></script>
   <script src="lib/md-renderer.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/modal-utils.js"></script>
   <script src="lib/portal-theme.js"></script>
   <script id="main-script">
     /* --- State Management --- */
@@ -1670,7 +1671,7 @@
     }
 
     async function deleteStickyMemo(id) {
-        if (confirm('이 메모를 삭제할까요?')) {
+        if (await confirmModal('이 메모를 삭제할까요?', { danger: true, okText: '삭제' })) {
             const tx = dbManager.db.transaction('stickyMemos', 'readwrite');
             tx.objectStore('stickyMemos').delete(id);
             await new Promise(r => tx.oncomplete = r);
@@ -1980,7 +1981,7 @@
             showToast('선택된 항목이 없습니다.', 'warning');
             return;
         }
-        if (!confirm(`${selected.length}개의 항목을 삭제할까요?`)) return;
+        if (!(await confirmModal(`${selected.length}개의 항목을 삭제할까요?`, { danger: true, okText: '삭제' }))) return;
 
         // 하나의 트랜잭션으로 통합 처리 (todos와 stickyMemos 동시 잠금)
         const tx = dbManager.db.transaction(['todos', 'stickyMemos'], 'readwrite');
@@ -2115,7 +2116,7 @@
     }
     
     async function deleteTask(id, d) {
-        if (confirm('이 일정을 삭제할까요?')) {
+        if (await confirmModal('이 일정을 삭제할까요?', { danger: true, okText: '삭제' })) {
             const tx = dbManager.db.transaction('todos', 'readwrite');
             tx.objectStore('todos').delete(id);
             await new Promise(r => tx.oncomplete = r);
@@ -2617,7 +2618,7 @@
                 throw new Error('지원하지 않는 백업 파일 형식입니다.');
             }
 
-            if (confirm('데이터를 복구할까요? 기존 데이터는 삭제됩니다.')) {
+            if (await confirmModal('데이터를 복구할까요? 기존 데이터는 삭제됩니다.', { danger: true, okText: '복구' })) {
                 await dbManager.clearAll(['todos', 'stickyMemos']);
                 const tx = dbManager.db.transaction(['todos', 'stickyMemos'], 'readwrite');
                 const todoStore = tx.objectStore('todos');
