@@ -508,16 +508,19 @@
       }
       if (typeof value === 'object') {
         // @키 = 속성, #text = 텍스트, 나머지 = 자식 엘리먼트 (xmlToJson 규약과 대칭)
+        // 단, 속성/텍스트는 '원시값'일 때만. 객체/배열이면 [object Object] 손상 대신 일반 엘리먼트로 폴백.
+        // (xmlToJson 이 만든 @attr·#text 는 항상 문자열이라 라운드트립은 그대로 유지됨)
+        const isXmlPrimitive = v => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean';
         let attrStr = '';
         let textVal;
         const childEntries = [];
         Object.entries(value).forEach(([k, v]) => {
-          if (k[0] === '@') {
+          if (k.length > 1 && k[0] === '@' && isXmlPrimitive(v)) {   // 빈 '@' 가드 + 원시값만 속성
             attrStr += ` ${k.slice(1).replace(/[^\w.-]/g, '_')}="${escapeXml(v)}"`;
-          } else if (k === '#text') {
+          } else if (k === '#text' && isXmlPrimitive(v)) {           // 원시값일 때만 텍스트노드
             textVal = v;
           } else {
-            childEntries.push([k, v]);
+            childEntries.push([k, v]);                               // 그 외(객체·배열·빈@·#text객체)는 엘리먼트
           }
         });
         const hasText = textVal !== undefined && textVal !== null && textVal !== '';
