@@ -175,6 +175,9 @@
       background: rgba(0, 0, 0, 0.8);
       backdrop-filter: blur(4px);
     }
+    /* 표시 시 부드러운 fade-in (display:none↔flex 전환에서도 동작하도록 transition 대신 keyframe 사용) */
+    @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal[style*="flex"], .modal.center[style*="flex"] { animation: modalFadeIn .16s ease-out; }
 
     .modal-content {
       background: var(--header-bg);
