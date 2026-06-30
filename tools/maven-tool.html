@@ -128,11 +128,17 @@
   <script src="lib/shared-utils.js"></script>
   <script src="lib/toast-utils.js"></script>
   <script>
-    window.addEventListener('message', (event) => {
-        if (event.data.type !== 'config-data') return;
-
-        const configObj = event.data.data || {};
-        const tomcatObj = configObj.tomcatObj || null;
+    // 단독 실행에서도 동작: 바인딩/초기화는 DOMContentLoaded 1회, message는 상태 갱신만.
+    const PARENT_ORIGIN = (location.origin && location.origin !== 'null') ? location.origin : '*';
+    // pom 값에 &,<,>," 들어가면 무효 XML → 모든 보간값 이스케이프
+    const escXml = s => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    let configObj = {};
+    let tomcatObj = null;
+    function applyConfig(cfg) {
+        configObj = cfg || {};
+        tomcatObj = configObj.tomcatObj || null;
+        setDefaultProjectHome();
+    }
 
         function setDefaultProjectHome() {
             if (configObj.workSpaces && configObj.workAndProjectName) {
@@ -317,16 +323,21 @@
             document.getElementById('resultCard').classList.remove('hidden');
         }
 
-        // Event Listeners
+    // 포털 config 주입 (origin 검증) — 상태만 갱신
+    window.addEventListener('message', (event) => {
+        if (!event.data || event.data.type !== 'config-data') return;
+        if (event.origin !== window.location.origin) return;
+        applyConfig(event.data.data);
+    });
+
+    // 바인딩 + 초기화 (단독 실행에서도 동작)
+    document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('generateButton').addEventListener('click', generatePomXml);
         document.getElementById('resetButton').addEventListener('click', resetAll);
         document.getElementById('copyPomButton').addEventListener('click', () => {
             copyAndAlert(document.getElementById('pomOutput').value, document.getElementById('copyPomAlert'));
         });
-
-        // Initial setup
         setDefaultProjectHome();
-        checkConfig();
     });
   </script>
 </body>

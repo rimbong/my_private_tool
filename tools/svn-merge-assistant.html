@@ -247,6 +247,20 @@
     let sortOrder = "desc"; // 'desc' or 'asc'
     let searchTimeout = null;
 
+    // ===== 이스케이프 헬퍼 (모든 innerHTML 보간/검색 하이라이트에 사용) =====
+    const escHtml = s => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const escAttr = s => escHtml(s).replace(/"/g, '&quot;');
+    const escRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');   // 정규식 메타 무력화(검색 크래시 방지)
+    // 인라인 onclick="fn('...')" 속성 안의 JS 문자열로 안전하게 넣기 (따옴표/HTML 모두 차단)
+    const escJs = s => String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    // 텍스트를 먼저 이스케이프한 뒤, 검색어 매치를 <mark>로 감싼다(크래시·XSS 동시 차단)
+    function highlightTerm(text, term) {
+      const safe = escHtml(text);
+      if (!term) return safe;
+      try { return safe.replace(new RegExp('(' + escRe(escHtml(term)) + ')', 'gi'), '<mark class="highlight">$1</mark>'); }
+      catch (e) { return safe; }
+    }
+
     // 탭 간 동기화 채널
     const syncChannel = new BroadcastChannel('svn_merge_sync');
     syncChannel.onmessage = (e) => { if (e.data.type === 'update') syncData(); };
@@ -438,7 +452,7 @@
     function renderExtensionFilters(exts) {
       const container = document.getElementById('extensionFilters');
       container.innerHTML = `<span class="ext-tag ${!extensionFilter ? 'active' : ''}" onclick="setExtFilter('')">ALL</span>`;
-      exts.forEach(ext => { container.innerHTML += `<span class="ext-tag ${extensionFilter === ext ? 'active' : ''}" onclick="setExtFilter('${ext}')">${ext.toUpperCase()}</span>`; });
+      exts.forEach(ext => { container.innerHTML += `<span class="ext-tag ${extensionFilter === ext ? 'active' : ''}" onclick="setExtFilter('${escJs(ext)}')">${escHtml(String(ext).toUpperCase())}</span>`; });
     }
 
     function setExtFilter(ext) {
@@ -657,12 +671,13 @@
       let filesHtml = '<div class="file-list">';
       displayFiles.forEach(f => {
         const key = `${item.rev}:${f}`, isMerged = mergeStatus[key];
-        const highlightedPath = searchTerm ? f.replace(new RegExp(`(${searchTerm})`, 'gi'), '<mark class="highlight">$1</mark>') : f;
-        filesHtml += `<div class="file-item ${isMerged ? 'merged' : ''}" data-key="${key}"><label class="toggle-label"><input type="checkbox" class="main-check" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${item.rev}, '${f}')"><span class="file-path" title="${f}">${highlightedPath}</span></label><div class="action-group"><span class="memo-indicator ${mergeMemos[key] ? 'active' : ''}" data-memo-key="${key}" onclick="openMemo(${item.rev}, '${f}')" title="${mergeMemos[key] || '메모 작성'}">📝</span><button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div></div>`;
+        const highlightedPath = highlightTerm(f, searchTerm);
+        const fj = escJs(f);
+        filesHtml += `<div class="file-item ${isMerged ? 'merged' : ''}" data-key="${escAttr(key)}"><label class="toggle-label"><input type="checkbox" class="main-check" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${item.rev}, '${fj}')"><span class="file-path" title="${escAttr(f)}">${highlightedPath}</span></label><div class="action-group"><span class="memo-indicator ${mergeMemos[key] ? 'active' : ''}" data-memo-key="${escAttr(key)}" onclick="openMemo(${item.rev}, '${fj}')" title="${escAttr(mergeMemos[key] || '메모 작성')}">📝</span><button class="icon-btn" onclick="copyPath(event, '${fj}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${fj}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div></div>`;
       });
       filesHtml += '</div>';
       
-      const highlightedMsg = searchTerm ? item.msg.replace(new RegExp(`(${searchTerm})`, 'gi'), '<mark class="highlight">$1</mark>') : item.msg;
+      const highlightedMsg = highlightTerm(item.msg, searchTerm);
       card.innerHTML = `<div class="rev-header"><span class="rev-id">r${item.rev}</span><span class="rev-msg">${highlightedMsg}</span></div>${filesHtml}`;
       return card;
     }
@@ -672,8 +687,9 @@
       const historyHtml = info.revs.slice().sort((a,b) => b-a).map(r => `<span class="badge ${r === info.latestRev ? 'badge-latest' : 'badge-history'}">r${r}</span>`).join(' ');
       
       const fileName = f.split('/').pop();
-      const highlightedFileName = searchTerm ? fileName.replace(new RegExp(`(${searchTerm})`, 'gi'), '<mark class="highlight">$1</mark>') : fileName;
-      const highlightedPath = searchTerm ? f.replace(new RegExp(`(${searchTerm})`, 'gi'), '<mark class="highlight">$1</mark>') : f;
+      const highlightedFileName = highlightTerm(fileName, searchTerm);
+      const highlightedPath = highlightTerm(f, searchTerm);
+      const fj = escJs(f);
 
       const div = document.createElement('div');
       div.className = `file-item ${allRevsMerged ? 'merged' : ''} ${index === virtualState.file.focusedIndex ? 'focused' : ''}`;
@@ -681,7 +697,7 @@
       div.style.height = virtualState.file.itemHeight + 'px';
       div.style.borderBottom = "1px solid #f3f4f6";
       div.style.boxSizing = "border-box";
-      div.innerHTML = `<label class="toggle-label" style="padding: 0.75rem;"><input type="checkbox" class="main-check" ${allRevsMerged ? 'checked' : ''} onchange="toggleFileAllMerge('${f}', this.checked)"><div style="display:flex; flex-direction:column; flex:1; overflow:hidden;"><div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;"><strong style="font-size:0.95rem;">${highlightedFileName}</strong><div style="display:flex; gap:3px; flex-wrap: wrap;">${historyHtml}</div></div><span style="font-size:0.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${highlightedPath}</span></div></label><div class="action-group" style="padding-right: 0.75rem;"><span class="memo-indicator ${mergeMemos[latestKey] ? 'active' : ''}" data-memo-key="${latestKey}" onclick="openMemo(${info.latestRev}, '${f}')" title="${mergeMemos[latestKey] || '메모 작성'}">📝</span><button class="icon-btn" onclick="copyPath(event, '${f}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${f}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div>`;
+      div.innerHTML = `<label class="toggle-label" style="padding: 0.75rem;"><input type="checkbox" class="main-check" ${allRevsMerged ? 'checked' : ''} onchange="toggleFileAllMerge('${fj}', this.checked)"><div style="display:flex; flex-direction:column; flex:1; overflow:hidden;"><div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;"><strong style="font-size:0.95rem;">${highlightedFileName}</strong><div style="display:flex; gap:3px; flex-wrap: wrap;">${historyHtml}</div></div><span style="font-size:0.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${highlightedPath}</span></div></label><div class="action-group" style="padding-right: 0.75rem;"><span class="memo-indicator ${mergeMemos[latestKey] ? 'active' : ''}" data-memo-key="${escAttr(latestKey)}" onclick="openMemo(${info.latestRev}, '${fj}')" title="${escAttr(mergeMemos[latestKey] || '메모 작성')}">📝</span><button class="icon-btn" onclick="copyPath(event, '${fj}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${fj}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div>`;
       return div;
     }
 

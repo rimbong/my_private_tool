@@ -81,7 +81,13 @@
             info: 'ℹ️'
         };
         
-        toast.innerHTML = `<span>${icons[type] || ''}</span><span>${message}</span>`;
+        // 메시지는 사용자 입력(파일명/JSON키/메모 등)을 포함할 수 있으므로 textContent로 삽입(XSS 차단).
+        const iconEl = document.createElement('span');
+        iconEl.textContent = icons[type] || '';
+        const msgEl = document.createElement('span');
+        msgEl.textContent = (message == null ? '' : String(message));
+        toast.appendChild(iconEl);
+        toast.appendChild(msgEl);
         container.appendChild(toast);
 
         // 자동 제거

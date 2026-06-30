@@ -103,13 +103,18 @@
   <script src="lib/shared-utils.js"></script>
   <script src="lib/toast-utils.js"></script>
   <script>
-    window.addEventListener('message', (event) => {
-        if (event.data.type !== 'config-data') return;
+    // 단독 실행에서도 동작하도록: 바인딩/초기화는 DOMContentLoaded 1회, message는 상태 저장만.
+    const PARENT_ORIGIN = (location.origin && location.origin !== 'null') ? location.origin : '*';
+    let configObj = {};
+    let tomcatObj = {};
+    let tomcatJson = {};
+    let vmJson = {};
 
-        const configObj = event.data.data || {};
-        let tomcatObj = configObj.tomcatObj || {};
-        let tomcatJson = {};
-        let vmJson = {};
+    function applyConfig(cfg) {
+        configObj = cfg || {};
+        tomcatObj = configObj.tomcatObj || {};
+        initConfig();
+    }
 
         function initConfig() {
             document.querySelector('#tomcatHomeVer7').value = tomcatObj['7']?.wasHome || '';
@@ -248,7 +253,15 @@
             tomcatJson["lib" + key] = { lib: tomcatArray };
         }
 
-        // Event Listeners
+    // 포털에서 config 주입 (origin 검증) — 상태만 갱신
+    window.addEventListener('message', (event) => {
+        if (!event.data || event.data.type !== 'config-data') return;
+        if (event.origin !== window.location.origin) return;   // 신뢰 출처만 수용
+        applyConfig(event.data.data);
+    });
+
+    // 바인딩 + 초기화 (단독 실행에서도 동작)
+    document.addEventListener('DOMContentLoaded', () => {
         document.querySelector("#createConfigFile").addEventListener("click", createConfigFile);
         document.querySelectorAll(".tomcatFile").forEach(el => el.addEventListener("change", inputTomcatLibDir));
         document.querySelectorAll(".tomcatHome").forEach(el => el.addEventListener("change", inputTomcatHomeDir));
@@ -257,8 +270,6 @@
         document.querySelector('#jvmConfig').addEventListener('change', setWasVm);
         document.querySelector('#convertJVMConfig').addEventListener('click', convertJVMConfig);
         document.querySelector('#licenseKey').addEventListener('change', setLicenseKey);
-
-        // Initial Load
         initConfig();
     });
   </script>

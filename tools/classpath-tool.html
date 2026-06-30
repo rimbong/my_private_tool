@@ -102,17 +102,16 @@
   <script src="lib/shared-utils.js"></script>
   <script src="lib/toast-utils.js"></script>
   <script>
-    window.addEventListener('message', (event) => {
-        if (event.data.type !== 'config-data') return;
-
-        const configObj = event.data.data || {};
-        const tomcatObj = configObj.tomcatObj || null;
-
-        const DOM_FORM_START = '<classpathentry kind="lib" path="';
-        const DOM_FORM_END = '"/>\n';
-        const EXCEPT_FILE_ARRAY = [];
-        const ACCEPT_TOMCAT_FILE_ARRAY = ["servlet", "jsp-api"];
-        let fileCount = 0;
+    // 단독 실행에서도 동작: 바인딩/초기화는 DOMContentLoaded 1회, message는 상태 갱신만.
+    const DOM_FORM_START = '<classpathentry kind="lib" path="';
+    const DOM_FORM_END = '"/>\n';
+    const EXCEPT_FILE_ARRAY = [];
+    const ACCEPT_TOMCAT_FILE_ARRAY = ["servlet", "jsp-api"];
+    let configObj = {};
+    let tomcatObj = null;
+    let fileCount = 0;
+    let currentPrefix = '';   // prefix 경로를 DOM(innerHTML) 대신 JS 변수로 보관(self-XSS 방지)
+    function applyConfig(cfg) { configObj = cfg || {}; tomcatObj = configObj.tomcatObj || null; }
 
         function checkConfig() {
             if (!tomcatObj || Object.keys(tomcatObj).length === 0) {
@@ -243,15 +242,20 @@
             copyAndAlert(event.target.value, document.getElementById('webappPathAlert'));
         }
 
-        // Event Listeners
+    // 포털 config 주입 (origin 검증) — 상태만 갱신
+    window.addEventListener('message', (event) => {
+        if (!event.data || event.data.type !== 'config-data') return;
+        if (event.origin !== window.location.origin) return;
+        applyConfig(event.data.data);
+    });
+
+    // 바인딩 (단독 실행에서도 동작)
+    document.addEventListener('DOMContentLoaded', () => {
         document.getElementById("plusWebappPath").addEventListener("change", plusWebappPath);
         document.getElementById("classpath").addEventListener("change", classpathFileDownload);
         document.querySelector("#fileinit").addEventListener("click", fileInit);
         document.querySelector('#enablePrefix').addEventListener("change", enablePrefix);
         document.querySelector("#fileConfirm").addEventListener("click", showJarList);
-
-        // Initial check
-        checkConfig();
     });
   </script>
 </body>
