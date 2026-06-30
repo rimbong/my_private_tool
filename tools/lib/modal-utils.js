@@ -94,10 +94,21 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
       function onOk() { close(isPrompt ? (input ? input.value : '') : true); }
       function onCancel() { close(isPrompt ? null : false); }
       function onKey(e) {
-        if (e.key === 'Escape') { e.preventDefault(); onCancel(); }
-        else if (e.key === 'Enter' && (!isPrompt || document.activeElement !== input || true)) {
-          // prompt에서도 Enter로 확인
-          e.preventDefault(); onOk();
+        if (e.key === 'Escape') {
+          // 모달이 소비 — 호스트 페이지의 전역 Esc 핸들러(드로어/검색패널/다른 모달)로 전파 금지
+          e.preventDefault(); e.stopImmediatePropagation(); onCancel();
+        } else if (e.key === 'Enter') {
+          // prompt 에서도 Enter = 확인 (textarea 가 없으므로 안전)
+          e.preventDefault(); e.stopImmediatePropagation(); onOk();
+        } else if (e.key === 'Tab') {
+          // 포커스 트랩: 모달 내부(입력/취소/확인)에서만 순환, 뒤 페이지로 빠지지 않게
+          const f = [input, cancelBtn, okBtn].filter(Boolean);
+          if (!f.length) return;
+          e.preventDefault(); e.stopImmediatePropagation();
+          let idx = f.indexOf(document.activeElement);
+          if (idx === -1) { f[e.shiftKey ? f.length - 1 : 0].focus(); return; }
+          let next = (idx + (e.shiftKey ? -1 : 1) + f.length) % f.length;
+          f[next].focus();
         }
       }
       okBtn.addEventListener('click', onOk);
