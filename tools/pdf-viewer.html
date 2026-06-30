@@ -359,7 +359,7 @@
     async function persistDoc(doc) {
       await dbManager.setItem('pdfs', doc.id, {
         id: doc.id, name: doc.name, size: doc.size, blob: doc.blob,
-        addedAt: doc.addedAt, lastPage: doc.lastPage, scale: doc.scale, pageCount: doc.pageCount
+        addedAt: doc.addedAt, lastPage: doc.lastPage, scale: doc.scale, fitMode: doc.fitMode, pageCount: doc.pageCount
       });
     }
 
@@ -442,49 +442,55 @@
       renderList();
 
       const token = ++renderToken;
-      const prevDoc = pdfDoc;
-      pdfDoc = null;
+      let pdf;
       try {
-        // blob에서 매번 새 버퍼를 읽는다(캐시 금지): pdf.js가 버퍼를 worker로 transfer하며
-        // detach(byteLength=0)시켜, 캐시한 Uint8Array를 재사용하면 두 번째부터 로딩이 깨진다.
+        // blob에서 매번 새 버퍼를 읽는다(캐시 금지): pdf.js가 detach시켜 재사용 시 두 번째부터 깨짐.
         const data = new Uint8Array(await doc.blob.arrayBuffer());
-        const pdf = await pdfjsLib.getDocument({ data }).promise;
-        if (token !== renderToken) { try { await pdf.destroy(); } catch (e) {} return; } // 그 사이 다른 문서로 전환됨
-        if (prevDoc) { try { await prevDoc.destroy(); } catch (e) {} }  // 이전 문서 파괴(메모리/worker 누수 방지)
-        pdfDoc = pdf;
-        numPages = pdf.numPages;
-        doc.pageCount = numPages;
-        if (doc.saved) persistDocDebounced(doc);
-
+        pdf = await pdfjsLib.getDocument({ data }).promise;
+        if (token !== renderToken) { try { await pdf.destroy(); } catch (e) {} return; }
         const p1 = await pdf.getPage(1);
+        if (token !== renderToken) { try { await pdf.destroy(); } catch (e) {} return; }
         baseViewport = p1.getViewport({ scale: 1 });
-
-        $('viewerEmpty').style.display = 'none';
-        paneWrap().style.display = 'flex';
-        $('docControls').style.display = '';
-        $('dlBtn').style.display = '';
-        $('splitBtn').style.display = '';
-        $('pageTotal').textContent = '/ ' + numPages;
-        $('pageInput').max = numPages;
-
-        splitOn = false;            // 새 문서는 단일 뷰로 시작
-        updateSplitBtn();
-        buildPanes();
-        const target = Math.min(Math.max(doc.lastPage || 1, 1), numPages);
-        panes.forEach(p => {
-          // 컨테이너가 보이게 된 뒤 너비맞춤 (숨김이면 clientWidth=0 → 과소 축소)
-          p.scale = doc.scale || fitWidthScale(p);
-          p.fitMode = doc.scale ? null : 'width';   // 복원된 커스텀 줌이면 맞춤 모드 해제
-          p.currentPage = target;
-          buildPlaceholders(p);
-        });
-        setActivePane(panes[0]);
-        requestAnimationFrame(() => panes.forEach(p => { scrollToPage(p, p.currentPage, 'auto'); renderVisible(p); }));
-        resetSearch();
       } catch (e) {
+        // 손상/암호화: 이전 문서를 망가뜨리지 않고(성공 후에만 교체) 깔끔히 비운다
         console.error(e);
-        if (token === renderToken) toast('PDF를 열지 못했습니다 (손상되었거나 암호화됨).', 'error', 4000);
+        try { if (pdf) await pdf.destroy(); } catch (e2) {}
+        if (token === renderToken) {
+          toast('PDF를 열지 못했습니다 (손상되었거나 암호화됨).', 'error', 4000);
+          clearViewer(); activeId = null; renderList();
+        }
+        return;
       }
+      // 로드 성공 — 이전 문서 파괴 후 교체
+      const prevDoc = pdfDoc;
+      pdfDoc = pdf;
+      if (prevDoc) { try { await prevDoc.destroy(); } catch (e) {} }
+      numPages = pdf.numPages;
+      doc.pageCount = numPages;
+      if (doc.saved) persistDocDebounced(doc);
+
+      $('viewerEmpty').style.display = 'none';
+      paneWrap().style.display = 'flex';
+      $('docControls').style.display = '';
+      $('dlBtn').style.display = '';
+      $('splitBtn').style.display = '';
+      $('pageTotal').textContent = '/ ' + numPages;
+      $('pageInput').max = numPages;
+
+      splitOn = false;            // 새 문서는 단일 뷰로 시작
+      updateSplitBtn();
+      buildPanes();
+      const target = Math.min(Math.max(doc.lastPage || 1, 1), numPages);
+      panes.forEach(p => {
+        // 저장된 맞춤 모드(너비/페이지)가 있으면 폭 기준 재계산, 커스텀 줌이면 저장된 배율 사용
+        p.fitMode = (doc.fitMode !== undefined && doc.fitMode !== null) ? doc.fitMode : (doc.scale ? null : 'width');
+        p.scale = (p.fitMode === 'width') ? fitWidthScale(p) : (p.fitMode === 'page') ? fitPageScale(p) : (doc.scale || fitWidthScale(p));
+        p.currentPage = target;
+        buildPlaceholders(p);
+      });
+      setActivePane(panes[0]);
+      requestAnimationFrame(() => panes.forEach(p => { scrollToPage(p, p.currentPage, 'auto'); renderVisible(p); }));
+      resetSearch();
     }
 
     /* 패널(스크롤 컨테이너) 생성 — 단일 또는 좌우 2분할 */
@@ -726,7 +732,7 @@
       requestAnimationFrame(() => { scrollToPage(pane, keep, 'auto'); renderVisible(pane); });
       if (pane === activePane()) {
         const doc = docs.find(d => d.id === activeId);
-        if (doc) { doc.scale = pane.scale; if (doc.saved) persistDocDebounced(doc); }
+        if (doc) { doc.scale = pane.scale; doc.fitMode = pane.fitMode; if (doc.saved) persistDocDebounced(doc); }
       }
     }
     function updateZoomLabel() { const p = activePane(); $('zoomLabel').textContent = p ? Math.round(p.scale * 100) + '%' : '100%'; }

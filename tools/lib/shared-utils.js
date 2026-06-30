@@ -34,21 +34,23 @@ function unescapeHTML(html) {
  * 텍스트를 클립보드에 복사합니다.
  */
 async function copyText(text) {
-    if (!navigator.clipboard) {
-        // Fallback for older browsers
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.select();
-        try {
-            document.execCommand('copy');
-        } catch (err) {
-            console.error('Fallback copy failed', err);
-        }
-        document.body.removeChild(textArea);
-        return;
+    // 보안 컨텍스트에서만 Clipboard API 사용. file://·권한 거부 시 reject되므로 try 후 execCommand로 폴백.
+    if (navigator.clipboard && window.isSecureContext) {
+        try { await navigator.clipboard.writeText(text); return; }
+        catch (err) { /* execCommand 폴백으로 진행 */ }
     }
-    await navigator.clipboard.writeText(text);
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.top = '-9999px';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    document.body.removeChild(textArea);
+    if (!ok) throw new Error('클립보드 복사에 실패했습니다.');   // 호출부 catch에서 에러 토스트 표시
 }
 
 /**

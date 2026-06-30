@@ -246,7 +246,8 @@
     });
 
     function process(mode, silent = false) {
-      const input = inputEl.value.trim();
+      const raw = inputEl.value;
+      const input = raw.trim();
       if (!input && !silent) {
         showToast('내용을 입력해주세요.', 'warning');
         return;
@@ -259,7 +260,8 @@
           if (document.getElementById('plusSpace').checked) s = s.replace(/\+/g, ' ');
           result = decodeURIComponent(s);
         } else {
-          result = document.getElementById('encodeMode').value === 'full' ? encodeURI(input) : encodeURIComponent(input);
+          // 인코딩은 원본(raw)으로 — trim하면 앞뒤 공백(%20)이 유실됨
+          result = document.getElementById('encodeMode').value === 'full' ? encodeURI(raw) : encodeURIComponent(raw);
         }
 
         outputEl.value = result;

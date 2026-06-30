@@ -402,8 +402,8 @@
       
       setTimeout(() => dbManager.setItem('rawData', 'log', input), 500);
       
-      const separator = '-'.repeat(76);
-      const blocks = input.split(separator);
+      // svn log 구분선은 보통 72개 대시 — 고정 76개 split이면 0건 → 대시 줄 정규식으로 분리
+      const blocks = input.split(/^-{10,}\s*$/m);
       svnData = []; fileMap = {};
       const extensions = new Set();
 
@@ -445,6 +445,7 @@
       virtualState.rev.data = svnData;
       virtualState.file.data = Object.keys(fileMap).sort();
 
+      if (svnData.length === 0) showToast('파싱된 리비전이 없습니다. svn log 형식을 확인하세요.', 'warning', 4000);
       renderExtensionFilters(Array.from(extensions).sort());
       renderAll();
     }

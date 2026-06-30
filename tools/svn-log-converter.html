@@ -159,8 +159,8 @@ Changed paths:
       function convertSvnLog(input) {
         if (!input.trim()) return "";
         
-        const separator = '-'.repeat(76);
-        const blocks = input.split(new RegExp(separator, 'g'));
+        // svn log 구분선은 보통 72개 대시 — 고정 76개 split이면 0건 → 대시 줄 정규식으로 분리
+        const blocks = input.split(/^-{10,}\s*$/m);
         let result = "";
         
         blocks.forEach(block => {
@@ -248,7 +248,11 @@ Changed paths:
       }
 
       convertBtn.addEventListener('click', () => {
-        outputReadme.value = convertSvnLog(inputLog.value);
+        const out = convertSvnLog(inputLog.value);
+        outputReadme.value = out;
+        if (inputLog.value.trim() && !out.trim() && typeof showToast === 'function') {
+          showToast('변환 결과가 없습니다. svn log 형식을 확인하세요.', 'warning', 4000);
+        }
       });
 
       clearBtn.addEventListener('click', () => {

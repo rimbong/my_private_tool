@@ -1584,6 +1584,7 @@
         if (id) {
             // Edit
             const memo = stickyMemos.find(m => m.id === id);
+            if (!memo) { showToast('메모를 찾을 수 없습니다 (다른 탭에서 삭제됨).', 'warning'); closeMemoModal(); return; }
             memo.title = title || content.split('\n')[0].substring(0, 30);
             memo.content = content;
             await dbManager.setItem('stickyMemos', id, memo);
@@ -2270,9 +2271,22 @@
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   }
 
-  function copyText(t) {
-    navigator.clipboard.writeText(t);
-    showToast('복사되었습니다.', 'success');
+  async function copyText(t) {
+    // file://·권한 거부 시 clipboard.writeText는 reject → execCommand 폴백. 실패 시 정직하게 에러 토스트.
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(t);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = t; ta.style.position = 'fixed'; ta.style.top = '-9999px'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        const ok = document.execCommand('copy'); document.body.removeChild(ta);
+        if (!ok) throw new Error('copy failed');
+      }
+      showToast('복사되었습니다.', 'success');
+    } catch (err) {
+      showToast('복사에 실패했습니다. 직접 선택해 복사하세요.', 'error', 4000);
+    }
   }
 
   function handleSearch() {

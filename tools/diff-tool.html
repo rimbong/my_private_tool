@@ -508,7 +508,9 @@
     function expandBlock(idx) { expanded.add(idx); renderResult(); }
     function gotoChange(dir) {
       if (!changeAnchors.length) { showToast('변경 사항이 없습니다.', 'info'); return; }
-      curChange = (curChange + dir + changeAnchors.length) % changeAnchors.length;
+      const n = changeAnchors.length;
+      // curChange가 초기값(-1)일 때 ◀ 는 마지막, ▶ 는 처음으로 (off-by-one 방지)
+      curChange = (curChange === -1) ? (dir > 0 ? 0 : n - 1) : ((curChange + dir + n) % n);
       const el = changeAnchors[curChange];
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
       el.classList.add('flash');

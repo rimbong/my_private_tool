@@ -27,7 +27,7 @@
     .button.button-secondary:hover { background-color: var(--button-secondary-hover-background-color); }
     .note { font-size: 0.85rem; color: var(--muted-text-color); margin-top: 0.5rem; }
     mark { background-color: #fef08a; padding: 0.2em; border-radius: 0.2em; }
-    .form-line { display: flex; align-items: center; gap: 1rem; }
+    .form-line { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
     .form-line label { margin-bottom: 0; flex-shrink: 0; }
     .file-select-button { padding: 0.5rem 1rem; width: auto; margin-left: 0; }
     .file-selection-feedback { font-size: 0.9rem; color: var(--muted-text-color); margin-left: 1rem; }
@@ -266,8 +266,9 @@
         document.querySelector("#createConfigFile").addEventListener("click", createConfigFile);
         document.querySelectorAll(".tomcatFile").forEach(el => el.addEventListener("change", inputTomcatLibDir));
         document.querySelectorAll(".tomcatHome").forEach(el => el.addEventListener("change", inputTomcatHomeDir));
+        // handlePathChange는 Workspace Home 입력에만 (둘 다 바인딩하면 Project 입력을 서로 덮어씀)
         document.querySelector('#copyWorkspaces').addEventListener('change', handlePathChange);
-        document.querySelector('#copyWorkAndProjName').addEventListener('change', handlePathChange);
+        document.querySelector('#copyWorkAndProjName').addEventListener('change', (e) => { vmJson['workAndProjectName'] = e.target.value; });
         document.querySelector('#jvmConfig').addEventListener('change', setWasVm);
         document.querySelector('#convertJVMConfig').addEventListener('click', convertJVMConfig);
         document.querySelector('#licenseKey').addEventListener('change', setLicenseKey);
