@@ -251,6 +251,26 @@
     .status-pill.is-done { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
     .status-pill.is-done:hover { background: #dcfce7; }
 
+    /* 주간 일정: 컴팩트 한 줄 목록 (한 주를 한눈에) */
+    .week-list { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem 1.5rem 1.5rem; }
+    .week-day { margin-top: 0.6rem; }
+    .week-day:first-child { margin-top: 0; }
+    .week-day-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 800; color: var(--text-muted); padding: 0.45rem 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 0.15rem; }
+    .week-day.is-today .week-day-label { color: var(--primary); }
+    .week-today-tag { font-size: 0.62rem; font-weight: 800; background: var(--primary); color: #fff; padding: 0.05rem 0.4rem; border-radius: 20px; }
+    .week-day-count { margin-left: auto; font-size: 0.72rem; color: #94a3b8; font-weight: 700; }
+    .week-empty { font-size: 0.8rem; color: #cbd5e1; padding: 0.35rem 0.5rem; }
+    .week-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.5rem; border-radius: 10px; cursor: pointer; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; user-select: none; }
+    .week-row:hover { background: #f8fafc; border-color: var(--border); }
+    .week-check { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+    .week-time { font-size: 0.78rem; font-weight: 700; color: #0284c7; min-width: 44px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .week-span { flex-shrink: 0; font-size: 0.8rem; }
+    .week-title { flex: 1; min-width: 0; font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .week-cat { font-size: 0.72rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
+    .week-row.done .week-title { text-decoration: line-through; color: #94a3b8; }
+    .week-row.done .week-time { color: #94a3b8; }
+    body.dark .week-row:hover { background: #161b22; }
+
     /* --- Modal Styles --- */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); align-items: center; justify-content: center; backdrop-filter: blur(8px); }
     .modal-content { background: white; padding: 2.5rem; border-radius: 32px; width: 750px; max-width: 90vw; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 1.5rem; }
@@ -505,16 +525,7 @@
               </div>
               <button class="btn btn-primary" onclick="openRangeModal()">+ 추가하기</button>
           </div>
-          <div id="weekBatchBar" style="display:none; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; background:#fff; border-bottom:1px solid var(--border);">
-              <label style="font-size:0.8rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
-                  <input type="checkbox" id="weekSelectAll" onchange="toggleSelectAll('weekList', this.checked)"> 전체 선택
-              </label>
-              <div style="display:flex; gap:0.5rem;">
-                  <button class="btn btn-ghost" style="padding:0.3rem 0.7rem; font-size:0.75rem;" onclick="batchToggleStatus('weekList')">상태 전환</button>
-                  <button class="btn btn-danger" style="padding:0.3rem 0.7rem; font-size:0.75rem;" onclick="batchDelete('weekList')">삭제</button>
-              </div>
-          </div>
-          <div id="weekList" class="drawer-content"></div>
+          <div id="weekList" class="week-list"></div>
       </div>
 
       <div id="memoView" class="memo-container">
@@ -1275,7 +1286,17 @@
         document.getElementById('drawerContent').addEventListener('click', handleCardAction);
         document.getElementById('todayTasksList').addEventListener('click', handleCardAction);
         document.getElementById('rangeTasksList').addEventListener('click', handleCardAction);
-        document.getElementById('weekList').addEventListener('click', handleCardAction);
+        // 주간 뷰(컴팩트 행): 체크박스=완료 토글 / 그 외 클릭=상세 보기
+        document.getElementById('weekList').addEventListener('click', (e) => {
+            const row = e.target.closest('.week-row');
+            if (!row) return;
+            const { id, date } = row.dataset;
+            if (e.target.classList.contains('week-check')) {
+                toggleStatus(id, date);
+            } else {
+                openTaskDetailModal(id, date);
+            }
+        });
 
         // 카드 더블클릭 시 상세(크게 보기) 모달 열기
         const handleCardDblClick = (e) => {
@@ -1289,7 +1310,6 @@
         document.getElementById('drawerContent').addEventListener('dblclick', handleCardDblClick);
         document.getElementById('todayTasksList').addEventListener('dblclick', handleCardDblClick);
         document.getElementById('rangeTasksList').addEventListener('dblclick', handleCardDblClick);
-        document.getElementById('weekList').addEventListener('dblclick', handleCardDblClick);
 
         // Event Delegation for Search Results
         document.getElementById('searchResults').addEventListener('click', e => {
@@ -1808,30 +1828,47 @@
         if (lbl) lbl.innerText = `${formatDate(start)} ~ ${formatDate(end)}`;
 
         const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-        let total = 0;
         for (let i = 0; i < 7; i++) {
             const d = new Date(start); d.setDate(start.getDate() + i);
             const dStr = formatDate(d);
             const day = todosOnDate(dStr).sort(compareTasks);
             const isToday = dStr === todayStr;
+            const grp = document.createElement('div');
+            grp.className = 'week-day' + (isToday ? ' is-today' : '');
             const label = document.createElement('div');
-            label.style = `font-size:0.85rem; font-weight:800; color:${isToday ? 'var(--primary)' : 'var(--text-muted)'}; margin:0.9rem 0 -0.1rem 0.25rem; padding-top:0.5rem;`;
-            label.innerText = `${dStr} (${weekdays[d.getDay()]})${isToday ? ' · 오늘' : ''}`;
-            cont.appendChild(label);
+            label.className = 'week-day-label';
+            label.innerHTML = `<span>${dStr} (${weekdays[d.getDay()]})</span>${isToday ? '<span class="week-today-tag">오늘</span>' : ''}<span class="week-day-count">${day.length || ''}</span>`;
+            grp.appendChild(label);
             if (!day.length) {
                 const empty = document.createElement('div');
-                empty.style = "font-size:0.8rem; color:#cbd5e1; padding:0.3rem 0.25rem 0.1rem;";
+                empty.className = 'week-empty';
                 empty.innerText = '일정 없음';
-                cont.appendChild(empty);
+                grp.appendChild(empty);
             } else {
-                day.forEach(t => { cont.appendChild(createTaskCard(t)); total++; });
+                day.forEach(t => grp.appendChild(createWeekRow(t)));
             }
+            cont.appendChild(grp);
         }
+    }
 
-        const bar = document.getElementById('weekBatchBar');
-        if (bar) bar.style.display = total > 0 ? 'flex' : 'none';
-        const selectAll = document.getElementById('weekSelectAll');
-        if (selectAll) selectAll.checked = false;
+    // 주간 뷰 전용: 일정 1개 = 한 줄(완료체크 · 시간 · 제목 · 카테고리). 행 클릭 시 상세.
+    function createWeekRow(task) {
+        const row = document.createElement('div');
+        row.className = 'week-row' + (task.completed ? ' done' : '');
+        row.dataset.id = task.id;
+        row.dataset.date = task.date;
+        const cat = getCategory(task.category);
+        const tl = timeLabel(task);
+        const span = isSpan(task) ? `<span class="week-span" title="기간: ${rangeLabel(task)}">📆</span>` : '';
+        const catChip = cat.id ? `<span class="week-cat" style="color:${cat.color};">● ${cat.name}</span>` : '';
+        const safeTitle = (task.title || '').replace(/"/g, '&quot;');
+        row.innerHTML = `
+            <input type="checkbox" class="week-check" ${task.completed ? 'checked' : ''} title="완료/진행 전환">
+            <span class="week-time">${tl}</span>
+            ${span}
+            <span class="week-title" title="${safeTitle}">${task.title || '(제목 없음)'}</span>
+            ${catChip}`;
+        return row;
     }
 
     function weekShift(delta) {
