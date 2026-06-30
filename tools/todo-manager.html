@@ -461,8 +461,8 @@
     <div class="content">
       <div class="view-tabs">
           <div class="view-tab active" id="tab-calendar" onclick="switchView('calendar')">📅 월간 달력</div>
+          <div class="view-tab" id="tab-week" onclick="switchView('week')">🗓 주간 일정</div>
           <div class="view-tab" id="tab-today" onclick="switchView('today')">📌 오늘 할 일</div>
-          <div class="view-tab" id="tab-agenda" onclick="switchView('agenda')">📋 다가오는 일정</div>
           <div class="view-tab" id="tab-memo" onclick="switchView('memo')">📝 메모 보드</div>
       </div>
 
@@ -492,12 +492,29 @@
           <div id="todayTasksList" class="drawer-content"></div>
       </div>
 
-      <div id="agendaView" class="today-container">
-          <div style="padding: 2rem; border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-              <h2 style="margin:0; font-size:1.6rem; font-weight:800;">📋 다가오는 일정</h2>
+      <div id="weekView" class="today-container">
+          <div style="padding: 2rem; border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                  <h2 style="margin:0; font-size:1.6rem; font-weight:800; white-space:nowrap;">🗓 주간 일정</h2>
+                  <div style="display:flex; align-items:center; gap:0.3rem;">
+                      <button class="btn btn-ghost" onclick="weekShift(-1)" title="이전 주" style="font-size:1.1rem; padding:0.3rem 0.6rem;">◀</button>
+                      <span id="weekRangeLabel" style="font-weight:800; color:var(--text-main); font-size:0.95rem; white-space:nowrap; min-width:180px; text-align:center;"></span>
+                      <button class="btn btn-ghost" onclick="weekShift(1)" title="다음 주" style="font-size:1.1rem; padding:0.3rem 0.6rem;">▶</button>
+                      <button class="btn btn-outline" onclick="weekThis()" style="font-size:0.8rem; padding:0.4rem 0.8rem; margin-left:0.3rem;">이번 주</button>
+                  </div>
+              </div>
               <button class="btn btn-primary" onclick="openRangeModal()">+ 추가하기</button>
           </div>
-          <div id="agendaList" class="drawer-content"></div>
+          <div id="weekBatchBar" style="display:none; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; background:#fff; border-bottom:1px solid var(--border);">
+              <label style="font-size:0.8rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
+                  <input type="checkbox" id="weekSelectAll" onchange="toggleSelectAll('weekList', this.checked)"> 전체 선택
+              </label>
+              <div style="display:flex; gap:0.5rem;">
+                  <button class="btn btn-ghost" style="padding:0.3rem 0.7rem; font-size:0.75rem;" onclick="batchToggleStatus('weekList')">상태 전환</button>
+                  <button class="btn btn-danger" style="padding:0.3rem 0.7rem; font-size:0.75rem;" onclick="batchDelete('weekList')">삭제</button>
+              </div>
+          </div>
+          <div id="weekList" class="drawer-content"></div>
       </div>
 
       <div id="memoView" class="memo-container">
@@ -818,6 +835,7 @@
     let todos = {}; // Grouped by YYYY-MM-DD
     let stickyMemos = []; // Unassigned notes
     let currentView = 'calendar';
+    let weekAnchor = new Date();   // 주간 일정 뷰가 표시 중인 주의 기준 날짜
     let memoAppendMode = false; // 메모 파일 드롭: false=새로 쓰기(덮어쓰기), true=이어붙이기
 
     /* --- 카테고리(색상 라벨) --- */
@@ -1034,7 +1052,7 @@
     function refreshCurrentView() {
         renderCalendar();
         if (currentView === 'today') renderTodayView();
-        if (currentView === 'agenda') renderAgenda();
+        if (currentView === 'week') renderWeekView();
         if (currentView === 'memo') renderMemoBoard();
         
         if (document.getElementById('dailyDrawer').classList.contains('open')) {
@@ -1257,7 +1275,7 @@
         document.getElementById('drawerContent').addEventListener('click', handleCardAction);
         document.getElementById('todayTasksList').addEventListener('click', handleCardAction);
         document.getElementById('rangeTasksList').addEventListener('click', handleCardAction);
-        document.getElementById('agendaList').addEventListener('click', handleCardAction);
+        document.getElementById('weekList').addEventListener('click', handleCardAction);
 
         // 카드 더블클릭 시 상세(크게 보기) 모달 열기
         const handleCardDblClick = (e) => {
@@ -1271,7 +1289,7 @@
         document.getElementById('drawerContent').addEventListener('dblclick', handleCardDblClick);
         document.getElementById('todayTasksList').addEventListener('dblclick', handleCardDblClick);
         document.getElementById('rangeTasksList').addEventListener('dblclick', handleCardDblClick);
-        document.getElementById('agendaList').addEventListener('dblclick', handleCardDblClick);
+        document.getElementById('weekList').addEventListener('dblclick', handleCardDblClick);
 
         // Event Delegation for Search Results
         document.getElementById('searchResults').addEventListener('click', e => {
@@ -1771,35 +1789,58 @@
         day.sort(compareTasks).forEach(t => cont.appendChild(createTaskCard(t)));
     }
 
-    // 다가오는 일정(아젠다): 오늘 이후의 모든 일정을 날짜별로 묶어 표시
-    function renderAgenda() {
-        const cont = document.getElementById('agendaList');
-        cont.innerHTML = '';
-        const todayStr = formatDate(new Date());
-        const items = [];
-        Object.keys(todos).forEach(b => todos[b].forEach(t => {
-            const end = t.endDate || t.date;
-            if (end >= todayStr) items.push(t);
-        }));
-        if (!items.length) { cont.innerHTML = '<div style="text-align:center; padding:5rem; color:#94a3b8;">다가오는 일정이 없습니다.</div>'; return; }
+    // 주간 일정: weekAnchor가 속한 주(월~일)의 일정을 요일별로 묶어 표시
+    function getWeekRange(anchor) {
+        const a = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate());
+        const day = (a.getDay() + 6) % 7;   // 월=0 ... 일=6
+        const start = new Date(a); start.setDate(a.getDate() - day);
+        const end = new Date(start); end.setDate(start.getDate() + 6);
+        return { start, end };
+    }
 
-        const displayDate = t => (t.date < todayStr ? todayStr : t.date); // 진행 중인 과거 시작 일정은 오늘로 묶음
-        items.sort((a, b) => displayDate(a).localeCompare(displayDate(b)) || compareTasks(a, b));
+    function renderWeekView() {
+        const cont = document.getElementById('weekList');
+        cont.innerHTML = '';
+        const { start, end } = getWeekRange(weekAnchor);
+        const todayStr = formatDate(new Date());
+
+        const lbl = document.getElementById('weekRangeLabel');
+        if (lbl) lbl.innerText = `${formatDate(start)} ~ ${formatDate(end)}`;
 
         const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-        let last = null;
-        items.forEach(t => {
-            const dd = displayDate(t);
-            if (dd !== last) {
-                last = dd;
-                const wd = weekdays[new Date(dd).getDay()];
-                const label = document.createElement('div');
-                label.style = "font-size:0.85rem; font-weight:800; color:var(--primary); margin:0.75rem 0 -0.25rem 0.25rem; padding-top:0.5rem;";
-                label.innerText = `${dd} (${wd})${dd === todayStr ? ' · 오늘' : ''}`;
-                cont.appendChild(label);
+        let total = 0;
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(start); d.setDate(start.getDate() + i);
+            const dStr = formatDate(d);
+            const day = todosOnDate(dStr).sort(compareTasks);
+            const isToday = dStr === todayStr;
+            const label = document.createElement('div');
+            label.style = `font-size:0.85rem; font-weight:800; color:${isToday ? 'var(--primary)' : 'var(--text-muted)'}; margin:0.9rem 0 -0.1rem 0.25rem; padding-top:0.5rem;`;
+            label.innerText = `${dStr} (${weekdays[d.getDay()]})${isToday ? ' · 오늘' : ''}`;
+            cont.appendChild(label);
+            if (!day.length) {
+                const empty = document.createElement('div');
+                empty.style = "font-size:0.8rem; color:#cbd5e1; padding:0.3rem 0.25rem 0.1rem;";
+                empty.innerText = '일정 없음';
+                cont.appendChild(empty);
+            } else {
+                day.forEach(t => { cont.appendChild(createTaskCard(t)); total++; });
             }
-            cont.appendChild(createTaskCard(t));
-        });
+        }
+
+        const bar = document.getElementById('weekBatchBar');
+        if (bar) bar.style.display = total > 0 ? 'flex' : 'none';
+        const selectAll = document.getElementById('weekSelectAll');
+        if (selectAll) selectAll.checked = false;
+    }
+
+    function weekShift(delta) {
+        weekAnchor.setDate(weekAnchor.getDate() + delta * 7);
+        renderWeekView();
+    }
+    function weekThis() {
+        weekAnchor = new Date();
+        renderWeekView();
     }
 
     function renderRangeManageList() {
@@ -2114,6 +2155,7 @@
     renderCalendar();
     updateSelectedDateLabel();
     if (currentView === 'today') renderTodayView();
+    if (currentView === 'week') { weekAnchor = new Date(); renderWeekView(); }
   }
 
   function updateSelectedDateLabel() {
