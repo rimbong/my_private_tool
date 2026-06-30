@@ -197,9 +197,10 @@
 
     /* 줄 번호 칸: 자릿수에 맞춰 자동 너비 + 줄바꿈 금지 (1000+ 4자리 대응) */
     table.diff td.gutter { word-break: normal; white-space: nowrap; }
-    /* 나란히(split) 보기 — 자동 레이아웃으로 줄 번호 칸이 내용에 맞게 늘어남 */
-    table.diff.split { width: 100%; }
-    table.diff.split td.content { width: 50%; }
+    /* 나란히(split) 보기 — 고정 레이아웃으로 좌/우 본문 칸을 내용 길이와 무관하게 정확히 같은 폭으로 */
+    table.diff.split { width: 100%; table-layout: fixed; }
+    table.diff.split td.gutter { width: 3.5em; }
+    table.diff.split td.content { width: calc(50% - 3.5em); }
     table.diff.split tr > td:nth-child(2) { border-right: 2px solid var(--border); }
     td.content.cell-del { background: var(--del-bg); color: var(--del-text); }
     td.content.cell-add { background: var(--add-bg); color: var(--add-text); }
