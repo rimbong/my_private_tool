@@ -703,10 +703,16 @@
         return true;
       });
       if (memoKeys.length === 0) { area.innerHTML = '<div style="text-align:center; padding:3rem; color:#6b7280;">메모가 없습니다.</div>'; return; }
+      const esc = s => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
       memoKeys.forEach(key => {
         const [rev, ...pathParts] = key.split(':'), path = pathParts.join(':');
+        const fileName = path.split('/').pop();
         const div = document.createElement('div'); div.className = 'memo-summary-item';
-        div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><div><span class="badge badge-latest">r${rev}</span><strong style="margin-left:8px;">${path.split('/').pop()}</strong></div><div class="action-group"><button class="icon-btn" onclick="openMemo('${rev}', '${path}')" title="메모 수정">📝</button><button class="icon-btn" onclick="copyPath(event, '${path}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${path}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div></div><div class="memo-content-box">${mergeMemos[key]}</div>`;
+        // 경로/메모는 사용자 입력 → 이스케이프, 버튼은 인라인 onclick 문자열 보간 대신 리스너로 바인딩
+        div.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;"><div><span class="badge badge-latest">r${esc(rev)}</span><strong style="margin-left:8px;">${esc(fileName)}</strong></div><div class="action-group"><button class="icon-btn" data-act="edit" title="메모 수정">📝</button><button class="icon-btn" data-act="abs" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" data-act="rel" title="프로젝트 기준 경로 복사">🔗</button></div></div><div class="memo-content-box">${esc(mergeMemos[key])}</div>`;
+        div.querySelector('[data-act="edit"]').addEventListener('click', () => openMemo(rev, path));
+        div.querySelector('[data-act="abs"]').addEventListener('click', (e) => copyPath(e, path, 'abs'));
+        div.querySelector('[data-act="rel"]').addEventListener('click', (e) => copyPath(e, path, 'rel'));
         area.appendChild(div);
       });
     }
