@@ -296,7 +296,11 @@
 
     function autoValidate() {
       const txt = input.value.trim();
-      if (!txt) { setBadge(null); setStatus('준비됨'); return; }
+      if (!txt) {
+        setBadge(null);
+        setStatus('준비됨');
+        return;
+      }
       const fmt = detectFormat(txt);
       setBadge(fmt);
       setFormat(fmt); // 입력 형식에 맞춰 탭/버튼 자동 전환
@@ -330,16 +334,26 @@
 
     function requireJson() {
       const txt = input.value.trim();
-      if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return undefined; }
+      if (!txt) {
+        showToast('입력이 비어 있습니다.', 'warning');
+        return undefined;
+      }
       try { return JSON.parse(txt); }
       catch (e) { setStatus('⚠ ' + jsonError(e, txt), 'err'); showToast('JSON 파싱 실패 — 상태바를 확인하세요.', 'error'); return undefined; }
     }
     function requireXmlDoc() {
       const txt = input.value.trim();
-      if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return undefined; }
+      if (!txt) {
+        showToast('입력이 비어 있습니다.', 'warning');
+        return undefined;
+      }
       const doc = new DOMParser().parseFromString(txt, 'application/xml');
       const err = doc.querySelector('parsererror');
-      if (err) { setStatus('⚠ XML 파싱 오류', 'err'); showToast('XML 파싱 실패', 'error'); return undefined; }
+      if (err) {
+        setStatus('⚠ XML 파싱 오류', 'err');
+        showToast('XML 파싱 실패', 'error');
+        return undefined;
+      }
       return doc;
     }
 
@@ -377,7 +391,10 @@
     }
     function validateJson() {
       const txt = input.value.trim();
-      if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      if (!txt) {
+        showToast('입력이 비어 있습니다.', 'warning');
+        return;
+      }
       try { const v = JSON.parse(txt); setStatus('✅ 유효한 JSON · ' + describe(v), 'ok'); showToast('유효한 JSON입니다.', 'success'); }
       catch (e) { setStatus('⚠ ' + jsonError(e, txt), 'err'); showToast('유효하지 않은 JSON', 'error'); }
     }
@@ -414,23 +431,38 @@
 
     const HTML_ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'", '&#x2F;': '/' };
     function escapeXmlAction() {
-      if (!input.value) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      if (!input.value) {
+        showToast('입력이 비어 있습니다.', 'warning');
+        return;
+      }
       setView('formatted', true);
       outputText.value = input.value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
       setStatus('✅ Escape 완료', 'ok');
     }
     function unescapeXmlAction() {
-      if (!input.value) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      if (!input.value) {
+        showToast('입력이 비어 있습니다.', 'warning');
+        return;
+      }
       setView('formatted', true);
       outputText.value = input.value.replace(/&amp;|&lt;|&gt;|&quot;|&#39;|&apos;|&#x2F;/g, m => HTML_ENTITIES[m]);
       setStatus('✅ Unescape 완료', 'ok');
     }
     function validateXmlAction() {
       const txt = input.value.trim();
-      if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      if (!txt) {
+        showToast('입력이 비어 있습니다.', 'warning');
+        return;
+      }
       const err = xmlParseError(txt);
-      if (err) { setStatus('⚠ ' + err, 'err'); showToast('유효하지 않은 XML', 'error'); }
-      else { setStatus('✅ 유효한 XML 입니다.', 'ok'); showToast('유효한 XML 입니다.', 'success'); }
+      if (err) {
+        setStatus('⚠ ' + err, 'err');
+        showToast('유효하지 않은 XML', 'error');
+      }
+      else {
+        setStatus('✅ 유효한 XML 입니다.', 'ok');
+        showToast('유효한 XML 입니다.', 'success');
+      }
     }
     // XML 압축: 태그 사이의 공백(들여쓰기/줄바꿈)만 제거 (텍스트 내용은 보존)
     function minifyXml() {
@@ -546,7 +578,10 @@
     // 변환 결과를 입력창으로 보내 연속 변환
     function outputToInput() {
       const text = currentView === 'formatted' ? outputText.value : (lastValue !== undefined ? JSON.stringify(lastValue, null, 2) : '');
-      if (!text.trim()) { showToast('입력으로 보낼 결과가 없습니다.', 'warning'); return; }
+      if (!text.trim()) {
+        showToast('입력으로 보낼 결과가 없습니다.', 'warning');
+        return;
+      }
       input.value = text;
       input.dispatchEvent(new Event('input'));   // 크기 갱신 + 저장 + 형식 자동 감지
       showToast('결과를 입력으로 보냈습니다.', 'success');
@@ -557,14 +592,20 @@
     // 입력 전체를 JSON 문자열 리터럴로 escape (예: {"a":1} → "{\"a\":1}")
     function escapeJsonString() {
       const txt = input.value;
-      if (!txt.trim()) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      if (!txt.trim()) {
+        showToast('입력이 비어 있습니다.', 'warning');
+        return;
+      }
       setView('formatted', true);
       outputText.value = JSON.stringify(txt);
       setStatus('✅ JSON 문자열로 escape 했습니다.', 'ok');
     }
     function unescapeJsonString() {
       let txt = input.value.trim();
-      if (!txt) { showToast('입력이 비어 있습니다.', 'warning'); return; }
+      if (!txt) {
+        showToast('입력이 비어 있습니다.', 'warning');
+        return;
+      }
       try {
         // 통째로 따옴표로 감싼 JSON 문자열이면 parse, 아니면 escape 시퀀스만 복원
         let unescaped = (txt[0] === '"') ? JSON.parse(txt) : txt.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
@@ -636,7 +677,10 @@
       let value = lastValue;
       if (term) {
         const filtered = filterValue(lastValue, term);
-        if (filtered === undefined) { outputTree.innerHTML = '<div style="color:var(--text-muted); padding:1rem;">일치하는 항목이 없습니다.</div>'; return; }
+        if (filtered === undefined) {
+          outputTree.innerHTML = '<div style="color:var(--text-muted); padding:1rem;">일치하는 항목이 없습니다.</div>';
+          return;
+        }
         value = filtered;
       }
       const ul = document.createElement('ul');
@@ -649,11 +693,23 @@
       if (v === null || typeof v !== 'object') {
         return String(v).toLowerCase().includes(term) ? v : undefined;
       }
-      if (Array.isArray(v)) { const a = v.map(x => filterValue(x, term)).filter(x => x !== undefined); return a.length ? a : undefined; }
+      if (Array.isArray(v)) {
+        const a = v.map(x => filterValue(x, term)).filter(x => x !== undefined);
+        return a.length ? a : undefined;
+      }
       const out = {}; let keep = false;
       Object.entries(v).forEach(([k, val]) => {
-        if (k.toLowerCase().includes(term)) { out[k] = val; keep = true; }
-        else { const f = filterValue(val, term); if (f !== undefined) { out[k] = f; keep = true; } }
+        if (k.toLowerCase().includes(term)) {
+          out[k] = val;
+          keep = true;
+        }
+        else {
+          const f = filterValue(val, term);
+          if (f !== undefined) {
+            out[k] = f;
+            keep = true;
+          }
+        }
       });
       return keep ? out : undefined;
     }
@@ -677,7 +733,10 @@
 
       const toggle = document.createElement('span');
       toggle.className = 'toggle';
-      if (isObj) { toggle.textContent = '▼'; toggle.dataset.toggleable = '1'; }
+      if (isObj) {
+        toggle.textContent = '▼';
+        toggle.dataset.toggleable = '1';
+      }
       row.appendChild(toggle);
 
       if (key !== undefined) {
@@ -719,12 +778,18 @@
     /* ---- 공통 ---- */
     function copyOutput() {
       const text = currentView === 'formatted' ? outputText.value : (lastValue !== undefined ? JSON.stringify(lastValue, null, 2) : '');
-      if (!text) { showToast('복사할 결과가 없습니다.', 'warning'); return; }
+      if (!text) {
+        showToast('복사할 결과가 없습니다.', 'warning');
+        return;
+      }
       navigator.clipboard.writeText(text).then(() => showToast('결과를 복사했습니다.', 'success'), () => showToast('복사에 실패했습니다.', 'error'));
     }
     function downloadOutput() {
       const text = currentView === 'formatted' ? outputText.value : (lastValue !== undefined ? JSON.stringify(lastValue, null, 2) : '');
-      if (!text) { showToast('저장할 결과가 없습니다.', 'warning'); return; }
+      if (!text) {
+        showToast('저장할 결과가 없습니다.', 'warning');
+        return;
+      }
       const isXml = text.trim()[0] === '<';
       const blob = new Blob([text], { type: isXml ? 'application/xml' : 'application/json' });
       const a = document.createElement('a');
@@ -801,10 +866,18 @@
         if (!saved) {
           try {
             const legacy = localStorage.getItem(LEGACY_LS_KEY);
-            if (legacy) { saved = legacy; await dbManager.setItem(DB_STORE, DB_KEY, legacy); localStorage.removeItem(LEGACY_LS_KEY); }
+            if (legacy) {
+              saved = legacy;
+              await dbManager.setItem(DB_STORE, DB_KEY, legacy);
+              localStorage.removeItem(LEGACY_LS_KEY);
+            }
           } catch (e) {}
         }
-        if (saved) { input.value = saved; document.getElementById('inSize').textContent = fmtBytes(new Blob([saved]).size); autoValidate(); }
+        if (saved) {
+          input.value = saved;
+          document.getElementById('inSize').textContent = fmtBytes(new Blob([saved]).size);
+          autoValidate();
+        }
       } catch (e) { console.warn('입력 복구 실패:', e); }
     });
   </script>
