@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 뷰어</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f9fafb;
+      --card-bg: #ffffff;
+      --header-bg: #ffffff;
+      --text: #111827;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --danger: #dc2626;
+      --viewer-bg: #525659;
+    }
+    body.dark {
+      --primary: #58a6ff;
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --header-bg: #161b22;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --border: #30363d;
+      --danger: #f85149;
+      --viewer-bg: #1c2128;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .btn {
+      padding: 0.45rem 0.8rem;
+      border-radius: 0.375rem;
+      border: 1px solid var(--border);
+      background: var(--card-bg);
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn-icon { padding: 0.4rem 0.55rem; }
+
+    /* ===== Header ===== */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.6rem 1rem;
+      background: var(--header-bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+    }
+    header h1 { font-size: 1.05rem; margin: 0; font-weight: 800; display: flex; align-items: center; gap: 0.4rem; }
+    .spacer { flex: 1; }
+
+    /* 저장 모드 슬라이드 스위치 (md-viewer .drop-switch 이식) */
+    .save-switch {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.35rem 0.7rem; border: 1px solid var(--border);
+      border-radius: 0.375rem; background: var(--card-bg);
+      font-size: 0.78rem; cursor: pointer; user-select: none;
+      transition: border-color 0.2s;
+    }
+    .save-switch:hover { border-color: var(--primary); }
+    .save-switch:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+    .save-switch .ss-cap { color: var(--text-muted); font-weight: 700; margin-right: 0.1rem; }
+    .save-switch .ss-label { color: var(--text-muted); white-space: nowrap; transition: color 0.2s, font-weight 0.2s; }
+    /* 기본(저장 ON) = 왼쪽 강조 / .on(세션만) = 오른쪽 강조 */
+    .save-switch .ss-left { color: var(--text); font-weight: 700; }
+    .save-switch.on .ss-left { color: var(--text-muted); font-weight: 400; }
+    .save-switch .ss-right { color: var(--text-muted); font-weight: 400; }
+    .save-switch.on .ss-right { color: var(--text); font-weight: 700; }
+    .save-switch .ss-track { position: relative; flex: 0 0 auto; width: 36px; height: 18px; border-radius: 999px; background: var(--primary); transition: background 0.2s; }
+    .save-switch.on .ss-track { background: var(--border); }
+    .save-switch .ss-knob { position: absolute; top: 2px; left: 20px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: left 0.2s; }
+    .save-switch.on .ss-knob { left: 2px; }
+
+    /* ===== Body: sidebar + viewer ===== */
+    .main { flex: 1; display: flex; min-height: 0; }
+
+    .sidebar {
+      width: 260px; flex-shrink: 0; display: flex; flex-direction: column;
+      border-right: 1px solid var(--border); background: var(--card-bg); min-height: 0;
+    }
+    .sidebar-head { padding: 0.75rem 0.9rem; font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .pdf-list { flex: 1; overflow-y: auto; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; }
+    .pdf-empty { color: var(--text-muted); font-size: 0.82rem; text-align: center; padding: 2rem 0.5rem; line-height: 1.6; }
+    .pdf-item {
+      display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.55rem 0.6rem;
+      border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer; background: var(--bg);
+      transition: border-color 0.12s, background 0.12s;
+    }
+    .pdf-item:hover { border-color: var(--primary); }
+    .pdf-item.active { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, var(--bg)); box-shadow: inset 3px 0 0 var(--primary); }
+    .pdf-item .pi-body { flex: 1; min-width: 0; }
+    .pdf-item .pi-name { font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pdf-item .pi-meta { font-size: 0.68rem; color: var(--text-muted); margin-top: 0.15rem; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
+    .pi-badge { font-size: 0.6rem; font-weight: 800; padding: 0.04rem 0.35rem; border-radius: 20px; }
+    .pi-badge.saved { background: #dbeafe; color: #1d4ed8; }
+    .pi-badge.session { background: #fef3c7; color: #92400e; }
+    body.dark .pi-badge.saved { background: #16304f; color: #79b8ff; }
+    body.dark .pi-badge.session { background: #3a2f1a; color: #e3b341; }
+    .pi-del { flex-shrink: 0; background: transparent; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.8rem; padding: 0.1rem 0.25rem; border-radius: 6px; opacity: 0; transition: opacity 0.12s; }
+    .pdf-item:hover .pi-del { opacity: 0.7; }
+    .pi-del:hover { opacity: 1; background: #fee2e2; color: var(--danger); }
+    body.dark .pi-del:hover { background: #3b1d1d; }
+
+    .viewer { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    .toolbar {
+      display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.75rem;
+      border-bottom: 1px solid var(--border); background: var(--header-bg); flex-shrink: 0; flex-wrap: wrap;
+    }
+    .toolbar .group { display: flex; align-items: center; gap: 0.3rem; }
+    .toolbar .divider { width: 1px; align-self: stretch; background: var(--border); margin: 0.1rem 0.2rem; }
+    .pageInput { width: 48px; padding: 0.3rem 0.35rem; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text); text-align: center; font-size: 0.82rem; }
+    .zoomLabel { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); min-width: 44px; text-align: center; }
+    .pageTotal { font-size: 0.82rem; color: var(--text-muted); }
+    .searchInput { width: 150px; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text); font-size: 0.82rem; }
+    .matchInfo { font-size: 0.75rem; color: var(--text-muted); min-width: 64px; }
+
+    .pdf-scroll { flex: 1; overflow: auto; background: var(--viewer-bg); padding: 1.25rem 0; }
+    .pdf-page {
+      position: relative; margin: 0 auto 1rem; background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.35); overflow: hidden;
+    }
+    .pdf-page canvas { display: block; }
+
+    /* pdf.js text layer (선택/복사 + 검색 하이라이트) */
+    .textLayer {
+      position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+      overflow: hidden; opacity: 0.25; line-height: 1.0;
+    }
+    .textLayer > span { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
+    .textLayer ::selection { background: rgba(37, 99, 235, 0.4); }
+    .textLayer .hl { background: #ffd400; border-radius: 2px; }
+
+    .viewer-empty {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: rgba(255,255,255,0.75); gap: 0.6rem; text-align: center; padding: 2rem;
+    }
+    .viewer-empty .big { font-size: 3rem; }
+    .viewer-empty .hint { font-size: 0.9rem; opacity: 0.85; }
+
+    .drag-hover { outline: 3px dashed var(--primary); outline-offset: -8px; }
+
+    @media (max-width: 720px) {
+      .sidebar { width: 180px; }
+      header h1 span.t { display: none; }
+      .searchInput { width: 110px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>📄 <span class="t">PDF 뷰어</span></h1>
+    <button class="btn" onclick="document.getElementById('fileInput').click()">파일 열기</button>
+    <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple style="display:none" onchange="onFileInput(event)">
+    <div class="spacer"></div>
+    <span class="save-switch" id="saveSwitch" role="switch" aria-checked="false" tabindex="0"
+          onclick="toggleSaveMode()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleSaveMode();}"
+          title="PDF를 열 때 라이브러리에 저장할지(다음에도 유지) / 이번 세션만 볼지 선택">
+      <span class="ss-cap">저장</span>
+      <span class="ss-label ss-left">💾 라이브러리</span>
+      <span class="ss-track"><span class="ss-knob"></span></span>
+      <span class="ss-label ss-right">⚡ 세션만</span>
+    </span>
+  </header>
+
+  <div class="main">
+    <aside class="sidebar">
+      <div class="sidebar-head"><span>문서 목록</span><span id="listCount"></span></div>
+      <div class="pdf-list" id="pdfList"></div>
+    </aside>
+
+    <section class="viewer">
+      <div class="toolbar" id="toolbar" style="display:none">
+        <div class="group">
+          <button class="btn btn-icon" id="prevBtn" onclick="goRelative(-1)" title="이전 페이지">◀</button>
+          <input type="number" class="pageInput" id="pageInput" min="1" value="1" onchange="jumpToInput()" title="페이지 이동">
+          <span class="pageTotal" id="pageTotal">/ 0</span>
+          <button class="btn btn-icon" id="nextBtn" onclick="goRelative(1)" title="다음 페이지">▶</button>
+        </div>
+        <div class="divider"></div>
+        <div class="group">
+          <button class="btn btn-icon" onclick="zoomBy(-1)" title="축소">－</button>
+          <span class="zoomLabel" id="zoomLabel">120%</span>
+          <button class="btn btn-icon" onclick="zoomBy(1)" title="확대">＋</button>
+          <button class="btn" onclick="fit('width')" title="너비 맞춤">너비</button>
+          <button class="btn" onclick="fit('page')" title="페이지 맞춤">페이지</button>
+        </div>
+        <div class="divider"></div>
+        <div class="group">
+          <input type="text" class="searchInput" id="searchInput" placeholder="🔍 검색"
+                 onkeydown="if(event.key==='Enter'){event.shiftKey?searchStep(-1):searchStep(1);}">
+          <button class="btn btn-icon" onclick="searchStep(-1)" title="이전 매치">‹</button>
+          <button class="btn btn-icon" onclick="searchStep(1)" title="다음 매치">›</button>
+          <span class="matchInfo" id="matchInfo"></span>
+        </div>
+        <div class="spacer"></div>
+        <button class="btn btn-icon" onclick="downloadActive()" title="원본 다운로드">⬇</button>
+      </div>
+
+      <div class="pdf-scroll" id="pdfScroll" style="display:none"></div>
+
+      <div class="viewer-empty" id="viewerEmpty">
+        <div class="big">📄</div>
+        <div>왼쪽 <b>파일 열기</b> 또는 PDF를 이 영역으로 끌어다 놓으세요.</div>
+        <div class="hint">여러 PDF를 문서 목록으로 전환하며 한 화면에서 볼 수 있어요.</div>
+      </div>
+    </section>
+  </div>
+
+  <script src="lib/pdf.min.js"></script>
+  <script src="lib/db-manager.js"></script>
+  <script src="lib/file-drop-handler.js"></script>
+  <script src="lib/toast-utils.js"></script>
+  <script src="lib/portal-theme.js"></script>
+  <script>
+    // pdf.js 워커: HTTP에서는 실제 워커, file://에서 스폰 실패 시 메인스레드로 자동 폴백(경고만)
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+
+    const toast = (m, t = 'info', d = 2500) => { if (typeof showToast === 'function') showToast(m, t, d); };
+
+    /* ===== 상태 ===== */
+    let docs = [];                 // { id, name, size, saved, blob, _data?, pageCount, lastPage, scale, addedAt }
+    let activeId = null;
+    let saveMode = true;           // true=라이브러리 저장, false=세션만
+    let pdfDoc = null;             // 현재 pdf.js document
+    let renderToken = 0;           // 문서 전환 시 이전 렌더 취소용
+    let scale = 1.2;
+    let baseViewport = null;       // page1 @ scale 1
+    let numPages = 0;
+    let currentPage = 1;
+    let io = null;                 // IntersectionObserver
+    const MIN_SCALE = 0.25, MAX_SCALE = 5, STEP = 0.2;
+    let resolveDbReady; const dbReady = new Promise(r => resolveDbReady = r);
+
+    const $ = id => document.getElementById(id);
+    const scrollEl = $('pdfScroll');
+
+    /* ===== 초기화 ===== */
+    window.addEventListener('load', async () => {
+      try {
+        await dbManager.init('PDFViewerDB', ['pdfs', 'meta']);
+        const sm = await dbManager.getItem('meta', 'saveMode');
+        saveMode = (sm !== false); // 기본 true
+        reflectSaveSwitch();
+        const saved = await dbManager.getAll('pdfs') || {};
+        docs = Object.values(saved)
+          .sort((a, b) => (a.addedAt || 0) - (b.addedAt || 0))
+          .map(r => ({ ...r, saved: true }));
+        renderList();
+      } catch (e) {
+        console.error('IDB init 실패:', e);
+        toast('저장소 초기화 실패 — 세션만 동작합니다.', 'warning', 4000);
+      } finally {
+        resolveDbReady();
+      }
+
+      // 드래그앤드롭으로 PDF 열기 (뷰어 영역)
+      try {
+        fileDropHandler.init(document.querySelector('.viewer'), {
+          hoverClass: 'drag-hover',
+          onOther: (file) => acceptFile(file),
+          onText: (_c, file) => acceptFile(file),   // .pdf가 text로 분류되는 경우 방지
+          onImage: () => toast('이미지가 아니라 PDF 파일을 넣어주세요.', 'warning')
+        });
+      } catch (e) { /* file-drop-handler 미가용 시 입력 버튼으로 사용 */ }
+
+      // 스크롤에 따른 현재 페이지/마지막 위치 추적
+      scrollEl.addEventListener('scroll', onScroll, { passive: true });
+    });
+
+    function acceptFile(file) {
+      if (!file) return;
+      if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '')) openPdf(file);
+      else toast('PDF 파일만 열 수 있습니다.', 'warning');
+    }
+    function onFileInput(e) {
+      const files = Array.from(e.target.files || []);
+      files.forEach(acceptFile);
+      e.target.value = '';
+    }
+
+    /* ===== 저장 모드 스위치 ===== */
+    function reflectSaveSwitch() {
+      const el = $('saveSwitch');
+      el.classList.toggle('on', !saveMode);        // on = 세션만
+      el.setAttribute('aria-checked', (!saveMode).toString());
+    }
+    async function toggleSaveMode() {
+      saveMode = !saveMode;
+      reflectSaveSwitch();
+      try { await dbManager.setItem('meta', 'saveMode', saveMode); } catch (e) {}
+      if (saveMode) {
+        // ON 전환 시 현재 세션 문서들을 라이브러리로 승격
+        let promoted = 0;
+        for (const d of docs) {
+          if (!d.saved) { try { await persistDoc(d); d.saved = true; promoted++; } catch (e) {} }
+        }
+        if (promoted) { renderList(); toast(`세션 문서 ${promoted}개를 라이브러리에 저장했습니다.`, 'success'); }
+        else toast('이후 여는 PDF가 라이브러리에 저장됩니다.', 'info');
+      } else {
+        toast('이후 여는 PDF는 이번 세션에서만 유지됩니다.', 'info');
+      }
+    }
+
+    /* ===== 문서 열기 / 목록 ===== */
+    async function openPdf(file) {
+      await dbReady;   // 저장소 초기화 완료 후 진행 (저장 모드 정상 동작 보장)
+      // 중복(이름+크기) → 기존 문서 활성화
+      const dup = docs.find(d => d.name === file.name && d.size === file.size);
+      if (dup) { setActive(dup.id); toast('이미 열린 문서로 이동합니다.', 'info'); return; }
+
+      let buf;
+      try { buf = await file.arrayBuffer(); }
+      catch (e) { toast('파일을 읽지 못했습니다.', 'error'); return; }
+
+      const id = 'pdf-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      const blob = file instanceof Blob ? file : new Blob([buf], { type: 'application/pdf' });
+      const doc = {
+        id, name: file.name || '문서.pdf', size: file.size || blob.size,
+        saved: false, blob, _data: new Uint8Array(buf),
+        pageCount: 0, lastPage: 1, scale: null, addedAt: Date.now()
+      };
+      docs.push(doc);
+      if (saveMode) {
+        try { await persistDoc(doc); doc.saved = true; }
+        catch (e) { console.warn('persist 실패:', e); toast('저장하지 못해 이번 세션으로만 엽니다 (용량 초과 등).', 'warning', 4000); }
+      }
+      renderList();
+      setActive(id);
+    }
+
+    async function persistDoc(doc) {
+      await dbManager.setItem('pdfs', doc.id, {
+        id: doc.id, name: doc.name, size: doc.size, blob: doc.blob,
+        addedAt: doc.addedAt, lastPage: doc.lastPage, scale: doc.scale, pageCount: doc.pageCount
+      });
+    }
+
+    function renderList() {
+      const list = $('pdfList');
+      $('listCount').textContent = docs.length ? docs.length : '';
+      if (!docs.length) {
+        list.innerHTML = '<div class="pdf-empty">아직 연 PDF가 없습니다.<br>파일을 열거나 끌어다 놓으세요.</div>';
+        return;
+      }
+      list.innerHTML = '';
+      docs.forEach(d => {
+        const item = document.createElement('div');
+        item.className = 'pdf-item' + (d.id === activeId ? ' active' : '');
+        item.onclick = (e) => { if (e.target.closest('.pi-del')) return; setActive(d.id); };
+        const badge = d.saved ? '<span class="pi-badge saved">저장</span>' : '<span class="pi-badge session">세션</span>';
+        const pages = d.pageCount ? `${d.pageCount}p` : '';
+        const last = (d.pageCount && d.lastPage > 1) ? ` · ${d.lastPage}p까지` : '';
+        item.innerHTML = `
+          <div class="pi-body">
+            <div class="pi-name" title="${(d.name || '').replace(/"/g, '&quot;')}">${escapeHtml(d.name)}</div>
+            <div class="pi-meta">${badge}<span>${pages}${last}</span></div>
+          </div>
+          <button class="pi-del" title="목록에서 제거">🗑</button>`;
+        item.querySelector('.pi-del').onclick = () => removeDoc(d.id);
+        list.appendChild(item);
+      });
+    }
+
+    async function removeDoc(id) {
+      const idx = docs.findIndex(d => d.id === id);
+      if (idx === -1) return;
+      const d = docs[idx];
+      if (!confirm(`'${d.name}'을(를) 목록에서 제거할까요?${d.saved ? ' (저장본도 삭제됩니다)' : ''}`)) return;
+      if (d.saved) { try { await dbManager.removeItem('pdfs', id); } catch (e) {} }
+      docs.splice(idx, 1);
+      if (activeId === id) { activeId = null; clearViewer(); }
+      renderList();
+    }
+
+    function clearViewer() {
+      renderToken++;
+      pdfDoc = null; numPages = 0; baseViewport = null;
+      if (io) { io.disconnect(); io = null; }
+      scrollEl.innerHTML = '';
+      scrollEl.style.display = 'none';
+      $('toolbar').style.display = 'none';
+      $('viewerEmpty').style.display = 'flex';
+    }
+
+    /* ===== 렌더링 ===== */
+    async function setActive(id) {
+      const doc = docs.find(d => d.id === id);
+      if (!doc) return;
+      activeId = id;
+      renderList();
+
+      const token = ++renderToken;
+      try {
+        const data = doc._data ? doc._data : new Uint8Array(await doc.blob.arrayBuffer());
+        doc._data = data;
+        const loadingTask = pdfjsLib.getDocument({ data });
+        const pdf = await loadingTask.promise;
+        if (token !== renderToken) return; // 그 사이 다른 문서로 전환됨
+        pdfDoc = pdf;
+        numPages = pdf.numPages;
+        doc.pageCount = numPages;
+        if (doc.saved) persistDocDebounced(doc);
+
+        const p1 = await pdf.getPage(1);
+        baseViewport = p1.getViewport({ scale: 1 });
+
+        $('viewerEmpty').style.display = 'none';
+        scrollEl.style.display = 'block';
+        $('toolbar').style.display = 'flex';
+        $('pageTotal').textContent = '/ ' + numPages;
+        // 컨테이너가 보이게 된 뒤 너비맞춤 계산 (숨김 상태면 clientWidth=0 → 과소 축소됨)
+        scale = doc.scale || fitWidthScale();
+        buildPlaceholders();
+        updateZoomLabel();
+
+        // 마지막 본 페이지로 이동
+        const target = Math.min(Math.max(doc.lastPage || 1, 1), numPages);
+        currentPage = target;
+        // 레이아웃 후 스크롤
+        requestAnimationFrame(() => { scrollToPage(target, 'auto'); renderVisible(); });
+        // 검색 상태 초기화
+        resetSearch();
+      } catch (e) {
+        console.error(e);
+        if (token === renderToken) toast('PDF를 열지 못했습니다 (손상되었거나 암호화됨).', 'error', 4000);
+      }
+    }
+
+    function fitWidthScale() {
+      if (!baseViewport) return 1.2;
+      const avail = scrollEl.clientWidth - 32;
+      return clampScale(avail / baseViewport.width);
+    }
+    function fitPageScale() {
+      if (!baseViewport) return 1.2;
+      const availH = scrollEl.clientHeight - 32;
+      const availW = scrollEl.clientWidth - 32;
+      return clampScale(Math.min(availH / baseViewport.height, availW / baseViewport.width));
+    }
+    function clampScale(s) { return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s)); }
+
+    function buildPlaceholders() {
+      if (io) io.disconnect();
+      scrollEl.innerHTML = '';
+      const w = baseViewport.width * scale;
+      const h = baseViewport.height * scale;
+      for (let i = 1; i <= numPages; i++) {
+        const page = document.createElement('div');
+        page.className = 'pdf-page';
+        page.dataset.page = i;
+        page.dataset.rendered = '0';
+        page.style.width = Math.floor(w) + 'px';
+        page.style.height = Math.floor(h) + 'px';
+        scrollEl.appendChild(page);
+      }
+      io = new IntersectionObserver(onIntersect, { root: scrollEl, rootMargin: '300px 0px' });
+      scrollEl.querySelectorAll('.pdf-page').forEach(p => io.observe(p));
+    }
+
+    function onIntersect(entries) {
+      entries.forEach(en => { if (en.isIntersecting) renderPage(parseInt(en.target.dataset.page, 10)); });
+    }
+    function renderVisible() {
+      // 현재 보이는 영역의 페이지를 강제 렌더 (초기/줌 직후)
+      const top = scrollEl.scrollTop, bottom = top + scrollEl.clientHeight;
+      scrollEl.querySelectorAll('.pdf-page').forEach(p => {
+        const t = p.offsetTop, b = t + p.offsetHeight;
+        if (b >= top - 400 && t <= bottom + 400) renderPage(parseInt(p.dataset.page, 10));
+      });
+    }
+
+    async function renderPage(pageNum) {
+      const token = renderToken;
+      const holder = scrollEl.querySelector(`.pdf-page[data-page="${pageNum}"]`);
+      if (!holder || holder.dataset.rendered !== '0' || !pdfDoc) return;
+      holder.dataset.rendered = '1'; // 진행 표시 (중복 방지)
+      try {
+        const page = await pdfDoc.getPage(pageNum);
+        if (token !== renderToken) return;
+        const viewport = page.getViewport({ scale });
+        const dpr = window.devicePixelRatio || 1;
+        holder.style.width = Math.floor(viewport.width) + 'px';
+        holder.style.height = Math.floor(viewport.height) + 'px';
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(viewport.width * dpr);
+        canvas.height = Math.floor(viewport.height * dpr);
+        canvas.style.width = Math.floor(viewport.width) + 'px';
+        canvas.style.height = Math.floor(viewport.height) + 'px';
+        const ctx = canvas.getContext('2d');
+        holder.innerHTML = '';
+        holder.appendChild(canvas);
+
+        await page.render({
+          canvasContext: ctx, viewport,
+          transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : null
+        }).promise;
+        if (token !== renderToken) return;
+
+        // 텍스트 레이어 (선택/복사 + 검색). 실패해도 캔버스는 유지.
+        try {
+          const tc = await page.getTextContent();
+          const tld = document.createElement('div');
+          tld.className = 'textLayer';
+          tld.style.width = Math.floor(viewport.width) + 'px';
+          tld.style.height = Math.floor(viewport.height) + 'px';
+          tld.style.setProperty('--scale-factor', String(scale));
+          holder.appendChild(tld);
+          await pdfjsLib.renderTextLayer({ textContent: tc, container: tld, viewport, textDivs: [] }).promise;
+          holder._textLayer = tld;
+          if (searchState.term) highlightInPage(holder, searchState.term);
+        } catch (e) { /* text layer 미지원/실패 무시 */ }
+      } catch (e) {
+        holder.dataset.rendered = '0'; // 실패 시 재시도 허용
+        console.warn('page render 실패', pageNum, e);
+      }
+    }
+
+    /* ===== 페이지 이동 / 줌 ===== */
+    function scrollToPage(n, behavior = 'smooth') {
+      const holder = scrollEl.querySelector(`.pdf-page[data-page="${n}"]`);
+      if (holder) scrollEl.scrollTo({ top: holder.offsetTop - 8, behavior });
+    }
+    function goRelative(delta) {
+      const n = Math.min(Math.max(currentPage + delta, 1), numPages);
+      currentPage = n; setPageInput(n); scrollToPage(n);
+    }
+    function jumpToInput() {
+      let n = parseInt($('pageInput').value, 10);
+      if (isNaN(n)) return;
+      n = Math.min(Math.max(n, 1), numPages); currentPage = n; setPageInput(n); scrollToPage(n);
+    }
+    function setPageInput(n) { $('pageInput').value = n; }
+
+    let scrollRaf = null, persistTimer = null;
+    function onScroll() {
+      if (scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = null;
+        // 가장 많이 보이는 페이지 추정
+        const mid = scrollEl.scrollTop + scrollEl.clientHeight * 0.35;
+        let best = currentPage;
+        const pages = scrollEl.querySelectorAll('.pdf-page');
+        for (const p of pages) {
+          if (p.offsetTop <= mid) best = parseInt(p.dataset.page, 10); else break;
+        }
+        if (best !== currentPage) { currentPage = best; setPageInput(best); }
+        // 마지막 위치 저장(저장 문서만)
+        const doc = docs.find(d => d.id === activeId);
+        if (doc) { doc.lastPage = currentPage; if (doc.saved) persistDocDebounced(doc); }
+      });
+    }
+    function persistDocDebounced(doc) {
+      clearTimeout(persistTimer);
+      persistTimer = setTimeout(() => { persistDoc(doc).catch(() => {}); }, 600);
+    }
+
+    function zoomBy(dir) { applyScale(clampScale(scale + dir * STEP)); }
+    function fit(mode) { applyScale(mode === 'width' ? fitWidthScale() : fitPageScale()); }
+    function applyScale(s) {
+      if (!pdfDoc || Math.abs(s - scale) < 0.001) { scale = s; updateZoomLabel(); return; }
+      const keep = currentPage;
+      scale = s;
+      updateZoomLabel();
+      buildPlaceholders();
+      requestAnimationFrame(() => { scrollToPage(keep, 'auto'); renderVisible(); });
+      const doc = docs.find(d => d.id === activeId);
+      if (doc) { doc.scale = scale; if (doc.saved) persistDocDebounced(doc); }
+    }
+    function updateZoomLabel() { $('zoomLabel').textContent = Math.round(scale * 100) + '%'; }
+
+    function downloadActive() {
+      const doc = docs.find(d => d.id === activeId);
+      if (!doc) return;
+      const url = URL.createObjectURL(doc.blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = doc.name || 'document.pdf'; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    /* ===== 검색 ===== */
+    const searchState = { term: '', pages: [], idx: -1, textCache: null };
+    function resetSearch() {
+      searchState.term = ''; searchState.pages = []; searchState.idx = -1; searchState.textCache = null;
+      $('searchInput').value = ''; $('matchInfo').textContent = '';
+      clearHighlights();
+    }
+    async function ensureTextCache() {
+      if (searchState.textCache) return searchState.textCache;
+      const cache = {};
+      for (let i = 1; i <= numPages; i++) {
+        try {
+          const page = await pdfDoc.getPage(i);
+          const tc = await page.getTextContent();
+          cache[i] = tc.items.map(it => it.str).join(' ');
+        } catch (e) { cache[i] = ''; }
+      }
+      searchState.textCache = cache;
+      return cache;
+    }
+    async function searchStep(dir) {
+      const term = $('searchInput').value.trim();
+      if (!term) { resetSearch(); return; }
+      if (term !== searchState.term) {
+        searchState.term = term;
+        $('matchInfo').textContent = '검색 중…';
+        const cache = await ensureTextCache();
+        const lower = term.toLowerCase();
+        searchState.pages = [];
+        for (let i = 1; i <= numPages; i++) {
+          if ((cache[i] || '').toLowerCase().includes(lower)) searchState.pages.push(i);
+        }
+        searchState.idx = -1;
+        clearHighlights();
+      }
+      if (!searchState.pages.length) { $('matchInfo').textContent = '결과 없음'; return; }
+      searchState.idx = (searchState.idx + (dir < 0 ? -1 : 1) + searchState.pages.length) % searchState.pages.length;
+      const page = searchState.pages[searchState.idx];
+      $('matchInfo').textContent = `${searchState.idx + 1}/${searchState.pages.length} · ${page}p`;
+      currentPage = page; setPageInput(page);
+      scrollToPage(page);
+      // 해당 페이지 렌더 후 하이라이트
+      setTimeout(() => {
+        const holder = scrollEl.querySelector(`.pdf-page[data-page="${page}"]`);
+        if (holder && holder._textLayer) highlightInPage(holder, searchState.term);
+      }, 350);
+    }
+    function clearHighlights() {
+      scrollEl.querySelectorAll('.textLayer .hl').forEach(s => s.classList.remove('hl'));
+    }
+    function highlightInPage(holder, term) {
+      const tl = holder._textLayer; if (!tl) return;
+      const lower = term.toLowerCase();
+      tl.querySelectorAll('span').forEach(sp => {
+        sp.classList.toggle('hl', !!sp.textContent && sp.textContent.toLowerCase().includes(lower));
+      });
+    }
+
+    /* ===== utils ===== */
+    function escapeHtml(s) {
+      return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+  </script>
+</body>
+</html>
