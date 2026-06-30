@@ -433,20 +433,47 @@
       if (value === null || value === undefined) return `${pad}<${safe}/>`;
       if (Array.isArray(value)) return value.map(v => nodeToXml(name, v, depth)).join('\n');
       if (typeof value === 'object') {
-        const children = Object.entries(value).map(([k, v]) => nodeToXml(k, v, depth + 1)).join('\n');
-        return `${pad}<${safe}>\n${children}\n${pad}</${safe}>`;
+        // @키 = 속성, #text = 텍스트, 나머지 = 자식 엘리먼트 (xmlToJson 규약과 대칭)
+        let attrStr = '';
+        let textVal;
+        const childEntries = [];
+        Object.entries(value).forEach(([k, v]) => {
+          if (k[0] === '@') attrStr += ` ${k.slice(1).replace(/[^\w.-]/g, '_')}="${escapeXml(v)}"`;
+          else if (k === '#text') textVal = v;
+          else childEntries.push([k, v]);
+        });
+        const hasText = textVal !== undefined && textVal !== null && textVal !== '';
+        if (childEntries.length === 0) {
+          return hasText ? `${pad}<${safe}${attrStr}>${escapeXml(textVal)}</${safe}>` : `${pad}<${safe}${attrStr}/>`;
+        }
+        const children = childEntries.map(([k, v]) => nodeToXml(k, v, depth + 1)).join('\n');
+        const textLine = hasText ? `${'  '.repeat(depth)}${escapeXml(textVal)}\n` : '';
+        return `${pad}<${safe}${attrStr}>\n${textLine}${children}\n${pad}</${safe}>`;
       }
       return `${pad}<${safe}>${escapeXml(value)}</${safe}>`;
     }
+    // XML→JSON: 속성은 @이름, 혼합/텍스트 콘텐츠는 #text 로 보존 (라운드트립 유지)
     function xmlToJson(node) {
+      const attrs = node.attributes ? Array.from(node.attributes) : [];
       const elementChildren = Array.from(node.children);
-      if (elementChildren.length === 0) { const t = node.textContent.trim(); return t === '' ? null : coerce(t); }
+      // 텍스트/CDATA 노드 수집(엘리먼트와 공존하는 혼합콘텐츠 포함)
+      let text = '';
+      Array.from(node.childNodes).forEach(n => {
+        if (n.nodeType === 3 || n.nodeType === 4) text += n.nodeValue;   // TEXT_NODE | CDATA_SECTION_NODE
+      });
+      text = text.trim();
+      // 단순 케이스: 속성·자식 엘리먼트 없음 → 스칼라(기존 동작 유지)
+      if (attrs.length === 0 && elementChildren.length === 0) {
+        return text === '' ? null : coerce(text);
+      }
       const obj = {};
+      attrs.forEach(a => { obj['@' + a.name] = a.value; });   // 속성값은 원형(문자열) 보존
       elementChildren.forEach(child => {
         const key = child.nodeName, val = xmlToJson(child);
         if (obj[key] !== undefined) { if (!Array.isArray(obj[key])) obj[key] = [obj[key]]; obj[key].push(val); }
         else obj[key] = val;
       });
+      if (text !== '') obj['#text'] = coerce(text);   // 혼합콘텐츠/텍스트 보존
       return obj;
     }
     // 숫자/불리언으로 변환하되, 앞자리 0이 의미 있는 값(전화번호·사번 등)은 문자열로 보존
