@@ -143,6 +143,7 @@
   <script src="lib/portal-theme.js"></script>
   <script src="lib/file-drop-handler.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/db-manager.js"></script>
 </head>
 <body>
   <header>
@@ -228,7 +229,14 @@
     const treeSearch = document.getElementById('treeSearch');
     let currentView = 'formatted';
     let lastValue = undefined; // 마지막으로 파싱 성공한 JSON 값
-    const STORAGE_KEY = 'json-xml-tool-input';
+    // 입력 영속화: IndexedDB(dbManager) 사용 — 큰 페이로드도 localStorage 5MB 한계 없이 저장
+    const DB_STORE = 'state', DB_KEY = 'input';
+    const LEGACY_LS_KEY = 'json-xml-tool-input';
+    function saveInput(val) {
+      if (!dbManager.db) return;
+      if (val) dbManager.setItem(DB_STORE, DB_KEY, val).catch(() => {});
+      else dbManager.removeItem(DB_STORE, DB_KEY).catch(() => {});
+    }
 
     /* ---- 상태/유틸 ---- */
     function setStatus(msg, kind) { statusEl.textContent = msg; statusEl.className = 'status-bar' + (kind ? ' ' + kind : ''); }
@@ -265,7 +273,7 @@
     }
     input.addEventListener('input', () => {
       document.getElementById('inSize').textContent = fmtBytes(new Blob([input.value]).size);
-      try { localStorage.setItem(STORAGE_KEY, input.value); } catch (e) {}
+      saveInput(input.value);
       autoValidate();
     });
 
@@ -602,7 +610,7 @@
     function clearAll() {
       input.value = ''; outputText.value = ''; outputTree.innerHTML = ''; lastValue = undefined;
       document.getElementById('inSize').textContent = '0 B'; setBadge(null); setStatus('준비됨');
-      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      saveInput('');
       input.focus();
     }
     function loadSample() {
@@ -653,9 +661,20 @@
     // 더블클릭으로 50:50 복원
     resizer.addEventListener('dblclick', () => { inPane.style.width = '50%'; });
 
-    // 복구
-    window.addEventListener('load', () => {
-      try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) { input.value = saved; document.getElementById('inSize').textContent = fmtBytes(new Blob([saved]).size); autoValidate(); } } catch (e) {}
+    // 복구 (IndexedDB 초기화 → 저장본 로드, 구버전 localStorage는 1회 마이그레이션)
+    window.addEventListener('load', async () => {
+      try {
+        await dbManager.init('json-tool-db', [DB_STORE]);
+        let saved = await dbManager.getItem(DB_STORE, DB_KEY);
+        // 레거시 localStorage → IndexedDB 1회 이전
+        if (!saved) {
+          try {
+            const legacy = localStorage.getItem(LEGACY_LS_KEY);
+            if (legacy) { saved = legacy; await dbManager.setItem(DB_STORE, DB_KEY, legacy); localStorage.removeItem(LEGACY_LS_KEY); }
+          } catch (e) {}
+        }
+        if (saved) { input.value = saved; document.getElementById('inSize').textContent = fmtBytes(new Blob([saved]).size); autoValidate(); }
+      } catch (e) { console.warn('입력 복구 실패:', e); }
     });
   </script>
 </body>
