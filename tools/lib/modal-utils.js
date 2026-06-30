@@ -95,7 +95,9 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
           if (overlay.parentNode) {
             overlay.parentNode.removeChild(overlay);
           }
-          if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (e) {} }
+          if (prevFocus && prevFocus.focus) {
+            try { prevFocus.focus(); } catch (e) {}
+          }
         }, 160);
         resolve(result);
       }
@@ -116,7 +118,10 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
           }
           e.preventDefault(); e.stopImmediatePropagation();
           let idx = f.indexOf(document.activeElement);
-          if (idx === -1) { f[e.shiftKey ? f.length - 1 : 0].focus(); return; }
+          if (idx === -1) {
+            f[e.shiftKey ? f.length - 1 : 0].focus();
+            return;
+          }
           let next = (idx + (e.shiftKey ? -1 : 1) + f.length) % f.length;
           f[next].focus();
         }
