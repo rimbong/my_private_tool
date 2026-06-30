@@ -134,7 +134,12 @@
     .searchInput { width: 150px; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text); font-size: 0.82rem; }
     .matchInfo { font-size: 0.75rem; color: var(--text-muted); min-width: 64px; }
 
-    .pdf-scroll { flex: 1; overflow: auto; background: var(--viewer-bg); padding: 1.25rem 0; }
+    .pane-wrap { flex: 1; display: flex; min-height: 0; }
+    .pdf-scroll { flex: 1 1 0; min-width: 0; overflow: auto; background: var(--viewer-bg); padding: 1.25rem 0; }
+    .pdf-scroll.active-pane { box-shadow: inset 0 0 0 2px var(--primary); }
+    .pane-divider { flex: 0 0 6px; background: var(--border); cursor: col-resize; transition: background 0.15s; }
+    .pane-divider:hover { background: var(--primary); }
+    .btn.on-toggle { color: var(--primary); border-color: var(--primary); }
     .pdf-page {
       position: relative; margin: 0 auto 1rem; background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.35); overflow: hidden;
@@ -199,6 +204,7 @@
     </span>
 
     <span class="spacer"></span>
+    <button class="btn btn-icon" id="splitBtn" onclick="toggleSplit()" title="좌우 분할 보기 (같은 PDF를 나란히)" style="display:none">⊟</button>
     <button class="btn btn-icon" id="dlBtn" onclick="downloadActive()" title="원본 다운로드" style="display:none">⬇</button>
     <button class="btn btn-icon" id="wideBtn" onclick="toggleWide()" title="사이드바 숨기기 (넓게 보기)">⛶</button>
   </header>
@@ -220,7 +226,7 @@
     </aside>
 
     <section class="viewer">
-      <div class="pdf-scroll" id="pdfScroll" style="display:none" ondblclick="toggleWide()" title="더블클릭하면 사이드바를 접어 넓게 봅니다"></div>
+      <div class="pane-wrap" id="paneWrap" style="display:none"></div>
 
       <div class="viewer-empty" id="viewerEmpty">
         <div class="big">📄</div>
@@ -247,16 +253,17 @@
     let saveMode = true;           // true=라이브러리 저장, false=세션만
     let pdfDoc = null;             // 현재 pdf.js document
     let renderToken = 0;           // 문서 전환 시 이전 렌더 취소용
-    let scale = 1.2;
     let baseViewport = null;       // page1 @ scale 1
     let numPages = 0;
-    let currentPage = 1;
-    let io = null;                 // IntersectionObserver
+    let panes = [];                // [{ el, scale, currentPage, io, _raf }] — 단일 1개 / 분할 2개
+    let activeIdx = 0;             // 공유 툴바가 작용하는 활성 패널
+    let splitOn = false;
     const MIN_SCALE = 0.25, MAX_SCALE = 5, STEP = 0.2;
     let resolveDbReady; const dbReady = new Promise(r => resolveDbReady = r);
 
     const $ = id => document.getElementById(id);
-    const scrollEl = $('pdfScroll');
+    const paneWrap = () => $('paneWrap');
+    const activePane = () => panes[activeIdx] || panes[0] || null;
 
     /* ===== 초기화 ===== */
     window.addEventListener('load', async () => {
@@ -286,9 +293,6 @@
           onImage: () => toast('이미지가 아니라 PDF 파일을 넣어주세요.', 'warning')
         });
       } catch (e) { /* file-drop-handler 미가용 시 입력 버튼으로 사용 */ }
-
-      // 스크롤에 따른 현재 페이지/마지막 위치 추적
-      scrollEl.addEventListener('scroll', onScroll, { passive: true });
     });
 
     function acceptFile(file) {
@@ -399,11 +403,13 @@
     function clearViewer() {
       renderToken++;
       pdfDoc = null; numPages = 0; baseViewport = null;
-      if (io) { io.disconnect(); io = null; }
-      scrollEl.innerHTML = '';
-      scrollEl.style.display = 'none';
+      panes.forEach(p => { if (p.io) p.io.disconnect(); });
+      panes = []; splitOn = false;
+      paneWrap().innerHTML = '';
+      paneWrap().style.display = 'none';
       $('docControls').style.display = 'none';
       $('dlBtn').style.display = 'none';
+      $('splitBtn').style.display = 'none';
       $('viewerEmpty').style.display = 'flex';
     }
 
@@ -414,7 +420,7 @@
       if (b) { b.textContent = wide ? '◧' : '⛶'; b.title = wide ? '사이드바 표시' : '사이드바 숨기기 (넓게 보기)'; }
     }
 
-    /* ===== 렌더링 ===== */
+    /* ===== 렌더링 (패널 단위) ===== */
     async function setActive(id) {
       const doc = docs.find(d => d.id === id);
       if (!doc) return;
@@ -425,8 +431,7 @@
       try {
         const data = doc._data ? doc._data : new Uint8Array(await doc.blob.arrayBuffer());
         doc._data = data;
-        const loadingTask = pdfjsLib.getDocument({ data });
-        const pdf = await loadingTask.promise;
+        const pdf = await pdfjsLib.getDocument({ data }).promise;
         if (token !== renderToken) return; // 그 사이 다른 문서로 전환됨
         pdfDoc = pdf;
         numPages = pdf.numPages;
@@ -437,21 +442,24 @@
         baseViewport = p1.getViewport({ scale: 1 });
 
         $('viewerEmpty').style.display = 'none';
-        scrollEl.style.display = 'block';
+        paneWrap().style.display = 'flex';
         $('docControls').style.display = '';
         $('dlBtn').style.display = '';
+        $('splitBtn').style.display = '';
         $('pageTotal').textContent = '/ ' + numPages;
-        // 컨테이너가 보이게 된 뒤 너비맞춤 계산 (숨김 상태면 clientWidth=0 → 과소 축소됨)
-        scale = doc.scale || fitWidthScale();
-        buildPlaceholders();
-        updateZoomLabel();
 
-        // 마지막 본 페이지로 이동
+        splitOn = false;            // 새 문서는 단일 뷰로 시작
+        updateSplitBtn();
+        buildPanes();
         const target = Math.min(Math.max(doc.lastPage || 1, 1), numPages);
-        currentPage = target;
-        // 레이아웃 후 스크롤
-        requestAnimationFrame(() => { scrollToPage(target, 'auto'); renderVisible(); });
-        // 검색 상태 초기화
+        panes.forEach(p => {
+          // 컨테이너가 보이게 된 뒤 너비맞춤 (숨김이면 clientWidth=0 → 과소 축소)
+          p.scale = doc.scale || fitWidthScale(p);
+          p.currentPage = target;
+          buildPlaceholders(p);
+        });
+        setActivePane(panes[0]);
+        requestAnimationFrame(() => panes.forEach(p => { scrollToPage(p, p.currentPage, 'auto'); renderVisible(p); }));
         resetSearch();
       } catch (e) {
         console.error(e);
@@ -459,24 +467,111 @@
       }
     }
 
-    function fitWidthScale() {
-      if (!baseViewport) return 1.2;
-      const avail = scrollEl.clientWidth - 32;
+    /* 패널(스크롤 컨테이너) 생성 — 단일 또는 좌우 2분할 */
+    function buildPanes() {
+      const wrap = paneWrap();
+      panes.forEach(p => { if (p.io) p.io.disconnect(); });
+      wrap.innerHTML = '';
+      panes = [];
+      const count = splitOn ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        if (i > 0) {
+          const div = document.createElement('div');
+          div.className = 'pane-divider';
+          div.title = '드래그하여 좌우 폭 조절';
+          div.addEventListener('mousedown', startDividerDrag);
+          wrap.appendChild(div);
+        }
+        const el = document.createElement('div');
+        el.className = 'pdf-scroll';
+        if (count === 1) el.title = '더블클릭하면 사이드바를 접어 넓게 봅니다';
+        const pane = { el, scale: 1.2, currentPage: 1, io: null, _raf: null };
+        el.addEventListener('scroll', () => onScroll(pane), { passive: true });
+        el.addEventListener('mousedown', () => setActivePane(pane));
+        el.addEventListener('dblclick', toggleWide);
+        panes.push(pane);
+        wrap.appendChild(el);
+      }
+      activeIdx = 0;
+    }
+
+    function setActivePane(pane) {
+      const i = panes.indexOf(pane);
+      activeIdx = i < 0 ? 0 : i;
+      panes.forEach(p => p.el.classList.toggle('active-pane', splitOn && p === activePane()));
+      const ap = activePane();
+      if (ap) { setPageInput(ap.currentPage); updateZoomLabel(); }
+    }
+
+    /* 좌우 분할 토글 (같은 PDF를 나란히) */
+    function toggleSplit() {
+      if (!pdfDoc) return;
+      const ap = activePane();
+      const seedPage = ap ? ap.currentPage : 1;
+      splitOn = !splitOn;
+      updateSplitBtn();
+      buildPanes();
+      panes.forEach(p => {
+        p.scale = fitWidthScale(p);   // 폭이 바뀌었으니 각 패널 너비맞춤
+        p.currentPage = Math.min(Math.max(seedPage, 1), numPages);
+        buildPlaceholders(p);
+      });
+      setActivePane(panes[0]);
+      requestAnimationFrame(() => panes.forEach(p => { scrollToPage(p, p.currentPage, 'auto'); renderVisible(p); }));
+      if (splitOn) toast('좌우 분할 — 각 패널을 따로 스크롤/줌하세요. 패널을 클릭하면 상단 컨트롤 대상이 됩니다.', 'info', 3800);
+    }
+    function updateSplitBtn() {
+      const b = $('splitBtn');
+      if (!b) return;
+      b.textContent = splitOn ? '▭' : '⊟';
+      b.title = splitOn ? '분할 해제 (단일 보기)' : '좌우 분할 보기 (같은 PDF를 나란히)';
+      b.classList.toggle('on-toggle', splitOn);
+    }
+
+    /* 구분선 드래그로 좌/우 폭 조절 */
+    let dragState = null;
+    function startDividerDrag(e) {
+      if (panes.length < 2) return;
+      e.preventDefault();
+      dragState = { x: e.clientX, total: paneWrap().clientWidth, leftW: panes[0].el.getBoundingClientRect().width };
+      document.addEventListener('mousemove', onDividerDrag);
+      document.addEventListener('mouseup', endDividerDrag);
+      document.body.style.cursor = 'col-resize';
+    }
+    function onDividerDrag(e) {
+      if (!dragState) return;
+      const dx = e.clientX - dragState.x;
+      const min = 140, avail = dragState.total - 6;
+      const leftW = Math.max(min, Math.min(avail - min, dragState.leftW + dx));
+      panes[0].el.style.flex = `0 0 ${(leftW / avail) * 100}%`;
+      panes[1].el.style.flex = '1 1 0';
+    }
+    function endDividerDrag() {
+      dragState = null;
+      document.removeEventListener('mousemove', onDividerDrag);
+      document.removeEventListener('mouseup', endDividerDrag);
+      document.body.style.cursor = '';
+      panes.forEach(p => renderVisible(p));
+    }
+
+    function fitWidthScale(pane) {
+      if (!baseViewport || !pane) return 1.2;
+      const avail = pane.el.clientWidth - 32;
       return clampScale(avail / baseViewport.width);
     }
-    function fitPageScale() {
-      if (!baseViewport) return 1.2;
-      const availH = scrollEl.clientHeight - 32;
-      const availW = scrollEl.clientWidth - 32;
+    function fitPageScale(pane) {
+      if (!baseViewport || !pane) return 1.2;
+      const availH = pane.el.clientHeight - 32;
+      const availW = pane.el.clientWidth - 32;
       return clampScale(Math.min(availH / baseViewport.height, availW / baseViewport.width));
     }
     function clampScale(s) { return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s)); }
 
-    function buildPlaceholders() {
-      if (io) io.disconnect();
-      scrollEl.innerHTML = '';
-      const w = baseViewport.width * scale;
-      const h = baseViewport.height * scale;
+    function buildPlaceholders(pane) {
+      if (pane.io) pane.io.disconnect();
+      pane.el.innerHTML = '';
+      const w = baseViewport.width * pane.scale;
+      const h = baseViewport.height * pane.scale;
       for (let i = 1; i <= numPages; i++) {
         const page = document.createElement('div');
         page.className = 'pdf-page';
@@ -484,33 +579,32 @@
         page.dataset.rendered = '0';
         page.style.width = Math.floor(w) + 'px';
         page.style.height = Math.floor(h) + 'px';
-        scrollEl.appendChild(page);
+        pane.el.appendChild(page);
       }
-      io = new IntersectionObserver(onIntersect, { root: scrollEl, rootMargin: '300px 0px' });
-      scrollEl.querySelectorAll('.pdf-page').forEach(p => io.observe(p));
+      pane.io = new IntersectionObserver((entries) => {
+        entries.forEach(en => { if (en.isIntersecting) renderPage(pane, parseInt(en.target.dataset.page, 10)); });
+      }, { root: pane.el, rootMargin: '300px 0px' });
+      pane.el.querySelectorAll('.pdf-page').forEach(p => pane.io.observe(p));
     }
 
-    function onIntersect(entries) {
-      entries.forEach(en => { if (en.isIntersecting) renderPage(parseInt(en.target.dataset.page, 10)); });
-    }
-    function renderVisible() {
-      // 현재 보이는 영역의 페이지를 강제 렌더 (초기/줌 직후)
-      const top = scrollEl.scrollTop, bottom = top + scrollEl.clientHeight;
-      scrollEl.querySelectorAll('.pdf-page').forEach(p => {
+    function renderVisible(pane) {
+      // 현재 보이는 영역의 페이지를 강제 렌더 (초기/줌/폭변경 직후)
+      const el = pane.el, top = el.scrollTop, bottom = top + el.clientHeight;
+      el.querySelectorAll('.pdf-page').forEach(p => {
         const t = p.offsetTop, b = t + p.offsetHeight;
-        if (b >= top - 400 && t <= bottom + 400) renderPage(parseInt(p.dataset.page, 10));
+        if (b >= top - 400 && t <= bottom + 400) renderPage(pane, parseInt(p.dataset.page, 10));
       });
     }
 
-    async function renderPage(pageNum) {
+    async function renderPage(pane, pageNum) {
       const token = renderToken;
-      const holder = scrollEl.querySelector(`.pdf-page[data-page="${pageNum}"]`);
+      const holder = pane.el.querySelector(`.pdf-page[data-page="${pageNum}"]`);
       if (!holder || holder.dataset.rendered !== '0' || !pdfDoc) return;
       holder.dataset.rendered = '1'; // 진행 표시 (중복 방지)
       try {
         const page = await pdfDoc.getPage(pageNum);
         if (token !== renderToken) return;
-        const viewport = page.getViewport({ scale });
+        const viewport = page.getViewport({ scale: pane.scale });
         const dpr = window.devicePixelRatio || 1;
         holder.style.width = Math.floor(viewport.width) + 'px';
         holder.style.height = Math.floor(viewport.height) + 'px';
@@ -537,7 +631,7 @@
           tld.className = 'textLayer';
           tld.style.width = Math.floor(viewport.width) + 'px';
           tld.style.height = Math.floor(viewport.height) + 'px';
-          tld.style.setProperty('--scale-factor', String(scale));
+          tld.style.setProperty('--scale-factor', String(pane.scale));
           holder.appendChild(tld);
           await pdfjsLib.renderTextLayer({ textContent: tc, container: tld, viewport, textDivs: [] }).promise;
           holder._textLayer = tld;
@@ -550,37 +644,44 @@
     }
 
     /* ===== 페이지 이동 / 줌 ===== */
-    function scrollToPage(n, behavior = 'smooth') {
-      const holder = scrollEl.querySelector(`.pdf-page[data-page="${n}"]`);
-      if (holder) scrollEl.scrollTo({ top: holder.offsetTop - 8, behavior });
+    function scrollToPage(pane, n, behavior = 'smooth') {
+      const holder = pane.el.querySelector(`.pdf-page[data-page="${n}"]`);
+      if (holder) pane.el.scrollTo({ top: holder.offsetTop - 8, behavior });
     }
     function goRelative(delta) {
-      const n = Math.min(Math.max(currentPage + delta, 1), numPages);
-      currentPage = n; setPageInput(n); scrollToPage(n);
+      const p = activePane(); if (!p) return;
+      const n = Math.min(Math.max(p.currentPage + delta, 1), numPages);
+      p.currentPage = n; setPageInput(n); scrollToPage(p, n);
     }
     function jumpToInput() {
+      const p = activePane(); if (!p) return;
       let n = parseInt($('pageInput').value, 10);
       if (isNaN(n)) return;
-      n = Math.min(Math.max(n, 1), numPages); currentPage = n; setPageInput(n); scrollToPage(n);
+      n = Math.min(Math.max(n, 1), numPages);
+      p.currentPage = n; setPageInput(n); scrollToPage(p, n);
     }
     function setPageInput(n) { $('pageInput').value = n; }
 
-    let scrollRaf = null, persistTimer = null;
-    function onScroll() {
-      if (scrollRaf) return;
-      scrollRaf = requestAnimationFrame(() => {
-        scrollRaf = null;
-        // 가장 많이 보이는 페이지 추정
-        const mid = scrollEl.scrollTop + scrollEl.clientHeight * 0.35;
-        let best = currentPage;
-        const pages = scrollEl.querySelectorAll('.pdf-page');
+    let persistTimer = null;
+    function onScroll(pane) {
+      if (pane._raf) return;
+      pane._raf = requestAnimationFrame(() => {
+        pane._raf = null;
+        const el = pane.el, mid = el.scrollTop + el.clientHeight * 0.35;
+        let best = pane.currentPage;
+        const pages = el.querySelectorAll('.pdf-page');
         for (const p of pages) {
           if (p.offsetTop <= mid) best = parseInt(p.dataset.page, 10); else break;
         }
-        if (best !== currentPage) { currentPage = best; setPageInput(best); }
-        // 마지막 위치 저장(저장 문서만)
-        const doc = docs.find(d => d.id === activeId);
-        if (doc) { doc.lastPage = currentPage; if (doc.saved) persistDocDebounced(doc); }
+        if (best !== pane.currentPage) {
+          pane.currentPage = best;
+          if (pane === activePane()) setPageInput(best);
+        }
+        // 마지막 위치 저장은 활성 패널 기준(저장 문서만)
+        if (pane === activePane()) {
+          const doc = docs.find(d => d.id === activeId);
+          if (doc) { doc.lastPage = pane.currentPage; if (doc.saved) persistDocDebounced(doc); }
+        }
       });
     }
     function persistDocDebounced(doc) {
@@ -588,19 +689,22 @@
       persistTimer = setTimeout(() => { persistDoc(doc).catch(() => {}); }, 600);
     }
 
-    function zoomBy(dir) { applyScale(clampScale(scale + dir * STEP)); }
-    function fit(mode) { applyScale(mode === 'width' ? fitWidthScale() : fitPageScale()); }
-    function applyScale(s) {
-      if (!pdfDoc || Math.abs(s - scale) < 0.001) { scale = s; updateZoomLabel(); return; }
-      const keep = currentPage;
-      scale = s;
-      updateZoomLabel();
-      buildPlaceholders();
-      requestAnimationFrame(() => { scrollToPage(keep, 'auto'); renderVisible(); });
-      const doc = docs.find(d => d.id === activeId);
-      if (doc) { doc.scale = scale; if (doc.saved) persistDocDebounced(doc); }
+    function zoomBy(dir) { const p = activePane(); if (p) applyScale(p, clampScale(p.scale + dir * STEP)); }
+    function fit(mode) { const p = activePane(); if (p) applyScale(p, mode === 'width' ? fitWidthScale(p) : fitPageScale(p)); }
+    function applyScale(pane, s) {
+      if (!pdfDoc) return;
+      if (Math.abs(s - pane.scale) < 0.001) { pane.scale = s; if (pane === activePane()) updateZoomLabel(); return; }
+      const keep = pane.currentPage;
+      pane.scale = s;
+      if (pane === activePane()) updateZoomLabel();
+      buildPlaceholders(pane);
+      requestAnimationFrame(() => { scrollToPage(pane, keep, 'auto'); renderVisible(pane); });
+      if (pane === activePane()) {
+        const doc = docs.find(d => d.id === activeId);
+        if (doc) { doc.scale = pane.scale; if (doc.saved) persistDocDebounced(doc); }
+      }
     }
-    function updateZoomLabel() { $('zoomLabel').textContent = Math.round(scale * 100) + '%'; }
+    function updateZoomLabel() { const p = activePane(); $('zoomLabel').textContent = p ? Math.round(p.scale * 100) + '%' : '100%'; }
 
     function downloadActive() {
       const doc = docs.find(d => d.id === activeId);
@@ -650,16 +754,17 @@
       searchState.idx = (searchState.idx + (dir < 0 ? -1 : 1) + searchState.pages.length) % searchState.pages.length;
       const page = searchState.pages[searchState.idx];
       $('matchInfo').textContent = `${searchState.idx + 1}/${searchState.pages.length} · ${page}p`;
-      currentPage = page; setPageInput(page);
-      scrollToPage(page);
-      // 해당 페이지 렌더 후 하이라이트
+      const p = activePane(); if (!p) return;
+      p.currentPage = page; setPageInput(page);
+      scrollToPage(p, page);
+      // 해당 페이지 렌더 후 활성 패널에서 하이라이트
       setTimeout(() => {
-        const holder = scrollEl.querySelector(`.pdf-page[data-page="${page}"]`);
+        const holder = p.el.querySelector(`.pdf-page[data-page="${page}"]`);
         if (holder && holder._textLayer) highlightInPage(holder, searchState.term);
       }, 350);
     }
     function clearHighlights() {
-      scrollEl.querySelectorAll('.textLayer .hl').forEach(s => s.classList.remove('hl'));
+      panes.forEach(p => p.el.querySelectorAll('.textLayer .hl').forEach(s => s.classList.remove('hl')));
     }
     function highlightInPage(holder, term) {
       const tl = holder._textLayer; if (!tl) return;
