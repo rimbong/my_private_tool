@@ -6,19 +6,20 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background-color: #f3f4f6; }
-    #selectViewPage { 
-      padding: 1rem 1.5rem; 
-      background-color: #fff; 
-      border-bottom: 1px solid #e5e7eb; 
-      display: flex; 
-      flex-wrap: wrap; 
-      gap: 1rem;
+    #selectViewPage {
+      padding: 0.4rem 1rem;
+      background-color: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.5rem;
       box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    #selectViewPage label { 
-      cursor: pointer; 
-      padding: 0.5rem 1rem; 
-      border-radius: 0.375rem; 
+    #selectViewPage label {
+      cursor: pointer;
+      padding: 0.35rem 0.85rem;
+      border-radius: 0.375rem;
       transition: background-color 0.2s, color 0.2s, transform 0.1s; 
       font-weight: 500;
       color: #374151;
@@ -38,7 +39,7 @@
     .home-btn {
       background-color: #f3f4f6;
       border: 1px solid #e5e7eb;
-      padding: 0.5rem 1rem;
+      padding: 0.35rem 0.8rem;
       border-radius: 0.375rem;
       text-decoration: none;
       color: #374151;
@@ -90,6 +91,39 @@
     #selectViewPage { position: relative; }
     .nav-tabs { display: contents; } /* 데스크톱: 래퍼 없이 탭이 바에 그대로 흐름 */
     .nav-toggle { display: none; }    /* 데스크톱: 햄버거 숨김 */
+
+    /* --- 데스크톱: 상단 메뉴 자동 숨김 + 푸터 숨김 (콘텐츠 최대화) --- */
+    @media (min-width: 641px) {
+      /* 하단 푸터: 평소 얇은 띠, 마우스 올리면 원래 크기로 (상단 내비와 대칭) */
+      footer {
+        position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+        transform: translateY(calc(100% - 5px));
+        transition: transform 0.22s ease;
+        box-shadow: 0 -3px 8px rgba(0,0,0,0.05);
+      }
+      footer:hover { transform: translateY(0); }
+      #selectViewPage {
+        position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+        transform: translateY(calc(-100% + 4px));
+        transition: transform 0.22s ease;
+      }
+      #selectViewPage:hover,
+      #selectViewPage:focus-within,
+      #selectViewPage.nav-open { transform: translateY(0); }
+      /* 항상 보이는 작은 핸들(호버 영역) — 툴바와 겹침 최소화 위해 콤팩트 */
+      #selectViewPage::after {
+        content: '☰';
+        position: absolute; left: 50%; bottom: -17px; transform: translateX(-50%);
+        height: 17px; padding: 0 0.4rem; display: flex; align-items: center;
+        font-size: 0.66rem; color: #9ca3af;
+        background: #fff; border: 1px solid #e5e7eb; border-top: none;
+        border-radius: 0 0 0.4rem 0.4rem; box-shadow: 0 3px 6px rgba(0,0,0,0.06);
+      }
+      #selectViewPage:hover::after,
+      #selectViewPage:focus-within::after,
+      #selectViewPage.nav-open::after { opacity: 0; pointer-events: none; }
+      body.dark #selectViewPage::after { color: #6e7681; background: #161b22; border-color: #30363d; }
+    }
 
     /* --- Responsive (tablet / mobile): 햄버거 메뉴로 접기 --- */
     @media (max-width: 640px) {
@@ -164,7 +198,7 @@
   <iframe id="tool-frame" src=""></iframe>
 
   <footer>
-    <p>© 2025 Multi-purpose Development Assistant Tools. All rights reserved.</p>
+    <p>© 2025 HIS. All rights reserved.</p>
   </footer>
 
 <script src="./tools/lib/portal-theme.js"></script>

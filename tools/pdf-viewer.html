@@ -60,14 +60,14 @@
     header {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
-      padding: 0.6rem 1rem;
+      gap: 0.5rem;
+      padding: 0.4rem 0.75rem;
       background: var(--header-bg);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
       flex-wrap: wrap;
     }
-    header h1 { font-size: 1.05rem; margin: 0; font-weight: 800; display: flex; align-items: center; gap: 0.4rem; }
+    .doc-controls { display: inline-flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .spacer { flex: 1; }
 
     /* 저장 모드 슬라이드 스위치 (md-viewer .drop-switch 이식) */
@@ -89,8 +89,8 @@
     .save-switch.on .ss-right { color: var(--text); font-weight: 700; }
     .save-switch .ss-track { position: relative; flex: 0 0 auto; width: 36px; height: 18px; border-radius: 999px; background: var(--primary); transition: background 0.2s; }
     .save-switch.on .ss-track { background: var(--border); }
-    .save-switch .ss-knob { position: absolute; top: 2px; left: 20px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: left 0.2s; }
-    .save-switch.on .ss-knob { left: 2px; }
+    .save-switch .ss-knob { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: left 0.2s; }
+    .save-switch.on .ss-knob { left: 20px; }
 
     /* ===== Body: sidebar + viewer ===== */
     .main { flex: 1; display: flex; min-height: 0; }
@@ -99,7 +99,10 @@
       width: 260px; flex-shrink: 0; display: flex; flex-direction: column;
       border-right: 1px solid var(--border); background: var(--card-bg); min-height: 0;
     }
+    body.wide .sidebar { display: none; }   /* 넓게 보기: 사이드바 숨김 */
     .sidebar-head { padding: 0.75rem 0.9rem; font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .lib-setting { padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); }
+    .lib-setting .save-switch { width: 100%; justify-content: center; }
     .pdf-list { flex: 1; overflow-y: auto; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; }
     .pdf-empty { color: var(--text-muted); font-size: 0.82rem; text-align: center; padding: 2rem 0.5rem; line-height: 1.6; }
     .pdf-item {
@@ -123,12 +126,8 @@
     body.dark .pi-del:hover { background: #3b1d1d; }
 
     .viewer { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-    .toolbar {
-      display: flex; align-items: center; gap: 0.5rem; padding: 0.45rem 0.75rem;
-      border-bottom: 1px solid var(--border); background: var(--header-bg); flex-shrink: 0; flex-wrap: wrap;
-    }
-    .toolbar .group { display: flex; align-items: center; gap: 0.3rem; }
-    .toolbar .divider { width: 1px; align-self: stretch; background: var(--border); margin: 0.1rem 0.2rem; }
+    .group { display: inline-flex; align-items: center; gap: 0.3rem; }
+    .divider { width: 1px; align-self: stretch; min-height: 22px; background: var(--border); margin: 0.1rem 0.2rem; }
     .pageInput { width: 48px; padding: 0.3rem 0.35rem; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text); text-align: center; font-size: 0.82rem; }
     .zoomLabel { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); min-width: 44px; text-align: center; }
     .pageTotal { font-size: 0.82rem; color: var(--text-muted); }
@@ -153,7 +152,7 @@
 
     .viewer-empty {
       flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      color: rgba(255,255,255,0.75); gap: 0.6rem; text-align: center; padding: 2rem;
+      background: var(--viewer-bg); color: rgba(255,255,255,0.8); gap: 0.6rem; text-align: center; padding: 2rem;
     }
     .viewer-empty .big { font-size: 3rem; }
     .viewer-empty .hint { font-size: 0.9rem; opacity: 0.85; }
@@ -168,56 +167,60 @@
   </style>
 </head>
 <body>
-  <header>
-    <h1>📄 <span class="t">PDF 뷰어</span></h1>
-    <button class="btn" onclick="document.getElementById('fileInput').click()">파일 열기</button>
+  <header id="topbar">
+    <button class="btn" onclick="document.getElementById('fileInput').click()" title="PDF 열기">📂 열기</button>
     <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple style="display:none" onchange="onFileInput(event)">
-    <div class="spacer"></div>
-    <span class="save-switch" id="saveSwitch" role="switch" aria-checked="false" tabindex="0"
-          onclick="toggleSaveMode()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleSaveMode();}"
-          title="PDF를 열 때 라이브러리에 저장할지(다음에도 유지) / 이번 세션만 볼지 선택">
-      <span class="ss-cap">저장</span>
-      <span class="ss-label ss-left">💾 라이브러리</span>
-      <span class="ss-track"><span class="ss-knob"></span></span>
-      <span class="ss-label ss-right">⚡ 세션만</span>
+
+    <!-- 문서가 열렸을 때만 표시되는 컨트롤 -->
+    <span class="doc-controls" id="docControls" style="display:none">
+      <span class="divider"></span>
+      <span class="group">
+        <button class="btn btn-icon" id="prevBtn" onclick="goRelative(-1)" title="이전 페이지">◀</button>
+        <input type="number" class="pageInput" id="pageInput" min="1" value="1" onchange="jumpToInput()" title="페이지 이동">
+        <span class="pageTotal" id="pageTotal">/ 0</span>
+        <button class="btn btn-icon" id="nextBtn" onclick="goRelative(1)" title="다음 페이지">▶</button>
+      </span>
+      <span class="divider"></span>
+      <span class="group">
+        <button class="btn btn-icon" onclick="zoomBy(-1)" title="축소">－</button>
+        <span class="zoomLabel" id="zoomLabel">120%</span>
+        <button class="btn btn-icon" onclick="zoomBy(1)" title="확대">＋</button>
+        <button class="btn" onclick="fit('width')" title="너비 맞춤">너비</button>
+        <button class="btn" onclick="fit('page')" title="페이지 맞춤">페이지</button>
+      </span>
+      <span class="divider"></span>
+      <span class="group">
+        <input type="text" class="searchInput" id="searchInput" placeholder="🔍 검색"
+               onkeydown="if(event.key==='Enter'){event.shiftKey?searchStep(-1):searchStep(1);}">
+        <button class="btn btn-icon" onclick="searchStep(-1)" title="이전 매치">‹</button>
+        <button class="btn btn-icon" onclick="searchStep(1)" title="다음 매치">›</button>
+        <span class="matchInfo" id="matchInfo"></span>
+      </span>
     </span>
+
+    <span class="spacer"></span>
+    <button class="btn btn-icon" id="dlBtn" onclick="downloadActive()" title="원본 다운로드" style="display:none">⬇</button>
+    <button class="btn btn-icon" id="wideBtn" onclick="toggleWide()" title="사이드바 숨기기 (넓게 보기)">⛶</button>
   </header>
 
   <div class="main">
     <aside class="sidebar">
       <div class="sidebar-head"><span>문서 목록</span><span id="listCount"></span></div>
+      <div class="lib-setting">
+        <span class="save-switch" id="saveSwitch" role="switch" aria-checked="false" tabindex="0"
+              onclick="toggleSaveMode()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleSaveMode();}"
+              title="PDF를 열 때 라이브러리에 저장할지(다음에도 유지) / 이번 세션만 볼지 선택">
+          <span class="ss-cap">열 때</span>
+          <span class="ss-label ss-left">💾 보관</span>
+          <span class="ss-track"><span class="ss-knob"></span></span>
+          <span class="ss-label ss-right">⚡ 세션</span>
+        </span>
+      </div>
       <div class="pdf-list" id="pdfList"></div>
     </aside>
 
     <section class="viewer">
-      <div class="toolbar" id="toolbar" style="display:none">
-        <div class="group">
-          <button class="btn btn-icon" id="prevBtn" onclick="goRelative(-1)" title="이전 페이지">◀</button>
-          <input type="number" class="pageInput" id="pageInput" min="1" value="1" onchange="jumpToInput()" title="페이지 이동">
-          <span class="pageTotal" id="pageTotal">/ 0</span>
-          <button class="btn btn-icon" id="nextBtn" onclick="goRelative(1)" title="다음 페이지">▶</button>
-        </div>
-        <div class="divider"></div>
-        <div class="group">
-          <button class="btn btn-icon" onclick="zoomBy(-1)" title="축소">－</button>
-          <span class="zoomLabel" id="zoomLabel">120%</span>
-          <button class="btn btn-icon" onclick="zoomBy(1)" title="확대">＋</button>
-          <button class="btn" onclick="fit('width')" title="너비 맞춤">너비</button>
-          <button class="btn" onclick="fit('page')" title="페이지 맞춤">페이지</button>
-        </div>
-        <div class="divider"></div>
-        <div class="group">
-          <input type="text" class="searchInput" id="searchInput" placeholder="🔍 검색"
-                 onkeydown="if(event.key==='Enter'){event.shiftKey?searchStep(-1):searchStep(1);}">
-          <button class="btn btn-icon" onclick="searchStep(-1)" title="이전 매치">‹</button>
-          <button class="btn btn-icon" onclick="searchStep(1)" title="다음 매치">›</button>
-          <span class="matchInfo" id="matchInfo"></span>
-        </div>
-        <div class="spacer"></div>
-        <button class="btn btn-icon" onclick="downloadActive()" title="원본 다운로드">⬇</button>
-      </div>
-
-      <div class="pdf-scroll" id="pdfScroll" style="display:none"></div>
+      <div class="pdf-scroll" id="pdfScroll" style="display:none" ondblclick="toggleWide()" title="더블클릭하면 사이드바를 접어 넓게 봅니다"></div>
 
       <div class="viewer-empty" id="viewerEmpty">
         <div class="big">📄</div>
@@ -399,8 +402,16 @@
       if (io) { io.disconnect(); io = null; }
       scrollEl.innerHTML = '';
       scrollEl.style.display = 'none';
-      $('toolbar').style.display = 'none';
+      $('docControls').style.display = 'none';
+      $('dlBtn').style.display = 'none';
       $('viewerEmpty').style.display = 'flex';
+    }
+
+    /* ===== 넓게 보기 (사이드바 토글) ===== */
+    function toggleWide() {
+      const wide = document.body.classList.toggle('wide');
+      const b = $('wideBtn');
+      if (b) { b.textContent = wide ? '◧' : '⛶'; b.title = wide ? '사이드바 표시' : '사이드바 숨기기 (넓게 보기)'; }
     }
 
     /* ===== 렌더링 ===== */
@@ -427,7 +438,8 @@
 
         $('viewerEmpty').style.display = 'none';
         scrollEl.style.display = 'block';
-        $('toolbar').style.display = 'flex';
+        $('docControls').style.display = '';
+        $('dlBtn').style.display = '';
         $('pageTotal').textContent = '/ ' + numPages;
         // 컨테이너가 보이게 된 뒤 너비맞춤 계산 (숨김 상태면 clientWidth=0 → 과소 축소됨)
         scale = doc.scale || fitWidthScale();
