@@ -608,6 +608,21 @@
           }
           virtualState[type].ticking = true;
         };
+        // 카드 액션은 컨테이너 1곳에 위임 — 인라인 onclick 문자열 보간(escJs) 제거, 경로는 data-*로 안전 전달
+        container.addEventListener('click', (e) => {
+          const t = e.target.closest('[data-act]');
+          if (!t || !container.contains(t)) return;
+          const act = t.dataset.act, path = t.dataset.path;
+          if (act === 'memo') openMemo(Number(t.dataset.rev), path);
+          else if (act === 'copy-abs') copyPath(e, path, 'abs');
+          else if (act === 'copy-rel') copyPath(e, path, 'rel');
+        });
+        container.addEventListener('change', (e) => {
+          const t = e.target.closest('input.main-check[data-act]');
+          if (!t || !container.contains(t)) return;
+          if (t.dataset.act === 'toggle-rev') toggleMerge(Number(t.dataset.rev), t.dataset.path);
+          else if (t.dataset.act === 'toggle-file') toggleFileAllMerge(t.dataset.path, t.checked);
+        });
       }
 
       const viewport = container.querySelector('.virtual-viewport');
@@ -674,8 +689,8 @@
       displayFiles.forEach(f => {
         const key = `${item.rev}:${f}`, isMerged = mergeStatus[key];
         const highlightedPath = highlightTerm(f, searchTerm);
-        const fj = escJs(f);
-        filesHtml += `<div class="file-item ${isMerged ? 'merged' : ''}" data-key="${escAttr(key)}"><label class="toggle-label"><input type="checkbox" class="main-check" ${isMerged ? 'checked' : ''} onchange="toggleMerge(${item.rev}, '${fj}')"><span class="file-path" title="${escAttr(f)}">${highlightedPath}</span></label><div class="action-group"><span class="memo-indicator ${mergeMemos[key] ? 'active' : ''}" data-memo-key="${escAttr(key)}" onclick="openMemo(${item.rev}, '${fj}')" title="${escAttr(mergeMemos[key] || '메모 작성')}">📝</span><button class="icon-btn" onclick="copyPath(event, '${fj}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${fj}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div></div>`;
+        const pAttr = escAttr(f), rev = item.rev;
+        filesHtml += `<div class="file-item ${isMerged ? 'merged' : ''}" data-key="${escAttr(key)}"><label class="toggle-label"><input type="checkbox" class="main-check" data-act="toggle-rev" data-rev="${rev}" data-path="${pAttr}" ${isMerged ? 'checked' : ''}><span class="file-path" title="${pAttr}">${highlightedPath}</span></label><div class="action-group"><span class="memo-indicator ${mergeMemos[key] ? 'active' : ''}" data-memo-key="${escAttr(key)}" data-act="memo" data-rev="${rev}" data-path="${pAttr}" title="${escAttr(mergeMemos[key] || '메모 작성')}">📝</span><button class="icon-btn" data-act="copy-abs" data-path="${pAttr}" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" data-act="copy-rel" data-path="${pAttr}" title="프로젝트 기준 경로 복사">🔗</button></div></div>`;
       });
       filesHtml += '</div>';
       
@@ -691,7 +706,7 @@
       const fileName = f.split('/').pop();
       const highlightedFileName = highlightTerm(fileName, searchTerm);
       const highlightedPath = highlightTerm(f, searchTerm);
-      const fj = escJs(f);
+      const pAttr = escAttr(f);
 
       const div = document.createElement('div');
       div.className = `file-item ${allRevsMerged ? 'merged' : ''} ${index === virtualState.file.focusedIndex ? 'focused' : ''}`;
@@ -699,7 +714,7 @@
       div.style.height = virtualState.file.itemHeight + 'px';
       div.style.borderBottom = "1px solid #f3f4f6";
       div.style.boxSizing = "border-box";
-      div.innerHTML = `<label class="toggle-label" style="padding: 0.75rem;"><input type="checkbox" class="main-check" ${allRevsMerged ? 'checked' : ''} onchange="toggleFileAllMerge('${fj}', this.checked)"><div style="display:flex; flex-direction:column; flex:1; overflow:hidden;"><div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;"><strong style="font-size:0.95rem;">${highlightedFileName}</strong><div style="display:flex; gap:3px; flex-wrap: wrap;">${historyHtml}</div></div><span style="font-size:0.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${highlightedPath}</span></div></label><div class="action-group" style="padding-right: 0.75rem;"><span class="memo-indicator ${mergeMemos[latestKey] ? 'active' : ''}" data-memo-key="${escAttr(latestKey)}" onclick="openMemo(${info.latestRev}, '${fj}')" title="${escAttr(mergeMemos[latestKey] || '메모 작성')}">📝</span><button class="icon-btn" onclick="copyPath(event, '${fj}', 'abs')" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" onclick="copyPath(event, '${fj}', 'rel')" title="프로젝트 기준 경로 복사">🔗</button></div>`;
+      div.innerHTML = `<label class="toggle-label" style="padding: 0.75rem;"><input type="checkbox" class="main-check" data-act="toggle-file" data-path="${pAttr}" ${allRevsMerged ? 'checked' : ''}><div style="display:flex; flex-direction:column; flex:1; overflow:hidden;"><div style="display:flex; align-items:center; gap:8px; flex-wrap: wrap;"><strong style="font-size:0.95rem;">${highlightedFileName}</strong><div style="display:flex; gap:3px; flex-wrap: wrap;">${historyHtml}</div></div><span style="font-size:0.8rem; color:#6b7280; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${highlightedPath}</span></div></label><div class="action-group" style="padding-right: 0.75rem;"><span class="memo-indicator ${mergeMemos[latestKey] ? 'active' : ''}" data-memo-key="${escAttr(latestKey)}" data-act="memo" data-rev="${info.latestRev}" data-path="${pAttr}" title="${escAttr(mergeMemos[latestKey] || '메모 작성')}">📝</span><button class="icon-btn" data-act="copy-abs" data-path="${pAttr}" title="로컬 전체 경로 복사">📋</button><button class="icon-btn" data-act="copy-rel" data-path="${pAttr}" title="프로젝트 기준 경로 복사">🔗</button></div>`;
       return div;
     }
 

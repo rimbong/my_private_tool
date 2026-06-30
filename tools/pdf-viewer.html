@@ -364,8 +364,20 @@
       });
     }
 
+    function setupListDelegation(list) {
+      if (list._delegated) return;
+      list._delegated = true;
+      list.addEventListener('click', (e) => {
+        const item = e.target.closest('.pdf-item[data-id]');
+        if (!item || !list.contains(item)) return;
+        const id = item.dataset.id;
+        if (e.target.closest('.pi-del')) { removeDoc(id); return; }
+        setActive(id);
+      });
+    }
     function renderList() {
       const list = $('pdfList');
+      setupListDelegation(list);
       $('listCount').textContent = docs.length ? docs.length : '';
       if (!docs.length) {
         list.innerHTML = '<div class="pdf-empty">아직 연 PDF가 없습니다.<br>파일을 열거나 끌어다 놓으세요.</div>';
@@ -375,7 +387,7 @@
       docs.forEach(d => {
         const item = document.createElement('div');
         item.className = 'pdf-item' + (d.id === activeId ? ' active' : '');
-        item.onclick = (e) => { if (e.target.closest('.pi-del')) return; setActive(d.id); };
+        item.dataset.id = d.id;
         const badge = d.saved ? '<span class="pi-badge saved">저장</span>' : '<span class="pi-badge session">세션</span>';
         const pages = d.pageCount ? `${d.pageCount}p` : '';
         const last = (d.pageCount && d.lastPage > 1) ? ` · ${d.lastPage}p까지` : '';
@@ -385,7 +397,6 @@
             <div class="pi-meta">${badge}<span>${pages}${last}</span></div>
           </div>
           <button class="pi-del" title="목록에서 제거">🗑</button>`;
-        item.querySelector('.pi-del').onclick = () => removeDoc(d.id);
         list.appendChild(item);
       });
     }

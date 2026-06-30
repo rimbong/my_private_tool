@@ -586,16 +586,29 @@
       dbManager.setItem('meta', 'active_compare', activeCompareId).catch(() => {});
     }
 
+    function setupTabDelegation(list) {
+      if (list._delegated) return;
+      list._delegated = true;
+      list.addEventListener('click', (e) => {
+        const tab = e.target.closest('.doc-tab[data-id]');
+        if (!tab || !list.contains(tab)) return;
+        if (e.target.closest('.doc-tab-close')) { deleteCompare(tab.dataset.id, e); return; }
+        switchCompare(tab.dataset.id);
+      });
+      list.addEventListener('dblclick', (e) => {
+        const tab = e.target.closest('.doc-tab[data-id]');
+        if (tab && list.contains(tab)) renameCompare(tab.dataset.id);
+      });
+    }
     function renderCompareTabs() {
       const list = document.getElementById('docTabList');
+      setupTabDelegation(list);
       list.innerHTML = '';
       compares.forEach((c, idx) => {
         const tab = document.createElement('div');
         tab.className = 'doc-tab' + (c.id === activeCompareId ? ' active' : '');
         tab.dataset.id = c.id;
         tab.title = c.title + '  (더블클릭: 이름 변경)';
-        tab.onclick = () => switchCompare(c.id);
-        tab.ondblclick = () => renameCompare(c.id);
 
         const title = document.createElement('span');
         title.className = 'doc-tab-title';
@@ -606,7 +619,6 @@
         close.className = 'doc-tab-close';
         close.textContent = '✕';
         close.title = '비교 닫기';
-        close.onclick = (e) => deleteCompare(c.id, e);
         tab.appendChild(close);
 
         list.appendChild(tab);

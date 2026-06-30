@@ -513,7 +513,30 @@
       }
     }
     function onTreeSearch() { if (currentView === 'tree') renderTree(); }
+    // 트리 상호작용(접기/경로복사)을 컨테이너 1곳에 위임 — 노드마다 onclick 바인딩 제거
+    function setupTreeDelegation() {
+      if (outputTree._delegated) return;
+      outputTree._delegated = true;
+      outputTree.addEventListener('click', (e) => {
+        const tog = e.target.closest('.toggle');
+        if (tog && tog.dataset.toggleable) {
+          const li = tog.closest('li');
+          li.classList.toggle('collapsed');
+          tog.textContent = li.classList.contains('collapsed') ? '▶' : '▼';
+          return;
+        }
+        const key = e.target.closest('.k-key');
+        if (key && outputTree.contains(key)) {
+          const path = key.dataset.path || '';
+          navigator.clipboard.writeText(path).then(
+            () => showToast('경로 복사: ' + (path || '(root)'), 'success'),
+            () => showToast('복사에 실패했습니다.', 'error')
+          );
+        }
+      });
+    }
     function renderTree() {
+      setupTreeDelegation();
       outputTree.innerHTML = '';
       const term = treeSearch.value.trim().toLowerCase();
       let value = lastValue;
@@ -554,7 +577,7 @@
 
       const toggle = document.createElement('span');
       toggle.className = 'toggle';
-      if (isObj) { toggle.textContent = '▼'; toggle.onclick = () => { li.classList.toggle('collapsed'); toggle.textContent = li.classList.contains('collapsed') ? '▶' : '▼'; }; }
+      if (isObj) { toggle.textContent = '▼'; toggle.dataset.toggleable = '1'; }
       row.appendChild(toggle);
 
       if (key !== undefined) {
@@ -562,7 +585,7 @@
         k.className = 'k-key';
         k.innerHTML = hlText(JSON.stringify(key), term);
         k.title = '클릭하면 경로 복사: ' + (path || '(root)');
-        k.onclick = () => { navigator.clipboard.writeText(path).then(() => showToast('경로 복사: ' + (path || '(root)'), 'success'), () => showToast('복사에 실패했습니다.', 'error')); };
+        k.dataset.path = path;
         row.appendChild(k);
         const colon = document.createElement('span'); colon.className = 'k-punc'; colon.textContent = ':'; row.appendChild(colon);
       }

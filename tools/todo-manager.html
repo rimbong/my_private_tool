@@ -1630,12 +1630,34 @@
         else showToast('메모 보드(인박스)에 저장되었습니다.', 'success');
     }
 
+    // 메모 카드 액션: 컨테이너 1곳에 위임(렌더마다 per-card 바인딩 제거 + 인라인 onclick 주입 제거)
+    function setupMemoGridDelegation(grid) {
+        if (grid._delegated) return;
+        grid._delegated = true;
+        grid.addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn || !grid.contains(btn)) return;
+            const id = btn.dataset.id;
+            switch (btn.dataset.action) {
+                case 'assign': assignMemoToCalendar(id); break;
+                case 'edit': openMemoModal(id); break;
+                case 'copy': copyMemo(id); break;
+                case 'delete': deleteStickyMemo(id); break;
+            }
+        });
+        grid.addEventListener('dblclick', (e) => {
+            const card = e.target.closest('.memo-card[data-id]');
+            if (card && grid.contains(card)) openMemoDetailModal(card.dataset.id);
+        });
+    }
+
     function renderMemoBoard() {
         const grid = document.getElementById('memoGrid');
+        setupMemoGridDelegation(grid);
         const term = document.getElementById('memoSearchInput')?.value.toLowerCase() || '';
         grid.innerHTML = '';
-        
-        const filtered = stickyMemos.filter(m => 
+
+        const filtered = stickyMemos.filter(m =>
             (m.title + (m.content || '')).toLowerCase().includes(term)
         );
 
@@ -1647,17 +1669,17 @@
         filtered.forEach(m => {
             const card = document.createElement('div');
             card.className = 'memo-card';
-            card.ondblclick = () => openMemoDetailModal(m.id);
+            card.dataset.id = m.id;
             card.innerHTML = `
                 <div class="memo-card-date">${new Date(m.createdAt).toLocaleString()}</div>
                 <div class="todo-card-title" title="${escAttr(m.title)}">${escHtml(m.title)}</div>
                 <div class="todo-text">${escHtml(m.content)}</div>
                 <div class="todo-card-actions">
-                    <button class="btn btn-primary" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; white-space: nowrap; border-radius: 8px;" onclick="assignMemoToCalendar('${m.id}')">📅 이동</button>
+                    <button class="btn btn-primary" style="padding: 0.4rem 0.6rem; font-size: 0.75rem; white-space: nowrap; border-radius: 8px;" data-action="assign" data-id="${escAttr(m.id)}">📅 이동</button>
                     <div style="display:flex; gap:0.2rem; margin-left:auto; align-items:center;">
-                        <button class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px;" onclick="openMemoModal('${m.id}')" title="수정">✏️</button>
-                        <button class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px;" onclick="copyMemo('${m.id}')" title="복사">📋</button>
-                        <button class="btn btn-danger" style="width:30px; height:30px; padding:0; background:transparent; border:none; color:var(--danger); border-radius:6px;" onclick="deleteStickyMemo('${m.id}')" title="삭제">🗑️</button>
+                        <button class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px;" data-action="edit" data-id="${escAttr(m.id)}" title="수정">✏️</button>
+                        <button class="btn btn-ghost" style="width:30px; height:30px; padding:0; border-radius:6px;" data-action="copy" data-id="${escAttr(m.id)}" title="복사">📋</button>
+                        <button class="btn btn-danger" style="width:30px; height:30px; padding:0; background:transparent; border:none; color:var(--danger); border-radius:6px;" data-action="delete" data-id="${escAttr(m.id)}" title="삭제">🗑️</button>
                     </div>
                 </div>
             `;

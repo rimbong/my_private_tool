@@ -916,8 +916,25 @@
       notifySync();
     }
 
+    function setupTabDelegation(list) {
+      if (list._delegated) return;
+      list._delegated = true;
+      list.addEventListener('click', (e) => {
+        const tab = e.target.closest('.doc-tab[data-id]');
+        if (!tab || !list.contains(tab)) return;
+        const id = tab.dataset.id;
+        if (e.target.closest('.doc-tab-del')) { purgeTab(id, e); return; }
+        if (e.target.closest('.doc-tab-close')) { (e.shiftKey ? purgeTab(id, e) : hideTab(id, e)); return; }
+        switchDoc(id);
+      });
+      list.addEventListener('dblclick', (e) => {
+        const tab = e.target.closest('.doc-tab[data-id]');
+        if (tab && list.contains(tab)) renameDoc(tab.dataset.id);
+      });
+    }
     function renderTabs() {
       const list = document.getElementById('docTabList');
+      setupTabDelegation(list);
       list.innerHTML = '';
       // 전체 문서(docs) 순서를 유지하되, 탭 바에는 visibleIds에 속한 문서만 노출
       docs.filter(d => visibleIds.includes(d.id)).forEach(d => {
@@ -925,8 +942,6 @@
         tab.className = 'doc-tab' + (d.id === activeDocId ? ' active' : '');
         tab.dataset.id = d.id;
         tab.title = d.title + '  (더블클릭: 이름 변경)';
-        tab.onclick = () => switchDoc(d.id);
-        tab.ondblclick = () => renameDoc(d.id);
 
         const title = document.createElement('span');
         title.className = 'doc-tab-title';
@@ -937,14 +952,12 @@
         del.className = 'doc-tab-del';
         del.textContent = '🗑';
         del.title = '영구 삭제 (문서 자체를 제거, 되돌릴 수 없음)';
-        del.onclick = (e) => purgeTab(d.id, e);
         tab.appendChild(del);
 
         const close = document.createElement('span');
         close.className = 'doc-tab-close';
         close.textContent = '✕';
         close.title = '탭에서 숨기기 (문서는 보존) · Shift+클릭 시 영구 삭제';
-        close.onclick = (e) => (e.shiftKey ? purgeTab(d.id, e) : hideTab(d.id, e));
         tab.appendChild(close);
 
         list.appendChild(tab);
@@ -1141,8 +1154,29 @@
       return list;
     }
 
+    function setupDocManagerDelegation(listEl) {
+      if (listEl._delegated) return;
+      listEl._delegated = true;
+      listEl.addEventListener('click', (e) => {
+        const item = e.target.closest('.dm-item[data-id]');
+        if (!item || !listEl.contains(item)) return;
+        const id = item.dataset.id;
+        if (e.target.closest('.dm-check')) return;           // 체크박스는 change 에서 처리
+        const act = e.target.closest('button.dm-act');
+        if (act) { e.stopPropagation(); act.dataset.action === 'rename' ? renameDoc(id) : deleteDoc(id, e); return; }
+        if (e.target.closest('.dm-main')) { dmSelectMode ? toggleSelectDoc(id) : openFromManager(id); }
+      });
+      listEl.addEventListener('change', (e) => {
+        const chk = e.target.closest('.dm-check');
+        if (!chk) return;
+        const item = chk.closest('.dm-item[data-id]');
+        if (!item) return;
+        dmSelectMode ? toggleSelectDoc(item.dataset.id) : toggleVisibleFromManager(item.dataset.id);
+      });
+    }
     function renderDocManager() {
       const listEl = document.getElementById('docManagerList');
+      setupDocManagerDelegation(listEl);
       const allN = docs.length, visN = visibleIds.length, hidN = allN - visN;
       document.getElementById('dmAllCount').textContent = allN;
       document.getElementById('dmVisCount').textContent = visN;
@@ -1175,6 +1209,7 @@
 
         const item = document.createElement('div');
         item.className = 'dm-item' + (isActive ? ' active' : '') + (inSel && isSel ? ' selected' : '');
+        item.dataset.id = d.id;
 
         const check = document.createElement('input');
         check.type = 'checkbox';
@@ -1183,22 +1218,17 @@
           // 선택 모드: 체크박스 = 다중 선택 (활성 문서 포함 선택 가능)
           check.checked = isSel;
           check.title = '선택';
-          check.onclick = (e) => e.stopPropagation();
-          check.onchange = () => toggleSelectDoc(d.id);
         } else {
           // 일반 모드: 체크박스 = 탭에 표시
           check.checked = isVisible;
           check.disabled = isActive;
           check.title = isActive ? '현재 보고 있는 문서는 항상 탭에 표시됩니다' : '탭에 표시';
-          check.onclick = (e) => e.stopPropagation();
-          check.onchange = () => toggleVisibleFromManager(d.id);
         }
         item.appendChild(check);
 
         const main = document.createElement('div');
         main.className = 'dm-main';
         main.title = inSel ? '클릭하여 선택' : '클릭하여 현재 문서로 전환';
-        main.onclick = () => inSel ? toggleSelectDoc(d.id) : openFromManager(d.id);
 
         const title = document.createElement('div');
         title.className = 'dm-title';
@@ -1227,16 +1257,16 @@
         if (!inSel) {
           const ren = document.createElement('button');
           ren.className = 'dm-act';
+          ren.dataset.action = 'rename';
           ren.textContent = '✏️';
           ren.title = '이름 변경';
-          ren.onclick = (e) => { e.stopPropagation(); renameDoc(d.id); };
           item.appendChild(ren);
 
           const del = document.createElement('button');
           del.className = 'dm-act danger';
+          del.dataset.action = 'del';
           del.textContent = '🗑';
           del.title = '영구 삭제';
-          del.onclick = (e) => { e.stopPropagation(); deleteDoc(d.id, e); };
           item.appendChild(del);
         }
 
