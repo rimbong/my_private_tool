@@ -233,13 +233,23 @@
     .todo-card-big:hover { transform: translateY(-3px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); border-color: var(--primary-light); }
     .todo-card-big.editing { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
     
-    .todo-card-header { display: flex; align-items: center; gap: 0.75rem; }
-    .todo-card-title { font-weight: 800; font-size: 1.15rem; color: #1e293b; flex: 1; }
-    .todo-text { font-weight: 500; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; color: #475569; background: #fcfcfd; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9; }
+    .todo-card-header { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    /* 우측 컨트롤(수정·완료 토글)은 항상 한 묶음으로 오른쪽 끝에 고정 */
+    .card-header-right { margin-left: auto; display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+    /* 제목은 헤더 아래 독립 줄 → 길어도 컨트롤을 밀지 않고 깔끔히 줄바꿈 */
+    .todo-card-title { font-weight: 800; font-size: 1.15rem; color: #1e293b; word-break: break-word; margin-top: 0.2rem; }
+    .todo-text { font-weight: 500; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #475569; background: #fcfcfd; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9; }
 
     .status-badge { font-size: 0.65rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 20px; text-transform: uppercase; }
     .status-pending { background: #fffbeb; color: #92400e; border: 1px solid #fef3c7; }
     .status-done { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
+
+    /* 완료/진행 전용 Pill 토글 버튼 (선택 체크박스와 명확히 구분) */
+    .status-pill { font-size: 0.72rem; font-weight: 800; padding: 0.32rem 0.75rem; border-radius: 20px; cursor: pointer; border: 1px solid transparent; white-space: nowrap; transition: all 0.15s; line-height: 1; }
+    .status-pill.is-todo { background: #fffbeb; color: #92400e; border-color: #fef3c7; }
+    .status-pill.is-todo:hover { background: #fef3c7; }
+    .status-pill.is-done { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
+    .status-pill.is-done:hover { background: #dcfce7; }
 
     /* --- Modal Styles --- */
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); align-items: center; justify-content: center; backdrop-filter: blur(8px); }
@@ -1236,13 +1246,11 @@
                     case 'delete':
                         deleteTask(id, date);
                         break;
+                    case 'toggle':
+                        toggleStatus(id, date);
+                        break;
                 }
                 return;
-            }
-
-            // 2. 상태 토글 체크박스 처리
-            if (e.target.classList.contains('status-toggle')) {
-                toggleStatus(id, date);
             }
         };
 
@@ -1688,17 +1696,16 @@
         card.innerHTML = `
             <div class="view-mode">
                 <div class="todo-card-header">
-                    <input type="checkbox" class="bulk-select-check" data-id="${task.id}" data-date="${task.date}" data-type="todo" style="width:18px; height:18px; cursor:pointer;">
-                    <span class="status-badge ${task.completed ? 'status-done' : 'status-pending'}">${task.completed ? 'Done' : 'Todo'}</span>
+                    <input type="checkbox" class="bulk-select-check" data-id="${task.id}" data-date="${task.date}" data-type="todo" title="선택 (일괄 처리용)" style="width:18px; height:18px; cursor:pointer; flex-shrink:0;">
                     ${timeChip}
                     ${catChip}
                     ${spanBadge}
-                    <div class="todo-card-title">${task.title}</div>
-                    <div style="display:flex; gap:0.4rem; align-items:center;">
-                        <button class="btn btn-ghost" data-action="edit">✏️</button>
-                        <input type="checkbox" class="status-toggle" style="width:20px; height:20px; cursor:pointer;" ${task.completed ? 'checked' : ''}>
+                    <div class="card-header-right">
+                        <button class="btn btn-ghost" data-action="edit" title="수정">✏️</button>
+                        <button type="button" class="status-pill ${task.completed ? 'is-done' : 'is-todo'}" data-action="toggle" title="클릭하여 완료/진행 전환">${task.completed ? '✅ 완료' : '⬜ 진행'}</button>
                     </div>
                 </div>
+                <div class="todo-card-title">${task.title}</div>
                 ${task.content ? `<div class="todo-text">${task.content}</div>` : ''}
                 <div class="todo-card-actions">
                     <button class="btn btn-ghost" style="font-size:0.8rem;" data-action="expand">🔍 크게 보기</button>
