@@ -283,12 +283,13 @@
     .today-row .check-circle { margin-top: 0.1rem; }
     .today-body { flex: 1; min-width: 0; }
     .today-head { display: flex; align-items: center; gap: 0.55rem; }
-    .today-row .week-time { min-width: 44px; }
     .today-row .week-title { font-size: 1rem; }
     .today-sub { font-size: 0.82rem; color: #94a3b8; margin-top: 0.15rem; padding-left: calc(44px + 0.55rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .today-del { flex-shrink: 0; background: transparent; border: none; cursor: pointer; font-size: 0.85rem; padding: 0.15rem 0.3rem; border-radius: 6px; opacity: 0; transition: opacity 0.12s, background 0.12s; }
     .today-row:hover .today-del { opacity: 0.6; }
     .today-del:hover { opacity: 1 !important; background: #fee2e2; }
+    /* 터치 기기: hover가 없으므로 삭제 버튼을 항상 보이게 */
+    @media (hover: none) { .today-del { opacity: 0.55; } }
     .today-row.done .week-title { text-decoration: line-through; color: #94a3b8; }
     .today-row.done .week-time { color: #94a3b8; }
     .today-row.done .today-sub { color: #cbd5e1; }
@@ -521,7 +522,7 @@
       <div id="todayView" class="today-container">
           <div style="padding: 2rem; border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
               <h2 id="todayViewTitle" style="margin:0; font-size:1.6rem; font-weight:800;">오늘의 일정</h2>
-              <button class="btn btn-primary" onclick="openRangeModal()">+ 추가하기</button>
+              <button class="btn btn-primary" onclick="openTodayAdd()">+ 추가하기</button>
           </div>
           <div id="todayTasksList" class="today-list"></div>
       </div>
@@ -537,7 +538,7 @@
                       <button class="btn btn-outline" onclick="weekThis()" style="font-size:0.8rem; padding:0.4rem 0.8rem; margin-left:0.3rem;">이번 주</button>
                   </div>
               </div>
-              <button class="btn btn-primary" onclick="openRangeModal()">+ 추가하기</button>
+              <button class="btn btn-primary" onclick="openWeekAdd()">+ 추가하기</button>
           </div>
           <div id="weekList" class="week-list"></div>
       </div>
@@ -850,6 +851,7 @@
   <script src="lib/marked.min.js"></script>
   <script src="lib/highlight.min.js"></script>
   <script src="lib/file-drop-handler.js"></script>
+  <script src="lib/purify.min.js"></script>
   <script src="lib/md-renderer.js"></script>
   <script src="lib/toast-utils.js"></script>
   <script src="lib/portal-theme.js"></script>
@@ -1836,7 +1838,7 @@
         const span = isSpan(task) ? `<span class="week-span" title="기간: ${rangeLabel(task)}">📆</span>` : '';
         const catChip = cat.id ? `<span class="week-cat" style="color:${cat.color};">● ${cat.name}</span>` : '';
         const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const safeTitle = (task.title || '').replace(/"/g, '&quot;');
+        const safeTitle = esc(task.title).replace(/"/g, '&quot;');
         const previewLine = (task.content || '').split('\n').map(s => s.trim()).find(Boolean) || '';
         const sub = previewLine ? `<div class="today-sub">${esc(previewLine)}</div>` : '';
         row.innerHTML = `
@@ -1845,7 +1847,7 @@
                 <div class="today-head">
                     <span class="week-time">${tl}</span>
                     ${span}
-                    <span class="week-title" title="${safeTitle}">${task.title || '(제목 없음)'}</span>
+                    <span class="week-title" title="${safeTitle}">${esc(task.title) || '(제목 없음)'}</span>
                     ${catChip}
                     <button class="today-del" data-action="del" title="삭제">🗑</button>
                 </div>
@@ -1906,12 +1908,13 @@
         const tl = timeLabel(task);
         const span = isSpan(task) ? `<span class="week-span" title="기간: ${rangeLabel(task)}">📆</span>` : '';
         const catChip = cat.id ? `<span class="week-cat" style="color:${cat.color};">● ${cat.name}</span>` : '';
-        const safeTitle = (task.title || '').replace(/"/g, '&quot;');
+        const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const safeTitle = esc(task.title).replace(/"/g, '&quot;');
         row.innerHTML = `
             <button type="button" class="check-circle${task.completed ? ' done' : ''}" aria-label="완료/진행 전환" title="완료/진행 전환"></button>
             <span class="week-time">${tl}</span>
             ${span}
-            <span class="week-title" title="${safeTitle}">${task.title || '(제목 없음)'}</span>
+            <span class="week-title" title="${safeTitle}">${esc(task.title) || '(제목 없음)'}</span>
             ${catChip}`;
         return row;
     }
@@ -2094,7 +2097,13 @@
         refreshCurrentView();
         handleSearch();
     }
-    async function toggleStatus(id, d) { const t = todos[d].find(x => x.id === id); t.completed = !t.completed; await dbManager.setItem('todos', id, t); refreshCurrentView(); }
+    async function toggleStatus(id, d) {
+      const t = (todos[d] || []).find(x => x.id === id);
+      if (!t) return;
+      t.completed = !t.completed;
+      await dbManager.setItem('todos', id, t);
+      refreshCurrentView(); handleSearch();
+    }
     
     async function deleteTask(id, d) {
         if (confirm('이 일정을 삭제할까요?')) {
@@ -2105,6 +2114,11 @@
             refreshCurrentView(); handleSearch();
         }
     }
+    // Today 탭: 항상 '오늘'로 프리필 (selectedDate는 달력에서 다른 날 클릭 시 바뀌므로 사용 안 함)
+    function openTodayAdd() { const d = formatDate(new Date()); openRangeModal(d, d); }
+    // Weekly 탭: 보고 있는 주(weekAnchor)의 월요일로 프리필
+    function openWeekAdd() { const s = formatDate(getWeekRange(weekAnchor).start); openRangeModal(s, s); }
+
     function openRangeModal(startD = null, endD = null) {
       closeDrawer();
       const d = formatDate(selectedDate);
