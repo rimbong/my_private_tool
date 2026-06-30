@@ -360,8 +360,14 @@
           j++;
         }
       }
-      while (i < n) { rows.push({ type: 'del', a: aLines[aIdx[i]], ai: aIdx[i] + 1 }); i++; }
-      while (j < m) { rows.push({ type: 'add', b: bLines[bIdx[j]], bi: bIdx[j] + 1 }); j++; }
+      while (i < n) {
+        rows.push({ type: 'del', a: aLines[aIdx[i]], ai: aIdx[i] + 1 });
+        i++;
+      }
+      while (j < m) {
+        rows.push({ type: 'add', b: bLines[bIdx[j]], bi: bIdx[j] + 1 });
+        j++;
+      }
       return rows;
     }
 
@@ -389,12 +395,29 @@
       }
       let i = 0, j = 0, aOut = '', bOut = '';
       while (i < n && j < m) {
-        if (na[i] === nb[j]) { aOut += esc(ta[i]); bOut += esc(tb[j]); i++; j++; }
-        else if (dp[i + 1][j] >= dp[i][j + 1]) { aOut += `<span class="wd">${esc(ta[i])}</span>`; i++; }
-        else { bOut += `<span class="wd">${esc(tb[j])}</span>`; j++; }
+        if (na[i] === nb[j]) {
+          aOut += esc(ta[i]);
+          bOut += esc(tb[j]);
+          i++;
+          j++;
+        }
+        else if (dp[i + 1][j] >= dp[i][j + 1]) {
+          aOut += `<span class="wd">${esc(ta[i])}</span>`;
+          i++;
+        }
+        else {
+          bOut += `<span class="wd">${esc(tb[j])}</span>`;
+          j++;
+        }
       }
-      while (i < n) { aOut += `<span class="wd">${esc(ta[i])}</span>`; i++; }
-      while (j < m) { bOut += `<span class="wd">${esc(tb[j])}</span>`; j++; }
+      while (i < n) {
+        aOut += `<span class="wd">${esc(ta[i])}</span>`;
+        i++;
+      }
+      while (j < m) {
+        bOut += `<span class="wd">${esc(tb[j])}</span>`;
+        j++;
+      }
       return { a: aOut, b: bOut };
     }
 
@@ -438,8 +461,14 @@
       rows.forEach(r => {
         if (r.type === 'same') {
           copyLines.push('  ' + r.a);
-        } else if (r.type === 'del') { deleted++; copyLines.push('- ' + r.a); }
-        else { added++; copyLines.push('+ ' + r.b); }
+        } else if (r.type === 'del') {
+          deleted++;
+          copyLines.push('- ' + r.a);
+        }
+        else {
+          added++;
+          copyLines.push('+ ' + r.b);
+        }
       });
       lastDiffText = copyLines.join('\n');
       document.getElementById('addCount').textContent = '+' + added;
@@ -454,11 +483,17 @@
       const blocks = []; let i = 0;
       while (i < rows.length) {
         if (rows[i].type === 'same') {
-          const same = []; while (i < rows.length && rows[i].type === 'same') { same.push(rows[i]); i++; }
+          const same = []; while (i < rows.length && rows[i].type === 'same') {
+          same.push(rows[i]);
+          i++;
+        }
           blocks.push({ type: 'same', rows: same });
         } else {
           const dels = [], adds = [];
-          while (i < rows.length && rows[i].type !== 'same') { (rows[i].type === 'del' ? dels : adds).push(rows[i]); i++; }
+          while (i < rows.length && rows[i].type !== 'same') {
+            (rows[i].type === 'del' ? dels : adds).push(rows[i]);
+            i++;
+          }
           const pairs = Math.min(dels.length, adds.length), wd = [];
           for (let k = 0; k < pairs; k++) {
             wd.push(inlineDiff(dels[k].a, adds[k].b));
@@ -544,7 +579,10 @@
     function setDiffView(mode) { viewMode = mode; renderResult(); }
     function expandBlock(idx) { expanded.add(idx); renderResult(); }
     function gotoChange(dir) {
-      if (!changeAnchors.length) { showToast('변경 사항이 없습니다.', 'info'); return; }
+      if (!changeAnchors.length) {
+        showToast('변경 사항이 없습니다.', 'info');
+        return;
+      }
       const n = changeAnchors.length;
       // curChange가 초기값(-1)일 때 ◀ 는 마지막, ▶ 는 처음으로 (off-by-one 방지)
       curChange = (curChange === -1) ? (dir > 0 ? 0 : n - 1) : ((curChange + dir + n) % n);
@@ -576,7 +614,10 @@
     }
 
     function copyDiff() {
-      if (!lastDiffText) { showToast('복사할 비교 결과가 없습니다.', 'warning'); return; }
+      if (!lastDiffText) {
+        showToast('복사할 비교 결과가 없습니다.', 'warning');
+        return;
+      }
       navigator.clipboard.writeText(lastDiffText).then(
         () => showToast('비교 결과를 복사했습니다. (+/- 형식)', 'success'),
         () => showToast('복사에 실패했습니다.', 'error')
@@ -634,7 +675,10 @@
         if (!tab || !list.contains(tab)) {
           return;
         }
-        if (e.target.closest('.doc-tab-close')) { deleteCompare(tab.dataset.id, e); return; }
+        if (e.target.closest('.doc-tab-close')) {
+          deleteCompare(tab.dataset.id, e);
+          return;
+        }
         switchCompare(tab.dataset.id);
       });
       list.addEventListener('dblclick', (e) => {
@@ -718,8 +762,14 @@
         return;
       }
       const trimmed = name.trim();
-      if (trimmed) { c.customTitle = true; c.title = trimmed; }
-      else { c.customTitle = false; c.title = deriveCompareTitle(c); }
+      if (trimmed) {
+        c.customTitle = true;
+        c.title = trimmed;
+      }
+      else {
+        c.customTitle = false;
+        c.title = deriveCompareTitle(c);
+      }
       c.updatedAt = Date.now();
       renderCompareTabs();
       persistCompare(c);
