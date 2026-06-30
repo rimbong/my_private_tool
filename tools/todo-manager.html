@@ -559,7 +559,7 @@
       </div>
       <div id="drawerContent" class="drawer-content"></div>
       <div style="padding:1.5rem; border-top:1px solid var(--border); background: white;">
-          <button class="btn btn-danger" style="width:100%; padding:1rem;" onclick="clearDayTasks()">🗑️ 이 날의 모든 기록 삭제</button>
+          <button class="btn btn-primary" style="width:100%; padding:1rem;" onclick="openRangeModal()">＋ 이 날 일정 추가</button>
       </div>
     </div>
 
@@ -2060,19 +2060,6 @@
             refreshCurrentView(); handleSearch();
         }
     }
-    async function clearDayTasks() {
-        const d = formatDate(selectedDate), tasks = todosOnDate(d);
-        if (!tasks.length) return;
-        if (confirm('이 날에 걸친 모든 일정을 삭제할까요? (해당 날짜를 포함하는 기간 일정도 함께 삭제됩니다)')) {
-            const tx = dbManager.db.transaction('todos', 'readwrite');
-            tasks.forEach(t => tx.objectStore('todos').delete(t.id));
-            await new Promise(r => tx.oncomplete = r);
-            // 각 레코드를 자신의 시작일 버킷에서 제거
-            tasks.forEach(t => { todos[t.date] = (todos[t.date] || []).filter(x => x.id !== t.id); });
-            closeDrawer(); refreshCurrentView(); handleSearch();
-        }
-    }
-
     function openRangeModal(startD = null, endD = null) {
       closeDrawer();
       const d = formatDate(selectedDate);
