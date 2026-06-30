@@ -954,7 +954,10 @@
                 if (d.getMonth() === m && d >= s && d <= e) {
                   dates.push(formatDate(d));
                 } // getMonth 일치 = 해당 월에 그 일자가 존재
-                m++; if (m > 11) { m = 0; y++; }
+                m++; if (m > 11) {
+              m = 0;
+              y++;
+            }
             }
         }
         return dates;
@@ -968,7 +971,10 @@
     let dropTargetCell = null; // 일정 이동 시 드롭 대상 셀
 
     function clearDropTarget() {
-        if (dropTargetCell) { dropTargetCell.classList.remove('drop-target'); dropTargetCell = null; }
+        if (dropTargetCell) {
+          dropTargetCell.classList.remove('drop-target');
+          dropTargetCell = null;
+        }
     }
 
     // 일정 이동(리스케줄): from→target 만큼 날짜 이동 (기간 일정은 길이 유지)
@@ -1394,8 +1400,14 @@
               return;
             }
             const { id, date } = row.dataset;
-            if (e.target.closest('.check-circle')) { toggleStatus(id, date); return; }
-            if (e.target.closest('[data-action="del"]')) { deleteTask(id, date); return; }
+            if (e.target.closest('.check-circle')) {
+              toggleStatus(id, date);
+              return;
+            }
+            if (e.target.closest('[data-action="del"]')) {
+              deleteTask(id, date);
+              return;
+            }
             openTaskDetailModal(id, date);
         });
         document.getElementById('rangeTasksList').addEventListener('click', handleCardAction);
@@ -1465,7 +1477,18 @@
             }
         });
 
-        window.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRangeModal(); closeDrawer(); closeMemoModal(); closeMemoDetailModal(); closeTaskDetailModal(); closeAssignMemoModal(); closeExportModal(); closeFab(); closeQuickMemoPop(); closeSearchPanel(); } });
+        window.addEventListener('keydown', e => { if (e.key === 'Escape') {
+          closeRangeModal();
+          closeDrawer();
+          closeMemoModal();
+          closeMemoDetailModal();
+          closeTaskDetailModal();
+          closeAssignMemoModal();
+          closeExportModal();
+          closeFab();
+          closeQuickMemoPop();
+          closeSearchPanel();
+        } });
     }
 
     /* --- Quick Memo Logic --- */
@@ -1679,7 +1702,10 @@
         const modal = document.getElementById('taskDetailModal');
         const id = modal.dataset.taskId, dateStr = modal.dataset.taskDate;
         const title = document.getElementById('etTitle').value.trim();
-        if (!title) { showToast('제목을 입력하세요.', 'warning'); return; }
+        if (!title) {
+          showToast('제목을 입력하세요.', 'warning');
+          return;
+        }
         const task = (todos[dateStr] || []).find(t => t.id === id);
         if (!task) {
           return;
@@ -1716,7 +1742,11 @@
         if (id) {
             // Edit
             const memo = stickyMemos.find(m => m.id === id);
-            if (!memo) { showToast('메모를 찾을 수 없습니다 (다른 탭에서 삭제됨).', 'warning'); closeMemoModal(); return; }
+            if (!memo) {
+              showToast('메모를 찾을 수 없습니다 (다른 탭에서 삭제됨).', 'warning');
+              closeMemoModal();
+              return;
+            }
             memo.title = title || content.split('\n')[0].substring(0, 30);
             memo.content = content;
             await dbManager.setItem('stickyMemos', id, memo);
@@ -1860,9 +1890,15 @@
         const modal = document.getElementById('assignMemoModal');
         const id = modal.dataset.memoId;
         const dateStr = document.getElementById('assignMemoDate').value;
-        if (!dateStr) { showToast('날짜를 선택하세요.', 'warning'); return; }
+        if (!dateStr) {
+          showToast('날짜를 선택하세요.', 'warning');
+          return;
+        }
         const memo = stickyMemos.find(m => m.id === id);
-        if (!memo) { closeAssignMemoModal(); return; }
+        if (!memo) {
+          closeAssignMemoModal();
+          return;
+        }
 
         const newTodo = {
             id: 'todo-' + Date.now() + Math.random().toString(36).slice(2, 8),
@@ -1996,7 +2032,10 @@
           selectAll.checked = false;
         }
 
-        if (!day.length) { cont.innerHTML = '<div style="text-align:center; padding:3rem; color:#94a3b8;">일정이 없습니다.</div>'; return; }
+        if (!day.length) {
+          cont.innerHTML = '<div style="text-align:center; padding:3rem; color:#94a3b8;">일정이 없습니다.</div>';
+          return;
+        }
         day.sort(compareTasks).forEach(t => cont.appendChild(createTaskCard(t)));
     }
 
@@ -2004,7 +2043,10 @@
         const d = formatDate(new Date()), cont = document.getElementById('todayTasksList');
         cont.innerHTML = '';
         const day = todosOnDate(d);
-        if (!day.length) { cont.innerHTML = '<div style="text-align:center; padding:5rem; color:#94a3b8;">오늘 일정이 없습니다.</div>'; return; }
+        if (!day.length) {
+          cont.innerHTML = '<div style="text-align:center; padding:5rem; color:#94a3b8;">오늘 일정이 없습니다.</div>';
+          return;
+        }
         day.sort(compareTasks).forEach(t => cont.appendChild(createTodayRow(t)));
     }
 
@@ -2119,7 +2161,10 @@
         Object.keys(todos).forEach(startStr => {
             todos[startStr].forEach(t => {
                 const end = t.endDate || t.date;
-                if (t.date <= e && end >= s && !seen.has(t.id)) { seen.add(t.id); list.push(t); }
+                if (t.date <= e && end >= s && !seen.has(t.id)) {
+                  seen.add(t.id);
+                  list.push(t);
+                }
             });
         });
 
@@ -2129,7 +2174,10 @@
           selectAll.checked = false;
         }
 
-        if (!list.length) { cont.innerHTML = '<div style="text-align:center; padding:3rem;">일정이 없습니다.</div>'; return; }
+        if (!list.length) {
+          cont.innerHTML = '<div style="text-align:center; padding:3rem;">일정이 없습니다.</div>';
+          return;
+        }
         list.sort((a,b) => a.date.localeCompare(b.date) || compareTasks(a,b)).forEach(t => {
             const label = document.createElement('div');
             label.style = "font-size:0.75rem; font-weight:800; color:var(--primary); margin:0.5rem 0 -0.5rem 0.5rem; padding-top:0.5rem;";
@@ -2255,7 +2303,11 @@
         task.endTime = f.endTime;
         let newStart = f.newStart || oldBucket;
         let newEnd = f.newEnd || newStart;
-        if (newEnd < newStart) { const tmp = newStart; newStart = newEnd; newEnd = tmp; } // 거꾸로 입력 보정
+        if (newEnd < newStart) {
+          const tmp = newStart;
+          newStart = newEnd;
+          newEnd = tmp;
+        } // 거꾸로 입력 보정
         const oldStart = task.date;
         task.date = newStart;
         if (newEnd && newEnd !== newStart) {
@@ -2387,12 +2439,19 @@
         row.innerHTML = `<div style="flex:1; display:flex; flex-direction:column; gap:0.75rem;"><div style="display:flex; gap:0.5rem; align-items:center;"><input type="text" class="t-title" placeholder="일정 제목" value="${t}" style="font-weight:800; flex:1;"><select class="t-category" title="카테고리" style="padding:0.5rem 0.6rem; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); color:var(--text-main); font-weight:700;">${categoryOptionsHtml(cat)}</select></div><div style="display:flex; gap:0.4rem; align-items:center; font-size:0.85rem;"><span style="color:var(--text-muted);">⏰</span><input type="time" class="t-start" value="${st}" style="${timeInputStyle}"><span style="color:var(--text-muted);">~</span><input type="time" class="t-end" value="${et}" style="${timeInputStyle}"><span style="color:var(--text-muted); font-size:0.72rem;">(비우면 종일)</span></div><textarea class="t-content" placeholder="상세 내용" style="min-height:80px;">${c}</textarea></div><button class="btn btn-danger" onclick="this.parentElement.remove()" style="padding:0.6rem; min-width:40px;">✕</button>`;
         document.getElementById('taskInputList').appendChild(row);
         row.querySelector('input').focus();
-        row.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addTaskRow(); } });
+        row.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          addTaskRow();
+        } });
     }
 
     async function saveRangeTasks() {
         let s = document.getElementById('mStart').value, e = document.getElementById('mEnd').value;
-        if (s && e && s > e) { const tmp = s; s = e; e = tmp; }   // 시작>종료면 swap (미저장/일정 증발 방지)
+        if (s && e && s > e) {
+          const tmp = s;
+          s = e;
+          e = tmp;
+        }   // 시작>종료면 swap (미저장/일정 증발 방지)
         const data = Array.from(document.querySelectorAll('#taskInputList > div')).map(r => ({ t: r.querySelector('.t-title').value.trim(), c: r.querySelector('.t-content').value.trim(), cat: r.querySelector('.t-category')?.value || '', st: r.querySelector('.t-start')?.value || '', et: r.querySelector('.t-end')?.value || '' })).filter(x => x.t);
         if (!data.length) {
           return;
@@ -2405,7 +2464,10 @@
         if (repeat) {
             // 반복 일정: 발생일마다 단일 일정으로 생성(각 건은 독립 → 개별 완료/이동 가능)
             const dates = computeRecurrenceDates(s, e, repeat);
-            if (!dates.length) { showToast('반복 발생일이 없습니다. 기간을 확인하세요.', 'warning'); return; }
+            if (!dates.length) {
+              showToast('반복 발생일이 없습니다. 기간을 확인하세요.', 'warning');
+              return;
+            }
             const seriesId = 'series-' + Date.now() + Math.random().toString(36).substr(2,6);
             for (const dd of dates) {
                 if (!todos[dd]) {
@@ -2460,7 +2522,10 @@
     if (currentView === 'today') {
       renderTodayView();
     }
-    if (currentView === 'week') { weekAnchor = new Date(); renderWeekView(); }
+    if (currentView === 'week') {
+      weekAnchor = new Date();
+      renderWeekView();
+    }
   }
 
   function updateSelectedDateLabel() {
