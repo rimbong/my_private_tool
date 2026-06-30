@@ -294,7 +294,7 @@
     function tokenizeTyped(s) {
       const out = [];
       const re = /\s*(null|[\s\S]*?\([A-Za-z0-9_$.]+\))\s*(?:,|$)/g;
-      let m, guard = 0;
+      let m, guard = 0, lastEnd = 0;
       while ((m = re.exec(s)) !== null && guard++ < 5000) {
         if (m[0] === '') { re.lastIndex++; continue; }
         let token = m[1].trim();
@@ -304,9 +304,27 @@
           if (tm) out.push({ value: tm[1].trim(), type: tm[2] });
           else out.push({ value: token, type: null });
         }
+        lastEnd = re.lastIndex;
         if (re.lastIndex >= s.length) break;
       }
+      // 정규식이 소비하지 못한 꼬리(타입 없는 값들)도 콤마로 분리해 untyped 로 추가 (파라미터 밀림 방지)
+      const rest = s.slice(lastEnd).trim();
+      if (rest) rest.split(',').forEach(v => { v = v.trim(); if (v) out.push({ value: /^null$/i.test(v) ? null : v, type: null }); });
       return out;
+    }
+
+    // 자바 라인주석(//) 제거 — 단, 문자열 리터럴('...' 또는 "...") 안의 // 는 보존
+    function stripLineComment(line) {
+      let inS = false, inD = false;
+      for (let k = 0; k < line.length - 1; k++) {
+        const c = line[k];
+        if (inS) { if (c === "'") inS = false; }
+        else if (inD) { if (c === '"') inD = false; }
+        else if (c === "'") inS = true;
+        else if (c === '"') inD = true;
+        else if (c === '/' && line[k + 1] === '/') return line.slice(0, k);
+      }
+      return line;
     }
 
     /* ---------- 자바 코드/로그 정제 ---------- */
@@ -322,9 +340,8 @@
       for (let line of lines) {
         let t = line.trim();
         if (!t) continue;
-        if (t.startsWith('//')) continue;            // 전체 주석 줄
-        const ci = t.indexOf('//');
-        if (ci > -1) t = t.substring(0, ci).trim();   // 인라인 주석 제거
+        t = stripLineComment(t).trim();               // 문자열 밖 // 만 주석으로 제거('http://' 보존)
+        if (!t) continue;
         t = t.replace(/"\s*\+\s*"/g, '');             // "abc" + "def" -> abcdef
         t = t.replace(/^"|"$/g, '');                  // 줄 양끝 따옴표 제거
         out += t + ' ';
@@ -332,9 +349,31 @@
       return out.replace(/\s+/g, ' ').trim();
     }
 
+    // 문자열 리터럴 밖의 ?(플레이스홀더)만 카운트
+    function countPlaceholders(sql) {
+      let n = 0, inStr = false;
+      for (let k = 0; k < sql.length; k++) {
+        const c = sql[k];
+        if (inStr) { if (c === "'") { if (sql[k + 1] === "'") k++; else inStr = false; } }
+        else if (c === "'") inStr = true;
+        else if (c === '?') n++;
+      }
+      return n;
+    }
+
     function bindParameters(sql, params) {
-      let i = 0;
-      return sql.replace(/\?/g, () => (i < params.length ? bindValue(params[i++]) : '?'));
+      // 문자열 리터럴('...') 안의 ? 는 건드리지 않고, 밖의 ? 만 바인딩 ('' 이스케이프 처리)
+      let i = 0, out = '', inStr = false;
+      for (let k = 0; k < sql.length; k++) {
+        const c = sql[k];
+        if (inStr) {
+          out += c;
+          if (c === "'") { if (sql[k + 1] === "'") out += sql[++k]; else inStr = false; }
+        } else if (c === "'") { inStr = true; out += c; }
+        else if (c === '?') { out += (i < params.length ? bindValue(params[i++]) : '?'); }
+        else out += c;
+      }
+      return out;
     }
 
     /* ---------- SQL 포맷터 ---------- */
@@ -397,7 +436,7 @@
 
       const params = parseParams(valueEl.value);
       const clean = cleanSql(rawSql);
-      const qCount = (clean.match(/\?/g) || []).length;
+      const qCount = countPlaceholders(clean);
 
       let result = bindParameters(clean, params);
       if ($('optSemicolon').checked && result && !result.trim().endsWith(';')) {
@@ -507,7 +546,7 @@
     // 입력 시 개수 실시간 갱신(가벼운 미리보기)
     function livePreview() {
       const clean = cleanSql(sqlEl.value);
-      const qCount = (clean.match(/\?/g) || []).length;
+      const qCount = countPlaceholders(clean);
       let pCount = parseParams(valueEl.value).length;
       // SQL칸에 Parameters 줄이 있고 파라미터칸이 비었으면 그것으로 미리보기
       if (!valueEl.value.trim()) {

@@ -356,13 +356,18 @@
     function serializeXml(node, depth) {
       const pad = '  '.repeat(depth);
       const attrs = Array.from(node.attributes || []).map(a => ` ${a.name}="${escapeXml(a.value)}"`).join('');
-      const elementChildren = Array.from(node.childNodes).filter(n => n.nodeType === 1);
-      if (elementChildren.length === 0) {
-        const text = node.textContent.trim();
-        if (text === '') return `${pad}<${node.nodeName}${attrs}/>`;
-        return `${pad}<${node.nodeName}${attrs}>${escapeXml(text)}</${node.nodeName}>`;
+      // 요소뿐 아니라 의미 있는 텍스트/CDATA 노드도 포함(혼합 콘텐츠·텍스트 보존)
+      const children = Array.from(node.childNodes).filter(n =>
+        n.nodeType === 1 || ((n.nodeType === 3 || n.nodeType === 4) && n.textContent.trim() !== '')
+      );
+      if (children.length === 0) return `${pad}<${node.nodeName}${attrs}/>`;
+      if (children.length === 1 && children[0].nodeType !== 1) {
+        return `${pad}<${node.nodeName}${attrs}>${escapeXml(children[0].textContent.trim())}</${node.nodeName}>`;
       }
-      const inner = elementChildren.map(c => serializeXml(c, depth + 1)).join('\n');
+      const inner = children.map(c => c.nodeType === 1
+        ? serializeXml(c, depth + 1)
+        : `${'  '.repeat(depth + 1)}${escapeXml(c.textContent.trim())}`
+      ).join('\n');
       return `${pad}<${node.nodeName}${attrs}>\n${inner}\n${pad}</${node.nodeName}>`;
     }
     function escapeXml(s) { return String(s).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c])); }
