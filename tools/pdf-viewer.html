@@ -197,8 +197,8 @@
       <span class="group">
         <input type="text" class="searchInput" id="searchInput" placeholder="🔍 검색"
                onkeydown="if(event.key==='Enter'){event.shiftKey?searchStep(-1):searchStep(1);}">
-        <button class="btn btn-icon" onclick="searchStep(-1)" title="이전 매치">‹</button>
-        <button class="btn btn-icon" onclick="searchStep(1)" title="다음 매치">›</button>
+        <button class="btn btn-icon" onclick="searchStep(-1)" title="이전 결과 페이지">‹</button>
+        <button class="btn btn-icon" onclick="searchStep(1)" title="다음 결과 페이지">›</button>
         <span class="matchInfo" id="matchInfo"></span>
       </span>
     </span>
@@ -248,7 +248,7 @@
     const toast = (m, t = 'info', d = 2500) => { if (typeof showToast === 'function') showToast(m, t, d); };
 
     /* ===== 상태 ===== */
-    let docs = [];                 // { id, name, size, saved, blob, _data?, pageCount, lastPage, scale, addedAt }
+    let docs = [];                 // { id, name, size, saved, blob, pageCount, lastPage, scale, addedAt }
     let activeId = null;
     let saveMode = true;           // true=라이브러리 저장, false=세션만
     let pdfDoc = null;             // 현재 pdf.js document
@@ -344,7 +344,7 @@
       const blob = file instanceof Blob ? file : new Blob([buf], { type: 'application/pdf' });
       const doc = {
         id, name: file.name || '문서.pdf', size: file.size || blob.size,
-        saved: false, blob, _data: new Uint8Array(buf),
+        saved: false, blob,
         pageCount: 0, lastPage: 1, scale: null, addedAt: Date.now()
       };
       docs.push(doc);
@@ -402,6 +402,7 @@
 
     function clearViewer() {
       renderToken++;
+      if (pdfDoc) { try { pdfDoc.destroy(); } catch (e) {} }
       pdfDoc = null; numPages = 0; baseViewport = null;
       panes.forEach(p => { if (p.io) p.io.disconnect(); });
       panes = []; splitOn = false;
@@ -418,6 +419,20 @@
       const wide = document.body.classList.toggle('wide');
       const b = $('wideBtn');
       if (b) { b.textContent = wide ? '◧' : '⛶'; b.title = wide ? '사이드바 표시' : '사이드바 숨기기 (넓게 보기)'; }
+      refitPanes();   // 사이드바 폭 변화 → 너비/페이지 맞춤 모드였던 패널만 재적용
+    }
+    // 텍스트 레이어(선택/복사) 위 더블클릭은 단어 선택이므로 넓게보기 토글하지 않음
+    function onPaneDblClick(e) {
+      if (e.target.closest('.textLayer')) return;
+      toggleWide();
+    }
+    // 패널 폭이 바뀌었을 때(넓게보기·리사이즈), 맞춤 모드였던 패널만 현재 폭 기준으로 재맞춤(커스텀 줌은 유지)
+    function refitPanes() {
+      if (!pdfDoc) return;
+      requestAnimationFrame(() => panes.forEach(p => {
+        if (p.fitMode === 'width') applyScale(p, fitWidthScale(p));
+        else if (p.fitMode === 'page') applyScale(p, fitPageScale(p));
+      }));
     }
 
     /* ===== 렌더링 (패널 단위) ===== */
@@ -428,11 +443,15 @@
       renderList();
 
       const token = ++renderToken;
+      const prevDoc = pdfDoc;
+      pdfDoc = null;
       try {
-        const data = doc._data ? doc._data : new Uint8Array(await doc.blob.arrayBuffer());
-        doc._data = data;
+        // blob에서 매번 새 버퍼를 읽는다(캐시 금지): pdf.js가 버퍼를 worker로 transfer하며
+        // detach(byteLength=0)시켜, 캐시한 Uint8Array를 재사용하면 두 번째부터 로딩이 깨진다.
+        const data = new Uint8Array(await doc.blob.arrayBuffer());
         const pdf = await pdfjsLib.getDocument({ data }).promise;
-        if (token !== renderToken) return; // 그 사이 다른 문서로 전환됨
+        if (token !== renderToken) { try { await pdf.destroy(); } catch (e) {} return; } // 그 사이 다른 문서로 전환됨
+        if (prevDoc) { try { await prevDoc.destroy(); } catch (e) {} }  // 이전 문서 파괴(메모리/worker 누수 방지)
         pdfDoc = pdf;
         numPages = pdf.numPages;
         doc.pageCount = numPages;
@@ -447,6 +466,7 @@
         $('dlBtn').style.display = '';
         $('splitBtn').style.display = '';
         $('pageTotal').textContent = '/ ' + numPages;
+        $('pageInput').max = numPages;
 
         splitOn = false;            // 새 문서는 단일 뷰로 시작
         updateSplitBtn();
@@ -455,6 +475,7 @@
         panes.forEach(p => {
           // 컨테이너가 보이게 된 뒤 너비맞춤 (숨김이면 clientWidth=0 → 과소 축소)
           p.scale = doc.scale || fitWidthScale(p);
+          p.fitMode = doc.scale ? null : 'width';   // 복원된 커스텀 줌이면 맞춤 모드 해제
           p.currentPage = target;
           buildPlaceholders(p);
         });
@@ -485,10 +506,10 @@
         const el = document.createElement('div');
         el.className = 'pdf-scroll';
         if (count === 1) el.title = '더블클릭하면 사이드바를 접어 넓게 봅니다';
-        const pane = { el, scale: 1.2, currentPage: 1, io: null, _raf: null };
+        const pane = { el, scale: 1.2, currentPage: 1, io: null, _raf: null, fitMode: 'width' };
         el.addEventListener('scroll', () => onScroll(pane), { passive: true });
         el.addEventListener('mousedown', () => setActivePane(pane));
-        el.addEventListener('dblclick', toggleWide);
+        el.addEventListener('dblclick', onPaneDblClick);
         panes.push(pane);
         wrap.appendChild(el);
       }
@@ -513,6 +534,7 @@
       buildPanes();
       panes.forEach(p => {
         p.scale = fitWidthScale(p);   // 폭이 바뀌었으니 각 패널 너비맞춤
+        p.fitMode = 'width';
         p.currentPage = Math.min(Math.max(seedPage, 1), numPages);
         buildPlaceholders(p);
       });
@@ -656,13 +678,17 @@
     function jumpToInput() {
       const p = activePane(); if (!p) return;
       let n = parseInt($('pageInput').value, 10);
-      if (isNaN(n)) return;
+      if (isNaN(n)) { setPageInput(p.currentPage); return; }   // 잘못된 입력 → 현재 페이지로 복구
       n = Math.min(Math.max(n, 1), numPages);
       p.currentPage = n; setPageInput(n); scrollToPage(p, n);
     }
-    function setPageInput(n) { $('pageInput').value = n; }
+    function setPageInput(n) {
+      $('pageInput').value = n;
+      $('prevBtn').disabled = n <= 1;
+      $('nextBtn').disabled = n >= numPages;
+    }
 
-    let persistTimer = null;
+    const persistTimers = new Map();   // 문서별 저장 타이머 (전역 공유 시 전환하면 직전 문서 저장이 취소됨)
     function onScroll(pane) {
       if (pane._raf) return;
       pane._raf = requestAnimationFrame(() => {
@@ -685,12 +711,12 @@
       });
     }
     function persistDocDebounced(doc) {
-      clearTimeout(persistTimer);
-      persistTimer = setTimeout(() => { persistDoc(doc).catch(() => {}); }, 600);
+      clearTimeout(persistTimers.get(doc.id));
+      persistTimers.set(doc.id, setTimeout(() => { persistTimers.delete(doc.id); persistDoc(doc).catch(() => {}); }, 600));
     }
 
-    function zoomBy(dir) { const p = activePane(); if (p) applyScale(p, clampScale(p.scale + dir * STEP)); }
-    function fit(mode) { const p = activePane(); if (p) applyScale(p, mode === 'width' ? fitWidthScale(p) : fitPageScale(p)); }
+    function zoomBy(dir) { const p = activePane(); if (!p) return; p.fitMode = null; applyScale(p, clampScale(p.scale + dir * STEP)); }
+    function fit(mode) { const p = activePane(); if (!p) return; p.fitMode = mode; applyScale(p, mode === 'width' ? fitWidthScale(p) : fitPageScale(p)); }
     function applyScale(pane, s) {
       if (!pdfDoc) return;
       if (Math.abs(s - pane.scale) < 0.001) { pane.scale = s; if (pane === activePane()) updateZoomLabel(); return; }
@@ -724,14 +750,18 @@
     }
     async function ensureTextCache() {
       if (searchState.textCache) return searchState.textCache;
+      const token = renderToken;   // 추출 중 문서가 바뀌면 중단(엉뚱한 문서 캐시 방지)
       const cache = {};
       for (let i = 1; i <= numPages; i++) {
         try {
           const page = await pdfDoc.getPage(i);
+          if (token !== renderToken) return null;
           const tc = await page.getTextContent();
+          if (token !== renderToken) return null;
           cache[i] = tc.items.map(it => it.str).join(' ');
         } catch (e) { cache[i] = ''; }
       }
+      if (token !== renderToken) return null;
       searchState.textCache = cache;
       return cache;
     }
@@ -742,6 +772,7 @@
         searchState.term = term;
         $('matchInfo').textContent = '검색 중…';
         const cache = await ensureTextCache();
+        if (!cache) return;   // 문서 전환으로 중단됨
         const lower = term.toLowerCase();
         searchState.pages = [];
         for (let i = 1; i <= numPages; i++) {
@@ -773,6 +804,16 @@
         sp.classList.toggle('hl', !!sp.textContent && sp.textContent.toLowerCase().includes(lower));
       });
     }
+
+    /* ===== 키보드 / 리사이즈 ===== */
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (searchState.term) resetSearch();
+      else if (document.body.classList.contains('wide')) toggleWide();
+      else if (splitOn) toggleSplit();
+    });
+    let resizeTimer = null;
+    window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(refitPanes, 200); });
 
     /* ===== utils ===== */
     function escapeHtml(s) {
