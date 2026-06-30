@@ -14,7 +14,16 @@
         --button-secondary-border-color: #99d6ff;
         --button-secondary-hover-background-color: #99d6ff;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-color); line-height: 1.5; padding: 2rem; }
+    body.dark {
+        --background-color: #0d1117; --text-color: #c9d1d9; --muted-text-color: #8b949e;
+        --card-background-color: #161b22; --border-color: #30363d; --button-background-color: #238636;
+        --button-hover-background-color: #2ea043;
+        --button-secondary-background-color: #16304f; --button-secondary-text-color: #79b8ff;
+        --button-secondary-border-color: #1f6feb; --button-secondary-hover-background-color: #1f6feb;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-color); line-height: 1.5; padding: 2rem; transition: background-color .2s, color .2s; }
+    input[type="text"], textarea { background-color: var(--card-background-color); color: var(--text-color); }
+    @media (max-width: 640px) { body { padding: 1rem; } .form-line { gap: 0.5rem; } }
     .card { background-color: var(--card-background-color); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; }
     .card-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; }
     .form-group { margin-bottom: 1.25rem; }
@@ -102,6 +111,7 @@
 
   <script src="lib/shared-utils.js"></script>
   <script src="lib/toast-utils.js"></script>
+  <script src="lib/portal-theme.js"></script>
   <script>
     // 단독 실행에서도 동작하도록: 바인딩/초기화는 DOMContentLoaded 1회, message는 상태 저장만.
     const PARENT_ORIGIN = (location.origin && location.origin !== 'null') ? location.origin : '*';
@@ -204,7 +214,7 @@
 
             let text = `window.configObj = ${JSON.stringify(configJson, null, 2)};`
             download("config.js", text);
-            alert('다운로드된 config.js 파일을 본 파일과 동일한 디렉토리로 옮기세요');
+            showToast('다운로드된 config.js를 이 도구와 같은 디렉토리로 옮기세요.', 'info', 5000);
             
             // Notify parent that config has been updated (타깃 origin 명시)
             window.parent.postMessage({ type: 'config-updated' }, PARENT_ORIGIN);

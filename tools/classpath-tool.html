@@ -12,7 +12,15 @@
         --outline-button-border-color: #d1d5db; --outline-button-text-color: #111827; 
         --outline-button-hover-background-color: #f3f4f6;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-color); line-height: 1.5; padding: 2rem; }
+    body.dark {
+        --background-color: #0d1117; --text-color: #c9d1d9; --muted-text-color: #8b949e;
+        --card-background-color: #161b22; --border-color: #30363d; --button-background-color: #238636;
+        --button-hover-background-color: #2ea043; --outline-button-border-color: #30363d;
+        --outline-button-text-color: #c9d1d9; --outline-button-hover-background-color: #21262d;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; background-color: var(--background-color); color: var(--text-color); line-height: 1.5; padding: 2rem; transition: background-color .2s, color .2s; }
+    input[type="text"], textarea { background-color: var(--card-background-color); color: var(--text-color); }
+    @media (max-width: 640px) { body { padding: 1rem; } .button-group { flex-direction: column; } }
     .card { background-color: var(--card-background-color); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1.5rem; margin-bottom: 1.5rem; }
     .card-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; }
     .form-group { margin-bottom: 1.25rem; }
@@ -115,7 +123,7 @@
 
         function checkConfig() {
             if (!tomcatObj || Object.keys(tomcatObj).length === 0) {
-                alert('config.js 파일이 없거나 유효하지 않습니다. 먼저 Config 설정 도구에서 파일을 생성하고 이 페이지를 다시 로드해주세요.');
+                showToast('config.js가 없거나 유효하지 않습니다. Config 도구에서 파일을 먼저 생성하세요.', 'warning', 5000);
                 return false;
             }
             return true;
@@ -189,7 +197,7 @@
             const tomcatVersionObj = tomcatObj[tomcatVersion];
 
             if (!tomcatVersionObj || !tomcatVersionObj.lib) {
-                alert(`Tomcat ${tomcatVersion}에 대한 설정이 config.js에 없습니다.`);
+                showToast(`Tomcat ${tomcatVersion} 설정이 config.js에 없습니다.`, 'warning', 5000);
                 return;
             }
 
@@ -232,7 +240,7 @@
                 reader.readAsText(file);
             } catch (error) {
                 console.error("Error processing .classpath file:", error);
-                alert("기존 .classpath 파일을 처리하는 중 오류가 발생했습니다.");
+                showToast('기존 .classpath 파일을 처리하는 중 오류가 발생했습니다.', 'error', 5000);
             }
         }
 

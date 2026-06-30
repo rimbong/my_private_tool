@@ -6,7 +6,7 @@
 const mdRenderer = {
   theme: 'light',
   config: {
-    storageKey: 'md-renderer-theme',
+    storageKey: 'portal-theme',   // 포털 테마와 단일 키 사용(이중화 제거)
     onThemeChange: null // (mode) => {}
   },
 
@@ -47,7 +47,7 @@ const mdRenderer = {
       }
     };
     marked.use({ renderer });
-    marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
+    marked.setOptions({ breaks: true, gfm: true });   // headerIds/mangle 은 marked v5+에서 제거됨
   },
 
   /**
