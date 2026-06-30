@@ -369,6 +369,10 @@
     /* ===== Cron 파서 (5/6필드 + 별칭) ===== */
     const MONTH_NAMES = ['', '1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
     const DOW_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+    // 명칭 토큰(대소문자 무관) → 숫자 (Spring/quartz 호환)
+    const MON_TOKENS = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
+    const DOW_TOKENS = { SUN:0, MON:1, TUE:2, WED:3, THU:4, FRI:5, SAT:6 };
+    const translateNames = (field, tokens) => field.replace(/[A-Za-z]{3,}/g, m => (tokens[m.toUpperCase()] !== undefined ? tokens[m.toUpperCase()] : m));
     const CRON_ALIASES = {
       '@yearly': '0 0 1 1 *', '@annually': '0 0 1 1 *', '@monthly': '0 0 1 * *',
       '@weekly': '0 0 * * 0', '@daily': '0 0 * * *', '@midnight': '0 0 * * *', '@hourly': '0 * * * *'
@@ -427,7 +431,11 @@
         parts.push(`${hrD} ${minD}`);
       }
       if (hasSec && e.sec !== '0') parts.push(e.sec === '*' ? '매초' : describeSet(e.sec, 0, 59) + '초');
-      if (e.dow !== '*') parts.push(`${describeSet(e.dow, 0, 6, DOW_NAMES)}요일`);
+      if (e.dow !== '*') {
+        let dowSet = [...parseField(e.dow, 0, 7)].map(v => v === 7 ? 0 : v);   // 7=일요일 → 0
+        dowSet = [...new Set(dowSet)].sort((a, b) => a - b);
+        parts.push(`${dowSet.map(v => DOW_NAMES[v]).join(', ')}요일`);
+      }
       if (e.dom !== '*') parts.push(`${describeSet(e.dom, 1, 31)}일`);
       if (e.mon !== '*') parts.push(`${describeSet(e.mon, 1, 12, MONTH_NAMES)}`);
       if (e.dow === '*' && e.dom === '*' && e.mon === '*') parts.push('매일');
@@ -458,13 +466,20 @@
         return;
       }
 
-      // 필드 범위/라벨 (6필드면 맨 앞이 초)
-      const ranges = hasSec ? [[0,59],[0,59],[0,23],[1,31],[1,12],[0,6]] : [[0,59],[0,23],[1,31],[1,12],[0,6]];
-      const labels = hasSec ? ['초 (0-59)','분 (0-59)','시 (0-23)','일 (1-31)','월 (1-12)','요일 (0-6)'] : ['분 (0-59)','시 (0-23)','일 (1-31)','월 (1-12)','요일 (0-6)'];
+      // 필드 범위/라벨 (6필드면 맨 앞이 초). DOW는 0-7 허용(7=일요일, Spring 호환 → 0으로 정규화)
+      const ranges = hasSec ? [[0,59],[0,59],[0,23],[1,31],[1,12],[0,7]] : [[0,59],[0,23],[1,31],[1,12],[0,7]];
+      const labels = hasSec ? ['초 (0-59)','분 (0-59)','시 (0-23)','일 (1-31)','월 (1-12)','요일 (0-7,일=0/7)'] : ['분 (0-59)','시 (0-23)','일 (1-31)','월 (1-12)','요일 (0-7,일=0/7)'];
+
+      // 월/요일 명칭(JAN-DEC, SUN-SAT) → 숫자로 치환
+      const monIdx = fields.length - 2, dowIdx = fields.length - 1;
+      fields[monIdx] = translateNames(fields[monIdx], MON_TOKENS);
+      fields[dowIdx] = translateNames(fields[dowIdx], DOW_TOKENS);
 
       let parsed;
       try { parsed = fields.map((f, i) => parseField(f, ranges[i][0], ranges[i][1])); }
       catch (e) { failMsg(e.message); return; }
+      // DOW 7(일요일) → 0 으로 정규화
+      if (parsed[dowIdx].has(7)) { parsed[dowIdx].delete(7); parsed[dowIdx].add(0); }
 
       const sets = hasSec
         ? { sec: parsed[0], min: parsed[1], hour: parsed[2], dom: parsed[3], mon: parsed[4], dow: parsed[5] }

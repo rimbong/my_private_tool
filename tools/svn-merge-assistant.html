@@ -770,7 +770,7 @@
       document.getElementById('reportModal').style.display = 'flex';
     }
 
-    function copyReport() { navigator.clipboard.writeText(document.getElementById('reportArea').value).then(() => showToast('복사되었습니다.', 'success')); }
+    function copyReport() { navigator.clipboard.writeText(document.getElementById('reportArea').value).then(() => showToast('복사되었습니다.', 'success'), () => showToast('복사에 실패했습니다.', 'error')); }
 
     function copyPath(e, path, type) {
       const root = document.getElementById('localPath').value.trim();
@@ -778,7 +778,7 @@
       navigator.clipboard.writeText(txt).then(() => {
         const btn = e.currentTarget || e.target; const old = btn.innerText; btn.innerText = "✅";
         setTimeout(() => { btn.innerText = old; }, 1000);
-      });
+      }, () => showToast('복사에 실패했습니다.', 'error'));
     }
 
     function switchTab(tab) {

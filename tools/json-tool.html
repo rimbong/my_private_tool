@@ -549,7 +549,7 @@
         k.className = 'k-key';
         k.innerHTML = hlText(JSON.stringify(key), term);
         k.title = '클릭하면 경로 복사: ' + (path || '(root)');
-        k.onclick = () => { navigator.clipboard.writeText(path).then(() => showToast('경로 복사: ' + (path || '(root)'), 'success')); };
+        k.onclick = () => { navigator.clipboard.writeText(path).then(() => showToast('경로 복사: ' + (path || '(root)'), 'success'), () => showToast('복사에 실패했습니다.', 'error')); };
         row.appendChild(k);
         const colon = document.createElement('span'); colon.className = 'k-punc'; colon.textContent = ':'; row.appendChild(colon);
       }

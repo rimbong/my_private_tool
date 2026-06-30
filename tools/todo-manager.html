@@ -877,6 +877,11 @@
     // HTML 이스케이프 (모든 innerHTML 보간에 사용) — 텍스트용/속성용
     const escHtml = s => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const escAttr = s => escHtml(s).replace(/"/g, '&quot;');
+    // IndexedDB 쓰기 안전 래퍼 — quota/blocked 시 unhandled rejection 대신 에러 토스트
+    async function dbSafeSet(store, key, val) {
+      try { await dbManager.setItem(store, key, val); return true; }
+      catch (e) { console.error('DB 저장 실패', e); showToast('저장에 실패했습니다 (저장 공간 초과 등).', 'error', 5000); return false; }
+    }
     function getCategory(id) { return CATEGORIES.find(c => c.id === (id || '')) || CATEGORIES[0]; }
     function categoryOptionsHtml(selected) {
         return CATEGORIES.map(c => `<option value="${c.id}" ${c.id === (selected || '') ? 'selected' : ''}>${c.name}</option>`).join('');
@@ -2080,7 +2085,7 @@
             if (!todos[newStart]) todos[newStart] = [];
             todos[newStart].push(task);
         }
-        await dbManager.setItem('todos', task.id, task);
+        await dbSafeSet('todos', task.id, task);
     }
 
     async function saveEditCard(card) {
@@ -2105,7 +2110,7 @@
       const t = (todos[d] || []).find(x => x.id === id);
       if (!t) return;
       t.completed = !t.completed;
-      await dbManager.setItem('todos', id, t);
+      await dbSafeSet('todos', id, t);
       refreshCurrentView(); handleSearch();
     }
     
@@ -2202,7 +2207,7 @@
                 if (!todos[dd]) todos[dd] = [];
                 for (let item of data) {
                     const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: dd, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, repeat, seriesId, completed: false, createdAt: Date.now() };
-                    todos[dd].push(obj); await dbManager.setItem('todos', obj.id, obj);
+                    todos[dd].push(obj); await dbSafeSet('todos', obj.id, obj);
                 }
             }
             showToast(`반복 일정 ${dates.length}일분을 생성했습니다.`, 'success');
@@ -2214,7 +2219,7 @@
             if (!todos[s]) todos[s] = [];
             for (let item of data) {
                 const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: s, endDate: e, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, completed: false, createdAt: Date.now() };
-                todos[s].push(obj); await dbManager.setItem('todos', obj.id, obj);
+                todos[s].push(obj); await dbSafeSet('todos', obj.id, obj);
             }
         } else {
             // 매일 개별 등록 (기존 방식)
@@ -2223,7 +2228,7 @@
                 const d = formatDate(curr); if (!todos[d]) todos[d] = [];
                 for (let item of data) {
                     const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: d, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, completed: false, createdAt: Date.now() };
-                    todos[d].push(obj); await dbManager.setItem('todos', obj.id, obj);
+                    todos[d].push(obj); await dbSafeSet('todos', obj.id, obj);
                 }
                 curr.setDate(curr.getDate() + 1);
             }

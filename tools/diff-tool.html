@@ -315,8 +315,15 @@
     /* LCS 기반 줄 단위 diff */
     function computeDiff(aLines, bLines) {
       const ignoreBlank = document.getElementById('optBlank').checked;
-      const a = aLines.map(normalize);
-      const b = bLines.map(normalize);
+      // ignoreBlank: 빈 줄을 LCS '전'에 제외(원본 인덱스 보존)해야 정렬이 어긋나지 않음(W3)
+      let aIdx = aLines.map((_, i) => i);
+      let bIdx = bLines.map((_, i) => i);
+      if (ignoreBlank) {
+        aIdx = aIdx.filter(i => aLines[i].trim() !== '');
+        bIdx = bIdx.filter(i => bLines[i].trim() !== '');
+      }
+      const a = aIdx.map(i => normalize(aLines[i]));
+      const b = bIdx.map(i => normalize(bLines[i]));
       const n = a.length, m = b.length;
 
       // LCS DP 테이블
@@ -331,26 +338,18 @@
       let i = 0, j = 0;
       while (i < n && j < m) {
         if (a[i] === b[j]) {
-          rows.push({ type: 'same', a: aLines[i], b: bLines[j], ai: i + 1, bi: j + 1 });
+          rows.push({ type: 'same', a: aLines[aIdx[i]], b: bLines[bIdx[j]], ai: aIdx[i] + 1, bi: bIdx[j] + 1 });
           i++; j++;
         } else if (dp[i + 1][j] >= dp[i][j + 1]) {
-          rows.push({ type: 'del', a: aLines[i], ai: i + 1 });
+          rows.push({ type: 'del', a: aLines[aIdx[i]], ai: aIdx[i] + 1 });
           i++;
         } else {
-          rows.push({ type: 'add', b: bLines[j], bi: j + 1 });
+          rows.push({ type: 'add', b: bLines[bIdx[j]], bi: bIdx[j] + 1 });
           j++;
         }
       }
-      while (i < n) { rows.push({ type: 'del', a: aLines[i], ai: i + 1 }); i++; }
-      while (j < m) { rows.push({ type: 'add', b: bLines[j], bi: j + 1 }); j++; }
-
-      if (ignoreBlank) {
-        return rows.filter(r => {
-          if (r.type === 'same') return true;
-          const content = r.type === 'del' ? r.a : r.b;
-          return content.trim() !== '';
-        });
-      }
+      while (i < n) { rows.push({ type: 'del', a: aLines[aIdx[i]], ai: aIdx[i] + 1 }); i++; }
+      while (j < m) { rows.push({ type: 'add', b: bLines[bIdx[j]], bi: bIdx[j] + 1 }); j++; }
       return rows;
     }
 
@@ -362,12 +361,17 @@
     function inlineDiff(a, b) {
       const ta = a.match(/\s+|\S+/g) || [];
       const tb = b.match(/\s+|\S+/g) || [];
+      // 토큰 매칭은 normalize 옵션(대소문자/공백 무시)을 반영하되 표시는 원본 토큰으로(W2)
+      const ic = document.getElementById('optCase').checked;
+      const iw = document.getElementById('optWS').checked;
+      const norm = t => { if (iw && /^\s+$/.test(t)) return ''; return ic ? t.toLowerCase() : t; };
+      const na = ta.map(norm), nb = tb.map(norm);
       const n = ta.length, m = tb.length;
       const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
-      for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = ta[i] === tb[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+      for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i][j] = na[i] === nb[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
       let i = 0, j = 0, aOut = '', bOut = '';
       while (i < n && j < m) {
-        if (ta[i] === tb[j]) { aOut += esc(ta[i]); bOut += esc(tb[j]); i++; j++; }
+        if (na[i] === nb[j]) { aOut += esc(ta[i]); bOut += esc(tb[j]); i++; j++; }
         else if (dp[i + 1][j] >= dp[i][j + 1]) { aOut += `<span class="wd">${esc(ta[i])}</span>`; i++; }
         else { bOut += `<span class="wd">${esc(tb[j])}</span>`; j++; }
       }
