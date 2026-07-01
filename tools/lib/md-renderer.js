@@ -113,10 +113,27 @@ const mdRenderer = {
     const html = marked.parse(text);
     // 신뢰할 수 없는 .md(열기/드롭) 안의 raw HTML(XSS, 예: <img onerror>, <svg onload>) 차단
     if (typeof DOMPurify !== 'undefined' && DOMPurify.sanitize) {
+      this._ensureImgSchemeHook();
       return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
     }
     console.warn('DOMPurify 미로딩 — 마크다운 HTML이 정화되지 않았습니다.');
     return html;
+  },
+
+  // 내부 이미지 토큰(src="img:토큰")은 DOMPurify 기본 ALLOWED_URI_REGEXP 가 거부해 src 가 삭제된다.
+  // → 붙여넣기/드롭 이미지가 미리보기에서 전부 깨짐. src 가 img: 로 시작할 때만 예외적으로 보존한다.
+  // 브라우저는 img: 스킴을 로드하지 않아 무해하고(이후 resolveImages 가 실제 이미지로 치환/폴백),
+  // onerror 등 이벤트 핸들러·script 는 DOMPurify 가 그대로 계속 제거하므로 XSS 방어는 유지된다.
+  _ensureImgSchemeHook() {
+    if (this._imgHookAdded || typeof DOMPurify === 'undefined' || !DOMPurify.addHook) {
+      return;
+    }
+    this._imgHookAdded = true;
+    DOMPurify.addHook('uponSanitizeAttribute', function (node, data) {
+      if (data.attrName === 'src' && typeof data.attrValue === 'string' && data.attrValue.indexOf('img:') === 0) {
+        data.forceKeepAttr = true;
+      }
+    });
   }
 };
 
