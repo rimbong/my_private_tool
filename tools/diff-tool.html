@@ -483,10 +483,11 @@
       const blocks = []; let i = 0;
       while (i < rows.length) {
         if (rows[i].type === 'same') {
-          const same = []; while (i < rows.length && rows[i].type === 'same') {
-          same.push(rows[i]);
-          i++;
-        }
+          const same = [];
+          while (i < rows.length && rows[i].type === 'same') {
+            same.push(rows[i]);
+            i++;
+          }
           blocks.push({ type: 'same', rows: same });
         } else {
           const dels = [], adds = [];
