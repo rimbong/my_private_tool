@@ -883,8 +883,15 @@
     const escAttr = s => escHtml(s).replace(/"/g, '&quot;');
     // IndexedDB 쓰기 안전 래퍼 — quota/blocked 시 unhandled rejection 대신 에러 토스트
     async function dbSafeSet(store, key, val) {
-      try { await dbManager.setItem(store, key, val); return true; }
-      catch (e) { console.error('DB 저장 실패', e); showToast('저장에 실패했습니다 (저장 공간 초과 등).', 'error', 5000); return false; }
+      try {
+        await dbManager.setItem(store, key, val);
+        return true;
+      }
+      catch (e) {
+        console.error('DB 저장 실패', e);
+        showToast('저장에 실패했습니다 (저장 공간 초과 등).', 'error', 5000);
+        return false;
+      }
     }
     function getCategory(id) { return CATEGORIES.find(c => c.id === (id || '')) || CATEGORIES[0]; }
     function categoryOptionsHtml(selected) {
@@ -947,17 +954,18 @@
             const dom = s.getDate();
             let y = s.getFullYear(), m = s.getMonth();
             for (let guard = 0; guard < 400 && dates.length < 366; guard++) {
-                if (new Date(y, m, 1) > e) {
-                  break;
-                }
-                const d = new Date(y, m, dom);
-                if (d.getMonth() === m && d >= s && d <= e) {
-                  dates.push(formatDate(d));
-                } // getMonth 일치 = 해당 월에 그 일자가 존재
-                m++; if (m > 11) {
-              m = 0;
-              y++;
-            }
+              if (new Date(y, m, 1) > e) {
+                break;
+              }
+              const d = new Date(y, m, dom);
+              if (d.getMonth() === m && d >= s && d <= e) {
+                dates.push(formatDate(d));
+              } // getMonth 일치 = 해당 월에 그 일자가 존재
+              m++;
+              if (m > 11) {
+                m = 0;
+                y++;
+              }
             }
         }
         return dates;
@@ -1300,7 +1308,11 @@
             }
             e.preventDefault();
             let payload;
-            try { payload = JSON.parse(e.dataTransfer.getData('text/plain')); } catch (err) { return; }
+            try {
+              payload = JSON.parse(e.dataTransfer.getData('text/plain'));
+            } catch (err) {
+              return;
+            }
             if (!payload || !payload.id) {
               return;
             }
@@ -2495,14 +2507,15 @@
             // 매일 개별 등록 (기존 방식)
             let curr = new Date(s);
             while (curr <= new Date(e)) {
-                const d = formatDate(curr); if (!todos[d]) {
-              todos[d] = [];
-            }
-                for (let item of data) {
-                    const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: d, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, completed: false, createdAt: Date.now() };
-                    todos[d].push(obj); await dbSafeSet('todos', obj.id, obj);
-                }
-                curr.setDate(curr.getDate() + 1);
+              const d = formatDate(curr);
+              if (!todos[d]) {
+                todos[d] = [];
+              }
+              for (let item of data) {
+                  const obj = { id: Date.now() + Math.random().toString(36).substr(2,9), date: d, title: item.t, content: item.c, category: item.cat, startTime: item.st, endTime: item.et, completed: false, createdAt: Date.now() };
+                  todos[d].push(obj); await dbSafeSet('todos', obj.id, obj);
+              }
+              curr.setDate(curr.getDate() + 1);
             }
         }
         closeRangeModal(); refreshCurrentView(); handleSearch();
@@ -2761,9 +2774,13 @@
       const tasks = todosOnDate(ds).filter(passFilter).sort(compareTasks);
       if (tasks.length) {
         byDate.push({ dateStr: ds, tasks });
-        tasks.forEach(t => { if (!seen.has(t.id)) { seen.add(t.id); total++; if (t.completed) {
-          done++;
-        } } });
+        tasks.forEach(t => { if (!seen.has(t.id)) {
+          seen.add(t.id);
+          total++;
+          if (t.completed) {
+            done++;
+          }
+        } });
       }
     }
 
