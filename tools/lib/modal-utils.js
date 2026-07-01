@@ -103,8 +103,12 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
         }, 160);
         resolve(result);
       }
-      function onOk() { close(isPrompt ? (input ? input.value : '') : true); }
-      function onCancel() { close(isPrompt ? null : false); }
+      function onOk() {
+        close(isPrompt ? (input ? input.value : '') : true);
+      }
+      function onCancel() {
+        close(isPrompt ? null : false);
+      }
       function onKey(e) {
         if (e.key === 'Escape') {
           // 모달이 소비 — 호스트 페이지의 전역 Esc 핸들러(드로어/검색패널/다른 모달)로 전파 금지
