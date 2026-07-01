@@ -867,7 +867,10 @@
     let docs = [];          // 순서대로 정렬된 전체 문서 배열
     let activeDocId = null;
     let docCounter = 0;
-    function genDocId() { docCounter++; return 'd' + Date.now().toString(36) + docCounter.toString(36); }
+    function genDocId() {
+      docCounter++;
+      return 'd' + Date.now().toString(36) + docCounter.toString(36);
+    }
 
     /* 탭 바에는 최대 MAX_VISIBLE개만 노출하고, 나머지는 '문서 관리' 다이얼로그에서 다룬다.
        visibleIds = 현재 탭으로 보이는 문서 id 집합. accessTime = 최근 접근 시각(오래된 것부터 바에서 밀어냄). */
@@ -917,7 +920,9 @@
       return t || '제목 없음';
     }
 
-    function getActiveDoc() { return docs.find(d => d.id === activeDocId) || null; }
+    function getActiveDoc() {
+      return docs.find(d => d.id === activeDocId) || null;
+    }
 
     function persistDoc(doc) {
       if (dbManager.db) {
@@ -1747,7 +1752,9 @@ function hello() {
       }
       return w;
     }
-    function padDisp(s, width) { return s + ' '.repeat(Math.max(0, width - dispWidth(s))); }
+    function padDisp(s, width) {
+      return s + ' '.repeat(Math.max(0, width - dispWidth(s)));
+    }
     // 표시 폭 기준 줄바꿈(단어 단위, 한 단어가 너무 길면 강제 분해)
     function wrapDisp(s, max) {
       const words = (s || '').split(/\s+/).filter(Boolean);
@@ -2082,7 +2089,9 @@ function hello() {
       }
     }
     // 배너 클릭 → 보호 무시하고 원격 내용으로 강제 새로고침
-    function pullRemote() { applyRemote(true); }
+    function pullRemote() {
+      applyRemote(true);
+    }
 
     function notifySync() {
       if (!syncBC || !syncReady || applyingRemote) {
