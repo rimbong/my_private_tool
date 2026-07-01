@@ -189,6 +189,7 @@
     <div class="nav-tabs" id="navTabs">
       <input type="radio" name="selectView" id="selectTodo" value="./tools/todo-manager.html"><label for="selectTodo">TODO 관리</label>
       <input type="radio" name="selectView" id="selectMdViewer" value="./tools/md-viewer.html"><label for="selectMdViewer">마크다운</label>
+      <input type="radio" name="selectView" id="selectRichMd" value="./tools/rich-md-editor.html"><label for="selectRichMd">노트 편집기</label>
       <input type="radio" name="selectView" id="selectPdfViewer" value="./tools/pdf-viewer.html"><label for="selectPdfViewer">PDF 뷰어</label>
       <input type="radio" name="selectView" id="selectUri" value="./tools/uri-tool.html"><label for="selectUri">URI 도구</label>
       <!-- <input type="radio" name="selectView" id="selectSvnLog" value="./tools/svn-log-converter.html"><label for="selectSvnLog">패치내역만들기</label> -->
@@ -215,7 +216,7 @@
   const TOOL_MAP = {
     'todo': 'selectTodo', 'config': 'selectConfig', 'classpath': 'selectClasspath',
     'maven': 'selectMaven', 'sql': 'selectQueryPage', 'uri': 'selectUri',
-    'md-viewer': 'selectMdViewer', 'pdf': 'selectPdfViewer', 'svn-log': 'selectSvnLog',
+    'md-viewer': 'selectMdViewer', 'rich-md': 'selectRichMd', 'pdf': 'selectPdfViewer', 'svn-log': 'selectSvnLog',
     'svn-merge': 'selectSvnMerge', 'json': 'selectJson', 'diff': 'selectDiff', 'time': 'selectTime',
   };
   const RADIO_TO_TOOL = Object.fromEntries(Object.entries(TOOL_MAP).map(([k, v]) => [v, k]));

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>노트 편집기 (위지윅)</title>
+  <script src="lib/tiptap.bundle.js"></script>
+  <script src="lib/toast-utils.js"></script>
+  <script src="lib/modal-utils.js"></script>
+  <script src="lib/portal-theme.js"></script>
+  <style>
+    :root {
+      --bg: #ffffff; --panel: #f9fafb; --text: #111827; --muted: #6b7280;
+      --border: #e5e7eb; --primary: #2563eb; --primary-soft: #eff6ff;
+      --code-bg: #f3f4f6; --sel: #b3d4fc;
+    }
+    body.dark {
+      --bg: #0d1117; --panel: #161b22; --text: #c9d1d9; --muted: #8b949e;
+      --border: #30363d; --primary: #58a6ff; --primary-soft: #16304f;
+      --code-bg: #161b22; --sel: #1f4b78;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif;
+      background: var(--bg); color: var(--text); display: flex; flex-direction: column;
+      transition: background 0.2s, color 0.2s;
+    }
+    /* ===== 툴바 ===== */
+    .toolbar {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem;
+      padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border);
+      background: var(--panel); position: sticky; top: 0; z-index: 10;
+    }
+    .tb-group { display: inline-flex; align-items: center; gap: 0.15rem; }
+    .tb-sep { width: 1px; align-self: stretch; background: var(--border); margin: 0.15rem 0.35rem; }
+    .tb-btn {
+      min-width: 30px; height: 30px; padding: 0 0.45rem; border: 1px solid transparent;
+      background: transparent; color: var(--text); border-radius: 6px; cursor: pointer;
+      font-size: 0.85rem; font-weight: 600; display: inline-flex; align-items: center; justify-content: center;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .tb-btn:hover { background: var(--code-bg); }
+    .tb-btn.active { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
+    .tb-spacer { flex: 1; }
+    .tb-btn.wide { padding: 0 0.7rem; font-size: 0.8rem; }
+    /* ===== 편집 영역 ===== */
+    .wrap { flex: 1; display: flex; min-height: 0; }
+    .editor-scroll { flex: 1; overflow: auto; display: flex; justify-content: center; }
+    .ProseMirror {
+      width: 100%; max-width: 820px; padding: 2rem 1.5rem 6rem; outline: none;
+      line-height: 1.7; font-size: 1rem;
+    }
+    .ProseMirror:focus { outline: none; }
+    .ProseMirror > * + * { margin-top: 0.75em; }
+    .ProseMirror h1 { font-size: 1.9rem; font-weight: 800; margin: 1.2em 0 0.4em; }
+    .ProseMirror h2 { font-size: 1.5rem; font-weight: 800; margin: 1.1em 0 0.4em; }
+    .ProseMirror h3 { font-size: 1.25rem; font-weight: 700; margin: 1em 0 0.3em; }
+    .ProseMirror h4 { font-size: 1.05rem; font-weight: 700; }
+    .ProseMirror p { margin: 0; }
+    .ProseMirror ul, .ProseMirror ol { padding-left: 1.4rem; }
+    .ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0.3rem; }
+    .ProseMirror ul[data-type="taskList"] li { display: flex; gap: 0.5rem; align-items: flex-start; }
+    .ProseMirror ul[data-type="taskList"] li > label { margin-top: 0.25rem; }
+    .ProseMirror blockquote {
+      border-left: 3px solid var(--border); margin: 0; padding-left: 1rem; color: var(--muted);
+    }
+    .ProseMirror code {
+      background: var(--code-bg); padding: 0.15em 0.35em; border-radius: 4px;
+      font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.9em;
+    }
+    .ProseMirror pre {
+      background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.9rem 1rem; overflow-x: auto; font-family: 'Fira Code', Consolas, monospace; font-size: 0.88rem;
+    }
+    .ProseMirror pre code { background: none; padding: 0; }
+    .ProseMirror hr { border: none; border-top: 2px solid var(--border); margin: 1.5em 0; }
+    .ProseMirror a { color: var(--primary); text-decoration: underline; }
+    .ProseMirror mark { background: #fde68a; color: inherit; padding: 0 0.1em; border-radius: 2px; }
+    .ProseMirror img { max-width: 100%; border-radius: 6px; }
+    .ProseMirror table {
+      border-collapse: collapse; width: 100%; margin: 0.5em 0; table-layout: fixed;
+    }
+    .ProseMirror th, .ProseMirror td { border: 1px solid var(--border); padding: 0.4rem 0.6rem; text-align: left; }
+    .ProseMirror th { background: var(--panel); font-weight: 700; }
+    .ProseMirror ::selection { background: var(--sel); }
+    .ProseMirror p.is-editor-empty:first-child::before {
+      content: attr(data-placeholder); color: var(--muted); float: left; height: 0; pointer-events: none;
+    }
+    /* ===== 마크다운 패널 ===== */
+    .md-panel {
+      width: 420px; max-width: 45vw; flex-shrink: 0; border-left: 1px solid var(--border);
+      display: none; flex-direction: column; background: var(--panel);
+    }
+    .md-panel.open { display: flex; }
+    .md-panel-head {
+      padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); display: flex;
+      align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 700; color: var(--muted);
+    }
+    .md-panel textarea {
+      flex: 1; border: none; outline: none; resize: none; padding: 0.9rem 1rem; background: transparent;
+      color: var(--text); font-family: 'Fira Code', Consolas, monospace; font-size: 0.85rem; line-height: 1.6;
+    }
+    .md-actions { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); display: flex; gap: 0.4rem; flex-wrap: wrap; }
+    .sm-btn {
+      padding: 0.35rem 0.7rem; border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 600;
+    }
+    .sm-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .sm-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    @media (max-width: 720px) {
+      .md-panel { position: fixed; inset: 0; width: 100%; max-width: 100%; z-index: 50; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar" id="toolbar">
+    <div class="tb-group">
+      <button class="tb-btn" data-act="undo" title="실행 취소">↶</button>
+      <button class="tb-btn" data-act="redo" title="다시 실행">↷</button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <button class="tb-btn" data-act="h1" data-active="heading:1" title="제목 1">H1</button>
+      <button class="tb-btn" data-act="h2" data-active="heading:2" title="제목 2">H2</button>
+      <button class="tb-btn" data-act="h3" data-active="heading:3" title="제목 3">H3</button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <button class="tb-btn" data-act="bold" data-active="bold" title="굵게"><b>B</b></button>
+      <button class="tb-btn" data-act="italic" data-active="italic" title="기울임"><i>I</i></button>
+      <button class="tb-btn" data-act="strike" data-active="strike" title="취소선"><s>S</s></button>
+      <button class="tb-btn" data-act="code" data-active="code" title="인라인 코드">&lt;/&gt;</button>
+      <button class="tb-btn" data-act="highlight" data-active="highlight" title="하이라이트">🖍</button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <button class="tb-btn" data-act="bulletList" data-active="bulletList" title="글머리 목록">•</button>
+      <button class="tb-btn" data-act="orderedList" data-active="orderedList" title="번호 목록">1.</button>
+      <button class="tb-btn" data-act="taskList" data-active="taskList" title="체크리스트">☑</button>
+      <button class="tb-btn" data-act="blockquote" data-active="blockquote" title="인용">❝</button>
+      <button class="tb-btn" data-act="codeBlock" data-active="codeBlock" title="코드 블록">{ }</button>
+      <button class="tb-btn" data-act="hr" title="구분선">―</button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <button class="tb-btn" data-act="link" data-active="link" title="링크">🔗</button>
+      <button class="tb-btn" data-act="table" title="표 삽입">▦</button>
+      <button class="tb-btn" data-act="image" title="이미지(URL)">🖼</button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <button class="tb-btn" data-act="alignLeft" title="왼쪽 정렬">⟸</button>
+      <button class="tb-btn" data-act="alignCenter" title="가운데 정렬">⟺</button>
+      <button class="tb-btn" data-act="alignRight" title="오른쪽 정렬">⟹</button>
+    </div>
+    <span class="tb-spacer"></span>
+    <div class="tb-group">
+      <button class="tb-btn wide" data-act="toggleMd" title="마크다운 원문 보기/편집">〈MD〉</button>
+      <button class="tb-btn" onclick="portalTheme.toggle()" title="다크/라이트">🌙</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="editor-scroll"><div id="editor"></div></div>
+    <div class="md-panel" id="mdPanel">
+      <div class="md-panel-head">📝 마크다운 원문 <span style="margin-left:auto; font-weight:500;">편집 후 '적용'</span></div>
+      <textarea id="mdArea" spellcheck="false" placeholder="여기 마크다운을 붙여넣고 '적용'을 누르면 편집기에 반영됩니다."></textarea>
+      <div class="md-actions">
+        <button class="sm-btn primary" id="mdApply">← 적용(MD→편집기)</button>
+        <button class="sm-btn" id="mdRefresh">편집기→MD 새로고침</button>
+        <button class="sm-btn" id="mdCopy">복사</button>
+        <button class="sm-btn" id="mdDownload">.md 저장</button>
+        <button class="sm-btn" id="mdOpen">.md 열기</button>
+        <input type="file" id="mdFile" accept=".md,.markdown,text/markdown" style="display:none;">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const { Editor, StarterKit, Markdown, Highlight, TaskList, TaskItem, Table, TableRow, TableCell, TableHeader, Image, TextAlign } = window.TT;
+      const STORAGE_KEY = 'rich-md-editor-content';
+
+      const editor = new Editor({
+        element: document.getElementById('editor'),
+        extensions: [
+          StarterKit,
+          Markdown,
+          Highlight,
+          TaskList,
+          TaskItem.configure({ nested: true }),
+          Table.configure({ resizable: true }),
+          TableRow,
+          TableHeader,
+          TableCell,
+          Image,
+          TextAlign.configure({ types: ['heading', 'paragraph'] })
+        ],
+        content: '',
+        autofocus: true
+      });
+
+      function getMd() {
+        if (typeof editor.getMarkdown === 'function') {
+          return editor.getMarkdown();
+        }
+        if (editor.storage && editor.storage.markdown && editor.storage.markdown.getMarkdown) {
+          return editor.storage.markdown.getMarkdown();
+        }
+        return '';
+      }
+      function setMd(md) {
+        editor.commands.setContent(md || '', { contentType: 'markdown' });
+      }
+
+      // ===== 초기 콘텐츠 (localStorage 복원 or 샘플) =====
+      const saved = (function () {
+        try {
+          return localStorage.getItem(STORAGE_KEY);
+        } catch (e) {
+          return null;
+        }
+      })();
+      if (saved) {
+        setMd(saved);
+      } else {
+        setMd([
+          '# 노트 편집기 (위지윅)',
+          '',
+          '이건 **TipTap** 으로 만든 실험용 새 도구입니다. 기존 마크다운 뷰어와 별개예요.',
+          '',
+          '- 위지윅으로 바로 편집',
+          '- 오른쪽 `〈MD〉` 버튼으로 마크다운 원문 보기/붙여넣기',
+          '- `.md` 열기/저장, 복사 지원',
+          '',
+          '> 밑줄·하이라이트색·정렬 등 일부는 마크다운 저장 시 표준 문법이 없어 유실될 수 있습니다.',
+          '',
+          '```js',
+          'const hello = "world";',
+          '```'
+        ].join('\n'));
+      }
+
+      // ===== 자동 저장 + MD 패널 동기화 =====
+      let saveTimer = null;
+      const mdArea = document.getElementById('mdArea');
+      const mdPanel = document.getElementById('mdPanel');
+      function refreshMdArea() {
+        if (mdPanel.classList.contains('open')) {
+          mdArea.value = getMd();
+        }
+      }
+      editor.on('update', () => {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          try {
+            localStorage.setItem(STORAGE_KEY, getMd());
+          } catch (e) {}
+        }, 400);
+        refreshMdArea();
+      });
+      editor.on('selectionUpdate', updateToolbarState);
+      editor.on('transaction', updateToolbarState);
+
+      // ===== 툴바 동작 =====
+      function chain() {
+        return editor.chain().focus();
+      }
+      const actions = {
+        undo: () => chain().undo().run(),
+        redo: () => chain().redo().run(),
+        h1: () => chain().toggleHeading({ level: 1 }).run(),
+        h2: () => chain().toggleHeading({ level: 2 }).run(),
+        h3: () => chain().toggleHeading({ level: 3 }).run(),
+        bold: () => chain().toggleBold().run(),
+        italic: () => chain().toggleItalic().run(),
+        strike: () => chain().toggleStrike().run(),
+        code: () => chain().toggleCode().run(),
+        highlight: () => chain().toggleHighlight().run(),
+        bulletList: () => chain().toggleBulletList().run(),
+        orderedList: () => chain().toggleOrderedList().run(),
+        taskList: () => chain().toggleTaskList().run(),
+        blockquote: () => chain().toggleBlockquote().run(),
+        codeBlock: () => chain().toggleCodeBlock().run(),
+        hr: () => chain().setHorizontalRule().run(),
+        table: () => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+        alignLeft: () => chain().setTextAlign('left').run(),
+        alignCenter: () => chain().setTextAlign('center').run(),
+        alignRight: () => chain().setTextAlign('right').run(),
+        link: async () => {
+          const prev = editor.getAttributes('link').href || '';
+          const url = await promptModal('링크 URL (비우면 링크 해제):', prev);
+          if (url === null) {
+            return;
+          }
+          if (url === '') {
+            chain().extendMarkRange('link').unsetLink().run();
+          } else {
+            chain().extendMarkRange('link').setLink({ href: url }).run();
+          }
+        },
+        image: async () => {
+          const url = await promptModal('이미지 URL:', '');
+          if (url) {
+            chain().setImage({ src: url }).run();
+          }
+        },
+        toggleMd: () => {
+          const opening = !mdPanel.classList.contains('open');
+          mdPanel.classList.toggle('open', opening);
+          if (opening) {
+            mdArea.value = getMd();
+          }
+        }
+      };
+      document.getElementById('toolbar').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-act]');
+        if (!btn) {
+          return;
+        }
+        const fn = actions[btn.dataset.act];
+        if (fn) {
+          fn();
+        }
+      });
+
+      // ===== 툴바 활성 상태 =====
+      function updateToolbarState() {
+        document.querySelectorAll('#toolbar .tb-btn[data-active]').forEach((btn) => {
+          const spec = btn.dataset.active;
+          let on = false;
+          if (spec.indexOf('heading:') === 0) {
+            on = editor.isActive('heading', { level: Number(spec.split(':')[1]) });
+          } else {
+            on = editor.isActive(spec);
+          }
+          btn.classList.toggle('active', on);
+        });
+      }
+
+      // ===== 마크다운 패널 동작 =====
+      document.getElementById('mdApply').addEventListener('click', () => {
+        setMd(mdArea.value);
+        showToast('마크다운을 편집기에 반영했습니다.', 'success');
+      });
+      document.getElementById('mdRefresh').addEventListener('click', () => {
+        mdArea.value = getMd();
+      });
+      document.getElementById('mdCopy').addEventListener('click', async () => {
+        const md = getMd();
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(md);
+          } else {
+            throw new Error('fallback');
+          }
+        } catch (e) {
+          const ta = document.createElement('textarea');
+          ta.value = md;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand('copy');
+          } catch (e2) {}
+          document.body.removeChild(ta);
+        }
+        showToast('마크다운을 복사했습니다.', 'success');
+      });
+      document.getElementById('mdDownload').addEventListener('click', () => {
+        const blob = new Blob([getMd()], { type: 'text/markdown' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'document.md';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+      const mdFile = document.getElementById('mdFile');
+      document.getElementById('mdOpen').addEventListener('click', () => mdFile.click());
+      mdFile.addEventListener('change', () => {
+        const f = mdFile.files[0];
+        if (!f) {
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          setMd(String(reader.result || ''));
+          mdArea.value = getMd();
+          showToast(`'${f.name}' 을 불러왔습니다.`, 'success');
+        };
+        reader.readAsText(f);
+        mdFile.value = '';
+      });
+
+      // Ctrl/Cmd+S → .md 저장
+      window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+          e.preventDefault();
+          document.getElementById('mdDownload').click();
+        }
+      });
+
+      updateToolbarState();
+    })();
+  </script>
+</body>
+</html>
