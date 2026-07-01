@@ -96,7 +96,9 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
             overlay.parentNode.removeChild(overlay);
           }
           if (prevFocus && prevFocus.focus) {
-            try { prevFocus.focus(); } catch (e) {}
+            try {
+              prevFocus.focus();
+            } catch (e) {}
           }
         }, 160);
         resolve(result);
