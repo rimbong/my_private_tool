@@ -1005,12 +1005,25 @@
         if (deltaDays === 0) {
           return;
         }
-        const shift = (dateStr) => { const d = new Date(dateStr); d.setDate(d.getDate() + deltaDays); return formatDate(d); };
+        const shift = (dateStr) => {
+          const d = new Date(dateStr);
+          d.setDate(d.getDate() + deltaDays);
+          return formatDate(d);
+        };
 
         const newStart = shift(task.date);
         const newEnd = task.endDate ? shift(task.endDate) : undefined;
 
-        // 메모리상 버킷 이동 (DB는 키가 id라 재키 불필요)
+        // 저장 먼저 시도 → 성공해야 메모리 반영 (실패 시 화면·DB 불일치·새로고침 소실 방지)
+        const updated = Object.assign({}, task, { date: newStart });
+        if (newEnd) {
+          updated.endDate = newEnd;
+        }
+        if (!(await dbSafeSet('todos', id, updated))) {
+          return;
+        }
+
+        // 저장 성공 → 메모리상 버킷 이동 (DB는 키가 id라 재키 불필요)
         arr.splice(idx, 1);
         if (arr.length === 0) {
           delete todos[startBucket];
@@ -1026,7 +1039,6 @@
         }
         todos[newStart].push(task);
 
-        await dbManager.setItem('todos', id, task);
         // 드로어가 열려 있으면 이동한 날짜로 따라가기
         if (document.getElementById('dailyDrawer').classList.contains('open')) {
           selectedDate = new Date(newStart);
@@ -1772,9 +1784,14 @@
               closeMemoModal();
               return;
             }
-            memo.title = title || content.split('\n')[0].substring(0, 30);
+            const newTitle = title || content.split('\n')[0].substring(0, 30);
+            // 저장 성공 후 메모리 반영 (실패 시 창 유지·불일치 방지)
+            const updated = Object.assign({}, memo, { title: newTitle, content: content });
+            if (!(await dbSafeSet('stickyMemos', id, updated))) {
+              return;
+            }
+            memo.title = newTitle;
             memo.content = content;
-            await dbManager.setItem('stickyMemos', id, memo);
         } else {
             // Create
             const memo = {
@@ -1783,7 +1800,9 @@
                 content: content,
                 createdAt: Date.now()
             };
-            await dbManager.setItem('stickyMemos', memo.id, memo);
+            if (!(await dbSafeSet('stickyMemos', memo.id, memo))) {
+              return;
+            }
             stickyMemos.unshift(memo);
         }
 
@@ -1805,7 +1824,9 @@
             createdAt: Date.now()
         };
 
-        await dbManager.setItem('stickyMemos', memo.id, memo);
+        if (!(await dbSafeSet('stickyMemos', memo.id, memo))) {
+          return;
+        }
         stickyMemos.unshift(memo);
         input.value = '';
         closeQuickMemoPop();
@@ -1934,7 +1955,10 @@
             createdAt: Date.now()
         };
 
-        await dbManager.setItem('todos', newTodo.id, newTodo);
+        // 저장 성공 후 메모리 반영·메모 삭제 (실패 시 중단해 불일치 방지)
+        if (!(await dbSafeSet('todos', newTodo.id, newTodo))) {
+          return;
+        }
         if (!todos[dateStr]) {
           todos[dateStr] = [];
         }
@@ -2544,7 +2568,8 @@
 
   /* --- Helpers --- */
   function changeMonth(delta) {
-    currentDate.setMonth(currentDate.getMonth() + delta);
+    // 날짜를 1일로 고정해 월 이동. (예: 5/31에서 setMonth(+1) 하면 6월엔 31일이 없어 7월로 넘침)
+    currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + delta, 1);
     renderCalendar();
   }
 
