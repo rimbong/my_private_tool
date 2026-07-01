@@ -11,9 +11,22 @@ const dbManager = {
    * @param {string} dbName 
    * @param {string[]} stores 
    */
-  async init(dbName, stores) {
+  init(dbName, stores) {
+    // 같은 페이지에서 init 이 동시에 여러 번 호출되면(여러 진입점) 버전 업그레이드가 서로 충돌한다.
+    // 진행 중/완료된 init 프라미스를 재사용(single-flight)한다. 실패 시엔 재시도 가능하게 비운다.
+    if (this._initPromise) {
+      return this._initPromise;
+    }
+    this._initPromise = this._doInit(dbName, stores).catch(err => {
+      this._initPromise = null;
+      throw err;
+    });
+    return this._initPromise;
+  },
+
+  async _doInit(dbName, stores) {
     this.dbName = dbName;
-    
+
     // 1. 먼저 현재 상태를 확인하기 위해 버전을 명시하지 않고 엽니다.
     // 최초 생성 시에도 stores를 넘겨주면 v1에서 즉시 생성됩니다.
     let db = await this._openDB(dbName, null, stores);
@@ -77,6 +90,7 @@ const dbManager = {
       store.put(value, key);
       tx.oncomplete = () => resolve();
       tx.onerror = (e) => reject(e);
+      tx.onabort = (e) => reject(e);   // request error 없이 abort 되는 경로에서 영구 대기 방지
     });
   },
 
@@ -87,6 +101,7 @@ const dbManager = {
       const request = store.get(key);
       request.onsuccess = () => resolve(request.result);
       request.onerror = (e) => reject(e);
+      tx.onabort = (e) => reject(e);
     });
   },
 
@@ -96,6 +111,7 @@ const dbManager = {
       tx.objectStore(storeName).delete(key);
       tx.oncomplete = () => resolve();
       tx.onerror = (e) => reject(e);
+      tx.onabort = (e) => reject(e);
     });
   },
 
@@ -129,6 +145,7 @@ const dbManager = {
       };
 
       tx.onerror = (e) => reject(e);
+      tx.onabort = (e) => reject(e);
     });
   },
 
