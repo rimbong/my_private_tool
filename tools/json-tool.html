@@ -244,8 +244,13 @@
     }
 
     /* ---- 상태/유틸 ---- */
-    function setStatus(msg, kind) { statusEl.textContent = msg; statusEl.className = 'status-bar' + (kind ? ' ' + kind : ''); }
-    function fmtBytes(n) { return n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB'; }
+    function setStatus(msg, kind) {
+      statusEl.textContent = msg;
+      statusEl.className = 'status-bar' + (kind ? ' ' + kind : '');
+    }
+    function fmtBytes(n) {
+      return n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(2) + ' MB';
+    }
     function describe(v) {
       if (Array.isArray(v)) {
         return `배열 (${v.length}개)`;
@@ -456,7 +461,9 @@
       ).join('\n');
       return `${pad}<${node.nodeName}${attrs}>\n${inner}\n${pad}</${node.nodeName}>`;
     }
-    function escapeXml(s) { return String(s).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c])); }
+    function escapeXml(s) {
+      return String(s).replace(/[<>&'"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]));
+    }
 
     const HTML_ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&apos;': "'", '&#x2F;': '/' };
     function escapeXmlAction() {
@@ -767,7 +774,9 @@
       }
       return escHtml(text.slice(0, i)) + '<span class="hl">' + escHtml(text.slice(i, i + term.length)) + '</span>' + escHtml(text.slice(i + term.length));
     }
-    function escHtml(s) { return String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c])); }
+    function escHtml(s) {
+      return String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+    }
 
     function buildNode(key, value, path, term) {
       const li = document.createElement('li');
