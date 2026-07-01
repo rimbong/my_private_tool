@@ -2128,6 +2128,16 @@ function hello() {
         const order = await dbManager.getItem('content', 'doc_order');
         const savedVisible = await dbManager.getItem('content', 'visible_docs');
 
+        // 다른 탭이 추가한 이미지도 반영한다. imageStore(메모리 Map)는 최초 1회만 채워지므로,
+        // 크로스탭 동기화 시 이미지를 다시 읽지 않으면 받는 탭에서 '이미지 없음'으로 뜨고
+        // 그 상태로 저장/복사하면 미해결 ](img:token) 이 출력에 그대로 남는다.
+        const remoteImgs = (await dbManager.getAll('images')) || {};
+        Object.entries(remoteImgs).forEach(([token, val]) => {
+          if (!imageStore.has(token)) {
+            imageStore.set(token, val);
+          }
+        });
+
         const rebuilt = [];
         if (Array.isArray(order) && order.length) {
           order.forEach(id => { if (all[id]) {
