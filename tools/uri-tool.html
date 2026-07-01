@@ -337,10 +337,34 @@
       if (!outputEl.value) {
         return;
       }
+      const text = outputEl.value;
+      // 보안 컨텍스트에선 Clipboard API 사용
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast('결과가 클립보드에 복사되었습니다.', 'success');
+          return;
+        } catch (err) {}
+      }
+      // file://·비보안 컨텍스트 폴백 (다른 도구엔 있는 execCommand 폴백이 이 도구엔 없었음)
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      let ok = false;
       try {
-        await navigator.clipboard.writeText(outputEl.value);
+        ok = document.execCommand('copy');
+      } catch (e) {
+        ok = false;
+      }
+      document.body.removeChild(ta);
+      if (ok) {
         showToast('결과가 클립보드에 복사되었습니다.', 'success');
-      } catch (err) {
+      } else {
         showToast('복사에 실패했습니다.', 'error');
       }
     }
