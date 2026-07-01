@@ -893,13 +893,17 @@
         return false;
       }
     }
-    function getCategory(id) { return CATEGORIES.find(c => c.id === (id || '')) || CATEGORIES[0]; }
+    function getCategory(id) {
+      return CATEGORIES.find(c => c.id === (id || '')) || CATEGORIES[0];
+    }
     function categoryOptionsHtml(selected) {
         return CATEGORIES.map(c => `<option value="${c.id}" ${c.id === (selected || '') ? 'selected' : ''}>${c.name}</option>`).join('');
     }
 
     /* --- 시간(시작/종료) --- */
-    function timeLabel(t) { return t.startTime ? (t.endTime ? `${t.startTime}~${t.endTime}` : t.startTime) : ''; }
+    function timeLabel(t) {
+      return t.startTime ? (t.endTime ? `${t.startTime}~${t.endTime}` : t.startTime) : '';
+    }
     // 정렬: 미처리 먼저 → 시간 빠른 순 → 생성순
     function compareTasks(a, b) {
         if (!!a.completed !== !!b.completed) {
@@ -1113,14 +1117,21 @@
         document.getElementById('fabMenu').classList.remove('open');
         document.getElementById('fabBtn').textContent = '＋';
     }
-    function fabNewSchedule() { closeFab(); openRangeModal(); }
+    function fabNewSchedule() {
+      closeFab();
+      openRangeModal();
+    }
     function fabQuickMemo() {
         closeFab();
         document.getElementById('quickMemoPop').classList.add('open');
         document.getElementById('quickMemoInput').focus();
     }
-    function closeQuickMemoPop() { document.getElementById('quickMemoPop').classList.remove('open'); }
-    function closeSearchPanel() { document.getElementById('searchPanel').classList.remove('open'); }
+    function closeQuickMemoPop() {
+      document.getElementById('quickMemoPop').classList.remove('open');
+    }
+    function closeSearchPanel() {
+      document.getElementById('searchPanel').classList.remove('open');
+    }
 
     // 메모 파일 드롭 모드 전환 (새로 쓰기 ↔ 이어붙이기)
     function toggleMemoDropMode() {
@@ -1708,7 +1719,9 @@
         document.getElementById('etTitle').focus();
     }
 
-    function cancelTaskEdit() { setTaskDetailMode('view'); }
+    function cancelTaskEdit() {
+      setTaskDetailMode('view');
+    }
 
     async function saveTaskFromDetail() {
         const modal = document.getElementById('taskDetailModal');
@@ -1940,7 +1953,9 @@
 
     /* --- 연속(기간) 일정 헬퍼 --- */
     // 기간 일정 여부 (endDate가 있고 시작일과 다른 경우)
-    function isSpan(t) { return !!(t.endDate && t.endDate !== t.date); }
+    function isSpan(t) {
+      return !!(t.endDate && t.endDate !== t.date);
+    }
     // M/D 형태의 짧은 기간 라벨
     function rangeLabel(t) {
         const f = s => { const p = s.split('-'); return `${+p[1]}/${+p[2]}`; };
@@ -2380,9 +2395,15 @@
         }
     }
     // Today 탭: 항상 '오늘'로 프리필 (selectedDate는 달력에서 다른 날 클릭 시 바뀌므로 사용 안 함)
-    function openTodayAdd() { const d = formatDate(new Date()); openRangeModal(d, d); }
+    function openTodayAdd() {
+      const d = formatDate(new Date());
+      openRangeModal(d, d);
+    }
     // Weekly 탭: 보고 있는 주(weekAnchor)의 월요일로 프리필
-    function openWeekAdd() { const s = formatDate(getWeekRange(weekAnchor).start); openRangeModal(s, s); }
+    function openWeekAdd() {
+      const s = formatDate(getWeekRange(weekAnchor).start);
+      openRangeModal(s, s);
+    }
 
     function openRangeModal(startD = null, endD = null) {
       closeDrawer();
@@ -2690,7 +2711,10 @@
   }
 
   /* ===== 보고서(MD) 내보내기 옵션 다이얼로그 ===== */
-  function parseLocalDate(str) { const p = str.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function parseLocalDate(str) {
+    const p = str.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, p[2]);
+  }
 
   function openExportModal() {
     // 카테고리 셀렉트 채우기 (전체 + CATEGORIES)
@@ -2706,7 +2730,9 @@
     onExportPeriodChange();
     document.getElementById('exportModal').style.display = 'flex';
   }
-  function closeExportModal() { document.getElementById('exportModal').style.display = 'none'; }
+  function closeExportModal() {
+    document.getElementById('exportModal').style.display = 'none';
+  }
 
   function onExportPeriodChange() {
     const period = document.querySelector('input[name="exportPeriod"]:checked').value;
