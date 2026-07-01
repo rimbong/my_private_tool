@@ -222,10 +222,18 @@
             window.parent.postMessage({ type: 'config-updated' }, PARENT_ORIGIN);
         }
         
-        function setWorkspaceAndProjecName(configJson) { configJson['workAndProjectName'] = vmJson['workAndProjectName'] || ''; }
-        function setWorkspacesHome(configJson) { configJson['workSpaces'] = vmJson['workSpaces'] || ''; }
-        function setVmConfig(configJson) { configJson['vmConfig'] = vmJson['vmConfig'] || []; }
-        function setLicense(configJson) { configJson['vmLicenseKey'] = vmJson['vmLicenseKey'] || []; }
+        function setWorkspaceAndProjecName(configJson) {
+          configJson['workAndProjectName'] = vmJson['workAndProjectName'] || '';
+        }
+        function setWorkspacesHome(configJson) {
+          configJson['workSpaces'] = vmJson['workSpaces'] || '';
+        }
+        function setVmConfig(configJson) {
+          configJson['vmConfig'] = vmJson['vmConfig'] || [];
+        }
+        function setLicense(configJson) {
+          configJson['vmLicenseKey'] = vmJson['vmLicenseKey'] || [];
+        }
 
         function setTomcatConfig(configJson) {
             // HOME 미입력 시 lib 목록이 throwaway {}에 병합돼 증발하던 버그 → 결과를 다시 대입
