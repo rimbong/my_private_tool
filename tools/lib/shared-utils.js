@@ -36,7 +36,10 @@ function unescapeHTML(html) {
 async function copyText(text) {
     // 보안 컨텍스트에서만 Clipboard API 사용. file://·권한 거부 시 reject되므로 try 후 execCommand로 폴백.
     if (navigator.clipboard && window.isSecureContext) {
-        try { await navigator.clipboard.writeText(text); return; }
+        try {
+          await navigator.clipboard.writeText(text);
+          return;
+        }
         catch (err) { /* execCommand 폴백으로 진행 */ }
     }
     const textArea = document.createElement("textarea");
@@ -48,7 +51,11 @@ async function copyText(text) {
     textArea.focus();
     textArea.select();
     let ok = false;
-    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    try {
+      ok = document.execCommand('copy');
+    } catch (err) {
+      ok = false;
+    }
     document.body.removeChild(textArea);
     if (!ok) {
       throw new Error('클립보드 복사에 실패했습니다.');
