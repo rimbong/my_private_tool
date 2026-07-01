@@ -323,13 +323,19 @@
     async function toggleSaveMode() {
       saveMode = !saveMode;
       reflectSaveSwitch();
-      try { await dbManager.setItem('meta', 'saveMode', saveMode); } catch (e) {}
+      try {
+        await dbManager.setItem('meta', 'saveMode', saveMode);
+      } catch (e) {}
       if (saveMode) {
         // ON 전환 시 현재 세션 문서들을 라이브러리로 승격
         let promoted = 0;
         for (const d of docs) {
           if (!d.saved) {
-            try { await persistDoc(d); d.saved = true; promoted++; } catch (e) {}
+            try {
+              await persistDoc(d);
+              d.saved = true;
+              promoted++;
+            } catch (e) {}
           }
         }
         if (promoted) {
@@ -355,8 +361,13 @@
       }
 
       let buf;
-      try { buf = await file.arrayBuffer(); }
-      catch (e) { toast('파일을 읽지 못했습니다.', 'error'); return; }
+      try {
+        buf = await file.arrayBuffer();
+      }
+      catch (e) {
+        toast('파일을 읽지 못했습니다.', 'error');
+        return;
+      }
 
       const id = 'pdf-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       const blob = file instanceof Blob ? file : new Blob([buf], { type: 'application/pdf' });
@@ -367,8 +378,14 @@
       };
       docs.push(doc);
       if (saveMode) {
-        try { await persistDoc(doc); doc.saved = true; }
-        catch (e) { console.warn('persist 실패:', e); toast('저장하지 못해 이번 세션으로만 엽니다 (용량 초과 등).', 'warning', 4000); }
+        try {
+          await persistDoc(doc);
+          doc.saved = true;
+        }
+        catch (e) {
+          console.warn('persist 실패:', e);
+          toast('저장하지 못해 이번 세션으로만 엽니다 (용량 초과 등).', 'warning', 4000);
+        }
       }
       renderList();
       setActive(id);
@@ -435,7 +452,9 @@
         return;
       }
       if (d.saved) {
-        try { await dbManager.removeItem('pdfs', id); } catch (e) {}
+        try {
+          await dbManager.removeItem('pdfs', id);
+        } catch (e) {}
       }
       docs.splice(idx, 1);
       if (activeId === id) {
@@ -448,7 +467,9 @@
     function clearViewer() {
       renderToken++;
       if (pdfDoc) {
-        try { pdfDoc.destroy(); } catch (e) {}
+        try {
+          pdfDoc.destroy();
+        } catch (e) {}
       }
       pdfDoc = null; numPages = 0; baseViewport = null;
       panes.forEach(p => { if (p.io) {
@@ -507,12 +528,16 @@
         const data = new Uint8Array(await doc.blob.arrayBuffer());
         pdf = await pdfjsLib.getDocument({ data }).promise;
         if (token !== renderToken) {
-          try { await pdf.destroy(); } catch (e) {}
+          try {
+            await pdf.destroy();
+          } catch (e) {}
           return;
         }
         const p1 = await pdf.getPage(1);
         if (token !== renderToken) {
-          try { await pdf.destroy(); } catch (e) {}
+          try {
+            await pdf.destroy();
+          } catch (e) {}
           return;
         }
         baseViewport = p1.getViewport({ scale: 1 });
@@ -532,7 +557,9 @@
       const prevDoc = pdfDoc;
       pdfDoc = pdf;
       if (prevDoc) {
-        try { await prevDoc.destroy(); } catch (e) {}
+        try {
+          await prevDoc.destroy();
+        } catch (e) {}
       }
       numPages = pdf.numPages;
       doc.pageCount = numPages;
@@ -784,23 +811,29 @@
       }
     }
     function goRelative(delta) {
-      const p = activePane(); if (!p) {
-      return;
-    }
+      const p = activePane();
+      if (!p) {
+        return;
+      }
       const n = Math.min(Math.max(p.currentPage + delta, 1), numPages);
-      p.currentPage = n; setPageInput(n); scrollToPage(p, n);
+      p.currentPage = n;
+      setPageInput(n);
+      scrollToPage(p, n);
     }
     function jumpToInput() {
-      const p = activePane(); if (!p) {
-      return;
-    }
+      const p = activePane();
+      if (!p) {
+        return;
+      }
       let n = parseInt($('pageInput').value, 10);
       if (isNaN(n)) {
         setPageInput(p.currentPage);
         return;
       }   // 잘못된 입력 → 현재 페이지로 복구
       n = Math.min(Math.max(n, 1), numPages);
-      p.currentPage = n; setPageInput(n); scrollToPage(p, n);
+      p.currentPage = n;
+      setPageInput(n);
+      scrollToPage(p, n);
     }
     function setPageInput(n) {
       $('pageInput').value = n;
@@ -834,9 +867,12 @@
         // 마지막 위치 저장은 활성 패널 기준(저장 문서만)
         if (pane === activePane()) {
           const doc = docs.find(d => d.id === activeId);
-          if (doc) { doc.lastPage = pane.currentPage; if (doc.saved) {
-            persistDocDebounced(doc);
-          } }
+          if (doc) {
+            doc.lastPage = pane.currentPage;
+            if (doc.saved) {
+              persistDocDebounced(doc);
+            }
+          }
         }
       });
     }
@@ -845,19 +881,33 @@
       persistTimers.set(doc.id, setTimeout(() => { persistTimers.delete(doc.id); persistDoc(doc).catch(() => {}); }, 600));
     }
 
-    function zoomBy(dir) { const p = activePane(); if (!p) {
-      return;
-    } p.fitMode = null; applyScale(p, clampScale(p.scale + dir * STEP)); }
-    function fit(mode) { const p = activePane(); if (!p) {
-      return;
-    } p.fitMode = mode; applyScale(p, mode === 'width' ? fitWidthScale(p) : fitPageScale(p)); }
+    function zoomBy(dir) {
+      const p = activePane();
+      if (!p) {
+        return;
+      }
+      p.fitMode = null;
+      applyScale(p, clampScale(p.scale + dir * STEP));
+    }
+    function fit(mode) {
+      const p = activePane();
+      if (!p) {
+        return;
+      }
+      p.fitMode = mode;
+      applyScale(p, mode === 'width' ? fitWidthScale(p) : fitPageScale(p));
+    }
     function applyScale(pane, s) {
       if (!pdfDoc) {
         return;
       }
-      if (Math.abs(s - pane.scale) < 0.001) { pane.scale = s; if (pane === activePane()) {
-        updateZoomLabel();
-      } return; }
+      if (Math.abs(s - pane.scale) < 0.001) {
+        pane.scale = s;
+        if (pane === activePane()) {
+          updateZoomLabel();
+        }
+        return;
+      }
       const keep = pane.currentPage;
       pane.scale = s;
       if (pane === activePane()) {
@@ -867,9 +917,13 @@
       requestAnimationFrame(() => { scrollToPage(pane, keep, 'auto'); renderVisible(pane); });
       if (pane === activePane()) {
         const doc = docs.find(d => d.id === activeId);
-        if (doc) { doc.scale = pane.scale; doc.fitMode = pane.fitMode; if (doc.saved) {
-          persistDocDebounced(doc);
-        } }
+        if (doc) {
+          doc.scale = pane.scale;
+          doc.fitMode = pane.fitMode;
+          if (doc.saved) {
+            persistDocDebounced(doc);
+          }
+        }
       }
     }
     function updateZoomLabel() { const p = activePane(); $('zoomLabel').textContent = p ? Math.round(p.scale * 100) + '%' : '100%'; }
@@ -909,7 +963,9 @@
             return null;
           }
           cache[i] = tc.items.map(it => it.str).join(' ');
-        } catch (e) { cache[i] = ''; }
+        } catch (e) {
+          cache[i] = '';
+        }
       }
       if (token !== renderToken) {
         return null;
@@ -947,10 +1003,12 @@
       searchState.idx = (searchState.idx + (dir < 0 ? -1 : 1) + searchState.pages.length) % searchState.pages.length;
       const page = searchState.pages[searchState.idx];
       $('matchInfo').textContent = `${searchState.idx + 1}/${searchState.pages.length} · ${page}p`;
-      const p = activePane(); if (!p) {
-      return;
-    }
-      p.currentPage = page; setPageInput(page);
+      const p = activePane();
+      if (!p) {
+        return;
+      }
+      p.currentPage = page;
+      setPageInput(page);
       scrollToPage(p, page);
       // 해당 페이지 렌더 후 활성 패널에서 하이라이트
       setTimeout(() => {
@@ -964,9 +1022,10 @@
       panes.forEach(p => p.el.querySelectorAll('.textLayer .hl').forEach(s => s.classList.remove('hl')));
     }
     function highlightInPage(holder, term) {
-      const tl = holder._textLayer; if (!tl) {
-      return;
-    }
+      const tl = holder._textLayer;
+      if (!tl) {
+        return;
+      }
       const lower = term.toLowerCase();
       tl.querySelectorAll('span').forEach(sp => {
         sp.classList.toggle('hl', !!sp.textContent && sp.textContent.toLowerCase().includes(lower));
