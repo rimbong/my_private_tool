@@ -327,18 +327,19 @@
 
     // 단축키 시스템 구현
     window.addEventListener('keydown', (e) => {
-      // 1. 입력창 포커스 시 단축키 무시 (Esc 제외)
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-        if (e.key === 'Escape') {
-          document.activeElement.blur();
-        }
-        return;
-      }
-      
-      // 2. 모달이 열려있는 경우
+      // 1. 메모 모달이 열려있으면 (textarea 포커스여도) Esc 로 바로 닫는다.
+      //    (입력칸 blur 를 먼저 처리하면 Esc 를 두 번 눌러야 닫히던 문제)
       if (document.getElementById('memoModal').style.display === 'flex') {
         if (e.key === 'Escape') {
           closeMemo();
+        }
+        return;
+      }
+
+      // 2. 입력창 포커스 시 단축키 무시 (Esc 는 blur)
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        if (e.key === 'Escape') {
+          document.activeElement.blur();
         }
         return;
       }
@@ -633,7 +634,7 @@
       let currentOffset = 0;
 
       virtualState.rev.data.forEach(item => {
-        const displayFiles = applyFilters(item.files, item.rev);
+        const displayFiles = applyFilters(item.files, item.rev, item.msg);
         // 필터 결과가 없고 검색/필터링 중이면 제외
         if (displayFiles.length === 0 && (filterRemaining || searchTerm || extensionFilter)) {
           return;
@@ -814,9 +815,12 @@
       return div;
     }
 
-    function applyFilters(files, rev = null) {
+    function applyFilters(files, rev = null, msg = '') {
+      // 커밋 메시지에만 있는 검색어도 매칭에 포함한다. (카드 렌더는 메시지도 하이라이트하는데
+      // 매칭이 경로+리비전만 보면, 메시지에만 있는 단어로 검색 시 목록에서 사라지는 불일치가 생김)
+      const msgMatch = !!searchTerm && !!msg && msg.toLowerCase().includes(searchTerm);
       return files.filter(f => {
-        const matchesSearch = !searchTerm || f.toLowerCase().includes(searchTerm) || (rev && rev.toString().includes(searchTerm));
+        const matchesSearch = !searchTerm || msgMatch || f.toLowerCase().includes(searchTerm) || (rev && rev.toString().includes(searchTerm));
         const matchesExt = !extensionFilter || f.toLowerCase().endsWith('.' + extensionFilter);
         const matchesRemaining = !filterRemaining || !mergeStatus[`${rev}:${f}`];
         return matchesSearch && matchesExt && matchesRemaining;
