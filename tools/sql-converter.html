@@ -338,9 +338,12 @@
       // 정규식이 소비하지 못한 꼬리(타입 없는 값들)도 콤마로 분리해 untyped 로 추가 (파라미터 밀림 방지)
       const rest = s.slice(lastEnd).trim();
       if (rest) {
-        rest.split(',').forEach(v => { v = v.trim(); if (v) {
-          out.push({ value: /^null$/i.test(v) ? null : v, type: null });
-        } });
+        rest.split(',').forEach(v => {
+          v = v.trim();
+          if (v) {
+            out.push({ value: /^null$/i.test(v) ? null : v, type: null });
+          }
+        });
       }
       return out;
     }
