@@ -1191,18 +1191,22 @@
       if (s < 60) {
         return '방금';
       }
-      const m = Math.floor(s / 60); if (m < 60) {
-      return m + '분 전';
-    }
-      const h = Math.floor(m / 60); if (h < 24) {
-      return h + '시간 전';
-    }
-      const d = Math.floor(h / 24); if (d < 7) {
-      return d + '일 전';
-    }
-      const w = Math.floor(d / 7); if (w < 5) {
-      return w + '주 전';
-    }
+      const m = Math.floor(s / 60);
+      if (m < 60) {
+        return m + '분 전';
+      }
+      const h = Math.floor(m / 60);
+      if (h < 24) {
+        return h + '시간 전';
+      }
+      const d = Math.floor(h / 24);
+      if (d < 7) {
+        return d + '일 전';
+      }
+      const w = Math.floor(d / 7);
+      if (w < 5) {
+        return w + '주 전';
+      }
       return Math.floor(d / 30) + '개월 전';
     }
     function docPreview(content) {
@@ -2086,7 +2090,9 @@ function hello() {
       }
       clearTimeout(syncOutTimer);
       syncOutTimer = setTimeout(() => {
-        try { syncBC.postMessage({ from: tabId, t: Date.now() }); } catch (e) {}
+        try {
+          syncBC.postMessage({ from: tabId, t: Date.now() });
+        } catch (e) {}
       }, 250);
     }
 
@@ -2124,11 +2130,14 @@ function hello() {
         } else {
           Object.values(all).forEach(d => rebuilt.push(d));
         }
-        rebuilt.forEach(d => { if (typeof d.customTitle !== 'boolean') {
-          d.customTitle = false;
-        } if (!d.title) {
-          d.title = deriveTitle(d.content);
-        } });
+        rebuilt.forEach(d => {
+          if (typeof d.customTitle !== 'boolean') {
+            d.customTitle = false;
+          }
+          if (!d.title) {
+            d.title = deriveTitle(d.content);
+          }
+        });
         docs = rebuilt;
 
         visibleIds = Array.isArray(savedVisible)
@@ -2189,7 +2198,9 @@ function hello() {
           }   // 자기 자신 메시지는 무시
           scheduleRemoteReload();
         };
-      } catch (e) { syncBC = null; }   // BroadcastChannel 미지원 시 동기화만 비활성(나머지는 정상)
+      } catch (e) {
+        syncBC = null;
+      }   // BroadcastChannel 미지원 시 동기화만 비활성(나머지는 정상)
       // 숨겼다 다시 보는 창은 한 번 더 최신화(놓친 메시지 대비)
       document.addEventListener('visibilitychange', () => { if (!document.hidden) {
         scheduleRemoteReload();
