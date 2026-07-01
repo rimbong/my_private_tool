@@ -288,8 +288,12 @@
       file: { data: [], filtered: [], itemHeight: 60, totalHeight: 0, scrollTop: 0, focusedIndex: -1, ticking: false }
     };
 
-    function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
-    function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+    function showLoading() {
+      document.getElementById('loadingOverlay').style.display = 'flex';
+    }
+    function hideLoading() {
+      document.getElementById('loadingOverlay').style.display = 'none';
+    }
 
     function startProcess() {
       showLoading();
@@ -890,7 +894,9 @@
       document.getElementById('reportModal').style.display = 'flex';
     }
 
-    function copyReport() { navigator.clipboard.writeText(document.getElementById('reportArea').value).then(() => showToast('복사되었습니다.', 'success'), () => showToast('복사에 실패했습니다.', 'error')); }
+    function copyReport() {
+      navigator.clipboard.writeText(document.getElementById('reportArea').value).then(() => showToast('복사되었습니다.', 'success'), () => showToast('복사에 실패했습니다.', 'error'));
+    }
 
     function copyPath(e, path, type) {
       const root = document.getElementById('localPath').value.trim();
