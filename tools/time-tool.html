@@ -277,7 +277,9 @@
     function fmtInTz(d, tz) {
       try {
         return new Intl.DateTimeFormat('ko-KR', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(d);
-      } catch (e) { return '-'; }
+      } catch (e) {
+        return '-';
+      }
     }
 
     function showResult(d) {
@@ -559,8 +561,13 @@
       fields[dowIdx] = translateNames(fields[dowIdx], DOW_TOKENS);
 
       let parsed;
-      try { parsed = fields.map((f, i) => parseField(f, ranges[i][0], ranges[i][1])); }
-      catch (e) { failMsg(e.message); return; }
+      try {
+        parsed = fields.map((f, i) => parseField(f, ranges[i][0], ranges[i][1]));
+      }
+      catch (e) {
+        failMsg(e.message);
+        return;
+      }
       // DOW 7(일요일) → 0 으로 정규화
       if (parsed[dowIdx].has(7)) {
         parsed[dowIdx].delete(7);
@@ -575,8 +582,13 @@
       fieldsBox.innerHTML = fields.map((f, i) => `<div class="cf"><small>${labels[i]}</small><div class="box">${f}</div></div>`).join('');
       fieldsBox.style.display = 'grid';
 
-      try { descBox.textContent = '🗣️ ' + humanize(fields, hasSec) + (alias ? ` (${raw} → ${expanded})` : ''); descBox.style.display = 'block'; }
-      catch (e) { descBox.style.display = 'none'; }
+      try {
+        descBox.textContent = '🗣️ ' + humanize(fields, hasSec) + (alias ? ` (${raw} → ${expanded})` : '');
+        descBox.style.display = 'block';
+      }
+      catch (e) {
+        descBox.style.display = 'none';
+      }
 
       const count = Math.min(20, Math.max(1, parseInt(document.getElementById('cronCount').value, 10) || 5));
       const occurrences = nextOccurrences(sets, count);
