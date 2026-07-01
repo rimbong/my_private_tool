@@ -161,8 +161,9 @@ Changed paths:
           return "";
         }
         
-        // svn log 구분선은 보통 72개 대시 — 고정 76개 split이면 0건 → 대시 줄 정규식으로 분리
-        const blocks = input.split(/^-{10,}\s*$/m);
+        // svn log 구분선은 보통 72개 대시. 임계를 너무 낮추면(-{10,}) 커밋 메시지 안의
+        // 마크다운 구분선(----------) 을 실제 구분선으로 오인해 커밋 중간을 쪼갠다 → -{60,} 로 상향.
+        const blocks = input.split(/^-{60,}\s*$/m);
         let result = "";
         
         blocks.forEach(block => {
