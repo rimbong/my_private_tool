@@ -711,7 +711,9 @@
       const availW = pane.el.clientWidth - 32;
       return clampScale(Math.min(availH / baseViewport.height, availW / baseViewport.width));
     }
-    function clampScale(s) { return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s)); }
+    function clampScale(s) {
+      return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
+    }
 
     function buildPlaceholders(pane) {
       if (pane.io) {
@@ -926,7 +928,10 @@
         }
       }
     }
-    function updateZoomLabel() { const p = activePane(); $('zoomLabel').textContent = p ? Math.round(p.scale * 100) + '%' : '100%'; }
+    function updateZoomLabel() {
+      const p = activePane();
+      $('zoomLabel').textContent = p ? Math.round(p.scale * 100) + '%' : '100%';
+    }
 
     function downloadActive() {
       const doc = docs.find(d => d.id === activeId);
