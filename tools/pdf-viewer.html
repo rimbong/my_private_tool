@@ -377,17 +377,8 @@
         pageCount: 0, lastPage: 1, scale: null, addedAt: Date.now()
       };
       docs.push(doc);
-      if (saveMode) {
-        try {
-          await persistDoc(doc);
-          doc.saved = true;
-        }
-        catch (e) {
-          console.warn('persist 실패:', e);
-          toast('저장하지 못해 이번 세션으로만 엽니다 (용량 초과 등).', 'warning', 4000);
-        }
-      }
       renderList();
+      // 저장은 setActive 가 로드 성공을 확인한 뒤에 수행한다 (손상 PDF 사전 저장 방지)
       setActive(id);
     }
 
@@ -518,6 +509,7 @@
       if (!doc) {
         return;
       }
+      const prevActiveId = activeId;   // 로드 실패 시 되돌리기 위해
       activeId = id;
       renderList();
 
@@ -542,14 +534,27 @@
         }
         baseViewport = p1.getViewport({ scale: 1 });
       } catch (e) {
-        // 손상/암호화: 이전 문서를 망가뜨리지 않고(성공 후에만 교체) 깔끔히 비운다
+        // 손상/암호화: 이전 정상 문서/뷰어는 그대로 유지한다. (clearViewer 는 이전 pdfDoc 를
+        // destroy 해버리므로 호출하지 않음) 손상본은 목록·DB 에서 제거해 재클릭·새로고침 재실패를 막는다.
         console.error(e);
-        try { if (pdf) {
-          await pdf.destroy();
-        } } catch (e2) {}
+        try {
+          if (pdf) {
+            await pdf.destroy();
+          }
+        } catch (e2) {}
         if (token === renderToken) {
           toast('PDF를 열지 못했습니다 (손상되었거나 암호화됨).', 'error', 4000);
-          clearViewer(); activeId = null; renderList();
+          const i = docs.findIndex(d => d.id === id);
+          if (i !== -1) {
+            docs.splice(i, 1);
+          }
+          if (doc.saved) {
+            try {
+              await dbManager.removeItem('pdfs', id);
+            } catch (e3) {}
+          }
+          activeId = docs.some(d => d.id === prevActiveId) ? prevActiveId : null;
+          renderList();
         }
         return;
       }
@@ -563,7 +568,17 @@
       }
       numPages = pdf.numPages;
       doc.pageCount = numPages;
-      if (doc.saved) {
+      // 로드 성공 후에만 저장한다 (손상 PDF 가 목록·DB 에 남지 않도록). 이미 저장본이면 메타만 갱신.
+      if (saveMode && !doc.saved) {
+        try {
+          await persistDoc(doc);
+          doc.saved = true;
+          renderList();
+        } catch (e) {
+          console.warn('persist 실패:', e);
+          toast('저장하지 못해 이번 세션으로만 엽니다 (용량 초과 등).', 'warning', 4000);
+        }
+      } else if (doc.saved) {
         persistDocDebounced(doc);
       }
 
