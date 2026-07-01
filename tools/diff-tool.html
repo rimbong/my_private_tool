@@ -531,7 +531,9 @@
       curChange = -1;
     }
 
-    function sameRowU(r) { return `<tr class="same"><td class="gutter">${r.ai}</td><td class="gutter">${r.bi}</td><td class="sign"></td><td class="content">${esc(r.a)}</td></tr>`; }
+    function sameRowU(r) {
+      return `<tr class="same"><td class="gutter">${r.ai}</td><td class="gutter">${r.bi}</td><td class="sign"></td><td class="content">${esc(r.a)}</td></tr>`;
+    }
     function renderUnified() {
       const out = ['<table class="diff"><tbody>'];
       diffBlocks.forEach((b, idx) => {
@@ -577,8 +579,14 @@
       return out.join('');
     }
 
-    function setDiffView(mode) { viewMode = mode; renderResult(); }
-    function expandBlock(idx) { expanded.add(idx); renderResult(); }
+    function setDiffView(mode) {
+      viewMode = mode;
+      renderResult();
+    }
+    function expandBlock(idx) {
+      expanded.add(idx);
+      renderResult();
+    }
     function gotoChange(dir) {
       if (!changeAnchors.length) {
         showToast('변경 사항이 없습니다.', 'info');
@@ -638,7 +646,10 @@
     let compares = [];          // 순서대로 정렬된 비교 배열
     let activeCompareId = null;
     let compareCounter = 0;
-    function genCompareId() { compareCounter++; return 'c' + Date.now().toString(36) + compareCounter.toString(36); }
+    function genCompareId() {
+      compareCounter++;
+      return 'c' + Date.now().toString(36) + compareCounter.toString(36);
+    }
 
     // 원본(A) 첫 줄에서 탭 이름 자동 생성 (없으면 변경본(B)에서)
     function deriveCompareTitle(c) {
@@ -651,7 +662,9 @@
       return t || '빈 비교';
     }
 
-    function getActiveCompare() { return compares.find(c => c.id === activeCompareId) || null; }
+    function getActiveCompare() {
+      return compares.find(c => c.id === activeCompareId) || null;
+    }
 
     function persistCompare(c) {
       if (dbManager.db) {
