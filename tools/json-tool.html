@@ -266,7 +266,10 @@
       if (t[0] === '{' || t[0] === '[') {
         return 'json';
       }
-      try { JSON.parse(t); return 'json'; } catch (e) {}
+      try {
+        JSON.parse(t);
+        return 'json';
+      } catch (e) {}
       return 'xml';
     }
     function setBadge(fmt) {
@@ -305,8 +308,14 @@
       setBadge(fmt);
       setFormat(fmt); // 입력 형식에 맞춰 탭/버튼 자동 전환
       if (fmt === 'json') {
-        try { lastValue = JSON.parse(txt); setStatus('✅ 유효한 JSON · ' + describe(lastValue), 'ok'); }
-        catch (e) { lastValue = undefined; setStatus('⚠ ' + jsonError(e, txt), 'err'); }
+        try {
+          lastValue = JSON.parse(txt);
+          setStatus('✅ 유효한 JSON · ' + describe(lastValue), 'ok');
+        }
+        catch (e) {
+          lastValue = undefined;
+          setStatus('⚠ ' + jsonError(e, txt), 'err');
+        }
       } else {
         lastValue = undefined;
         const err = xmlParseError(txt);
@@ -338,8 +347,14 @@
         showToast('입력이 비어 있습니다.', 'warning');
         return undefined;
       }
-      try { return JSON.parse(txt); }
-      catch (e) { setStatus('⚠ ' + jsonError(e, txt), 'err'); showToast('JSON 파싱 실패 — 상태바를 확인하세요.', 'error'); return undefined; }
+      try {
+        return JSON.parse(txt);
+      }
+      catch (e) {
+        setStatus('⚠ ' + jsonError(e, txt), 'err');
+        showToast('JSON 파싱 실패 — 상태바를 확인하세요.', 'error');
+        return undefined;
+      }
     }
     function requireXmlDoc() {
       const txt = input.value.trim();
@@ -359,25 +374,31 @@
 
     /* ---- JSON 액션 ---- */
     function formatJson() {
-      const v = requireJson(); if (v === undefined) {
-      return;
-    }
-      lastValue = v; render();
+      const v = requireJson();
+      if (v === undefined) {
+        return;
+      }
+      lastValue = v;
+      render();
       setStatus('✅ 정렬 완료 · ' + describe(v), 'ok');
     }
     function minifyJson() {
-      const v = requireJson(); if (v === undefined) {
-      return;
-    }
-      lastValue = v; setView('formatted', true);
+      const v = requireJson();
+      if (v === undefined) {
+        return;
+      }
+      lastValue = v;
+      setView('formatted', true);
       outputText.value = JSON.stringify(v);
       setStatus('🗜️ 압축 완료 · ' + describe(v), 'ok');
     }
     function sortKeys() {
-      const v = requireJson(); if (v === undefined) {
-      return;
-    }
-      lastValue = sortDeep(v); render();
+      const v = requireJson();
+      if (v === undefined) {
+        return;
+      }
+      lastValue = sortDeep(v);
+      render();
       setStatus('🔤 키를 알파벳순으로 정렬했습니다.', 'ok');
     }
     function sortDeep(v) {
@@ -395,15 +416,23 @@
         showToast('입력이 비어 있습니다.', 'warning');
         return;
       }
-      try { const v = JSON.parse(txt); setStatus('✅ 유효한 JSON · ' + describe(v), 'ok'); showToast('유효한 JSON입니다.', 'success'); }
-      catch (e) { setStatus('⚠ ' + jsonError(e, txt), 'err'); showToast('유효하지 않은 JSON', 'error'); }
+      try {
+        const v = JSON.parse(txt);
+        setStatus('✅ 유효한 JSON · ' + describe(v), 'ok');
+        showToast('유효한 JSON입니다.', 'success');
+      }
+      catch (e) {
+        setStatus('⚠ ' + jsonError(e, txt), 'err');
+        showToast('유효하지 않은 JSON', 'error');
+      }
     }
 
     /* ---- XML 액션 ---- */
     function prettyXmlAction() {
-      const doc = requireXmlDoc(); if (!doc) {
-      return;
-    }
+      const doc = requireXmlDoc();
+      if (!doc) {
+        return;
+      }
       setView('formatted', true);
       outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + serializeXml(doc.documentElement, 0);
       setStatus('✅ XML 정렬 완료', 'ok');
@@ -466,9 +495,10 @@
     }
     // XML 압축: 태그 사이의 공백(들여쓰기/줄바꿈)만 제거 (텍스트 내용은 보존)
     function minifyXml() {
-      const doc = requireXmlDoc(); if (!doc) {
-      return;
-    }
+      const doc = requireXmlDoc();
+      if (!doc) {
+        return;
+      }
       setView('formatted', true);
       const xml = new XMLSerializer().serializeToString(doc.documentElement);
       outputText.value = xml.replace(/>\s+</g, '><').trim();
@@ -478,9 +508,10 @@
     /* ---- 변환 ---- */
     function convert(dir) {
       if (dir === 'toXml') {
-        const v = requireJson(); if (v === undefined) {
-        return;
-      }
+        const v = requireJson();
+        if (v === undefined) {
+          return;
+        }
         setView('formatted', true);
         // 최상위 배열은 다중 루트(<array>×N) = 무효 XML → 단일 루트로 감싼다
         const xmlBody = Array.isArray(v)
@@ -489,9 +520,10 @@
         outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + xmlBody;
         setStatus('✅ JSON → XML 변환 완료', 'ok');
       } else {
-        const doc = requireXmlDoc(); if (!doc) {
-        return;
-      }
+        const doc = requireXmlDoc();
+        if (!doc) {
+          return;
+        }
         lastValue = { [doc.documentElement.nodeName]: xmlToJson(doc.documentElement) };
         render();
         setStatus('✅ XML → JSON 변환 완료', 'ok');
@@ -613,11 +645,16 @@
         // 통째로 따옴표로 감싼 JSON 문자열이면 parse, 아니면 escape 시퀀스만 복원
         let unescaped = (txt[0] === '"') ? JSON.parse(txt) : txt.replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\\\/g, '\\');
         // 결과가 JSON이면 예쁘게
-        try { unescaped = JSON.stringify(JSON.parse(unescaped), null, 2); } catch (e) {}
+        try {
+          unescaped = JSON.stringify(JSON.parse(unescaped), null, 2);
+        } catch (e) {}
         setView('formatted', true);
         outputText.value = unescaped;
         setStatus('✅ escape 문자열을 풀었습니다.', 'ok');
-      } catch (e) { setStatus('⚠ 문자열 풀기 실패: ' + e.message, 'err'); showToast('풀 수 없는 형식입니다.', 'error'); }
+      } catch (e) {
+        setStatus('⚠ 문자열 풀기 실패: ' + e.message, 'err');
+        showToast('풀 수 없는 형식입니다.', 'error');
+      }
     }
 
     /* ---- 뷰/렌더 ---- */
@@ -637,9 +674,13 @@
       }
     }
     function render() {
-      if (lastValue === undefined) { const v = requireJson(); if (v === undefined) {
-        return;
-      } lastValue = v; }
+      if (lastValue === undefined) {
+        const v = requireJson();
+        if (v === undefined) {
+          return;
+        }
+        lastValue = v;
+      }
       if (currentView === 'formatted') {
         outputText.value = JSON.stringify(lastValue, null, 2);
       } else {
@@ -774,9 +815,12 @@
       }
       return li;
     }
-    function valueClass(v) { if (v === null) {
-      return 'k-null';
-    } switch (typeof v) { case 'string': return 'k-string'; case 'number': return 'k-number'; case 'boolean': return 'k-bool'; default: return 'k-null'; } }
+    function valueClass(v) {
+      if (v === null) {
+        return 'k-null';
+      }
+      switch (typeof v) { case 'string': return 'k-string'; case 'number': return 'k-number'; case 'boolean': return 'k-bool'; default: return 'k-null'; }
+    }
 
     /* ---- 공통 ---- */
     function copyOutput() {
@@ -881,7 +925,9 @@
           document.getElementById('inSize').textContent = fmtBytes(new Blob([saved]).size);
           autoValidate();
         }
-      } catch (e) { console.warn('입력 복구 실패:', e); }
+      } catch (e) {
+        console.warn('입력 복구 실패:', e);
+      }
     });
   </script>
 </body>
