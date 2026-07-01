@@ -95,6 +95,11 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
           if (overlay.parentNode) {
             overlay.parentNode.removeChild(overlay);
           }
+          // 이 오버레이 제거 후에도 다른 모달이 떠 있으면(연속 confirm→prompt 등)
+          // 그 모달의 포커스를 뺏지 않도록 이전-포커스 복원을 건너뛴다.
+          if (document.querySelector('.cm-overlay')) {
+            return;
+          }
           if (prevFocus && prevFocus.focus) {
             try {
               prevFocus.focus();
@@ -110,12 +115,21 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
         close(isPrompt ? null : false);
       }
       function onKey(e) {
+        // 한글 등 IME 조합 중의 Enter 는 조합 확정용 → 창을 조기 확정하지 않도록 무시
+        if (e.isComposing || e.keyCode === 229) {
+          return;
+        }
         if (e.key === 'Escape') {
           // 모달이 소비 — 호스트 페이지의 전역 Esc 핸들러(드로어/검색패널/다른 모달)로 전파 금지
           e.preventDefault(); e.stopImmediatePropagation(); onCancel();
         } else if (e.key === 'Enter') {
-          // prompt 에서도 Enter = 확인 (textarea 가 없으므로 안전)
-          e.preventDefault(); e.stopImmediatePropagation(); onOk();
+          // 취소 버튼에 포커스가 있으면 Enter=취소, 아니면 확인 (키보드로 취소 가능하게)
+          e.preventDefault(); e.stopImmediatePropagation();
+          if (document.activeElement === cancelBtn) {
+            onCancel();
+          } else {
+            onOk();
+          }
         } else if (e.key === 'Tab') {
           // 포커스 트랩: 모달 내부(입력/취소/확인)에서만 순환, 뒤 페이지로 빠지지 않게
           const f = [input, cancelBtn, okBtn].filter(Boolean);
@@ -134,7 +148,16 @@ body.dark .cm-btn-ok:hover{background:#2ea043;}
       }
       okBtn.addEventListener('click', onOk);
       cancelBtn.addEventListener('click', onCancel);
+      // 모달 안에서 일어난 포인터 이벤트가 document 까지 버블돼 도구의 '바깥 클릭 시 닫기'
+      // 핸들러(드로어/패널)를 발동시키는 것을 막는다. (버튼 핸들러는 이미 처리 후이므로 정상 동작)
+      overlay.addEventListener('click', e => {
+        e.stopPropagation();
+      });
+      overlay.addEventListener('mouseup', e => {
+        e.stopPropagation();
+      });
       overlay.addEventListener('mousedown', e => {
+        e.stopPropagation();
         if (e.target === overlay) {
           onCancel();
         }
