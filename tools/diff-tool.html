@@ -376,9 +376,19 @@
     }
 
     /* 두 줄 사이의 바뀐 토큰만 강조 (단어 단위 LCS) */
+    // 한 줄의 토큰 수² 만큼 DP 배열을 할당하므로, 긴 한 줄(minified 등)은 줄 수 가드(MAX_CELLS)를
+    // 통과해도 여기서 수만²=OOM/프리즈가 난다. 토큰 곱 상한을 두고 초과 시 단어 diff 를 건너뛴다.
+    const MAX_INLINE_CELLS = 1000000;
+    let inlineDiffSkipped = false;
     function inlineDiff(a, b) {
       const ta = a.match(/\s+|\S+/g) || [];
       const tb = b.match(/\s+|\S+/g) || [];
+      const n = ta.length, m = tb.length;
+      if (n * m > MAX_INLINE_CELLS) {
+        // 단어 단위 비교 생략 → 줄 전체를 변경으로 표시 (프리즈 방지)
+        inlineDiffSkipped = true;
+        return { a: `<span class="wd">${esc(a)}</span>`, b: `<span class="wd">${esc(b)}</span>` };
+      }
       // 토큰 매칭은 normalize 옵션(대소문자/공백 무시)을 반영하되 표시는 원본 토큰으로(W2)
       const ic = document.getElementById('optCase').checked;
       const iw = document.getElementById('optWS').checked;
@@ -386,7 +396,6 @@
         return '';
       } return ic ? t.toLowerCase() : t; };
       const na = ta.map(norm), nb = tb.map(norm);
-      const n = ta.length, m = tb.length;
       const dp = Array.from({ length: n + 1 }, () => new Int32Array(m + 1));
       for (let i = n - 1; i >= 0; i--) {
         for (let j = m - 1; j >= 0; j--) {
@@ -453,6 +462,7 @@
         return;
       }
       const rows = computeDiff(aLines, bLines);
+      inlineDiffSkipped = false;
       diffBlocks = buildBlocks(rows);
       expanded.clear();
 
@@ -476,6 +486,10 @@
       document.getElementById('sameMsg').textContent = (added === 0 && deleted === 0) ? '✅ 두 텍스트가 동일합니다.' : '';
 
       renderResult();
+
+      if (inlineDiffSkipped && typeof showToast === 'function') {
+        showToast('일부 줄이 너무 길어(minified 등) 단어 단위 비교를 건너뛰고 줄 단위로 표시했습니다.', 'info', 4000);
+      }
     }
 
     // 행들을 동일/변경 블록으로 묶고, 변경 블록은 단어 단위 강조 미리 계산
