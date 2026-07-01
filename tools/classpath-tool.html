@@ -119,7 +119,10 @@
     let tomcatObj = null;
     let fileCount = 0;
     let currentPrefix = '';   // prefix 경로를 DOM(innerHTML) 대신 JS 변수로 보관(self-XSS 방지)
-    function applyConfig(cfg) { configObj = cfg || {}; tomcatObj = configObj.tomcatObj || null; }
+    function applyConfig(cfg) {
+      configObj = cfg || {};
+      tomcatObj = configObj.tomcatObj || null;
+    }
 
         function checkConfig() {
             if (!tomcatObj || Object.keys(tomcatObj).length === 0) {
