@@ -268,8 +268,12 @@
       if (!term) {
         return safe;
       }
-      try { return safe.replace(new RegExp('(' + escRe(escHtml(term)) + ')', 'gi'), '<mark class="highlight">$1</mark>'); }
-      catch (e) { return safe; }
+      try {
+        return safe.replace(new RegExp('(' + escRe(escHtml(term)) + ')', 'gi'), '<mark class="highlight">$1</mark>');
+      }
+      catch (e) {
+        return safe;
+      }
     }
 
     // 탭 간 동기화 채널
@@ -443,20 +447,18 @@
       const extensions = new Set();
 
       blocks.forEach(block => {
-        block = block.trim(); if (!block) {
-        return;
-      }
+        block = block.trim();
+        if (!block) {
+          return;
+        }
         const lines = block.split('\n');
-                
         // r번호 파싱 (기존 로직 복구)
         const revMatch = lines[0].match(/^r(\d+)/);
         if (!revMatch) {
           return;
         }
-
         const rev = parseInt(revMatch[1]);
         let files = [], isPath = false, msgLines = [];
-        
         lines.forEach((line, idx) => {
           if (idx === 0) {
             return;
@@ -536,9 +538,13 @@
       if (info) {
         const allMerged = info.revs.every(r => mergeStatus[`${r}:${path}`]);
         const fileEls = document.querySelectorAll(`[data-file-key="${path}"]`);
-        fileEls.forEach(el => { el.classList.toggle('merged', allMerged); const cb = el.querySelector('input[type="checkbox"]'); if (cb) {
-          cb.checked = allMerged;
-        } });
+        fileEls.forEach(el => {
+          el.classList.toggle('merged', allMerged);
+          const cb = el.querySelector('input[type="checkbox"]');
+          if (cb) {
+            cb.checked = allMerged;
+          }
+        });
       }
       updateProgress();
     }
@@ -552,9 +558,10 @@
     }
 
     async function toggleFileAllMerge(filePath, isChecked) {
-      const info = fileMap[filePath]; if (!info) {
-      return;
-    }
+      const info = fileMap[filePath];
+      if (!info) {
+        return;
+      }
       const tx = dbManager.db.transaction('mergeStatus', 'readwrite');
       const store = tx.objectStore('mergeStatus');
       info.revs.forEach(r => { 
@@ -958,9 +965,10 @@
     }
 
     function importData(input) {
-      const file = input.files[0]; if (!file) {
-      return;
-    }
+      const file = input.files[0];
+      if (!file) {
+        return;
+      }
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
@@ -1004,9 +1012,13 @@
             showToast('데이터를 성공적으로 가져왔습니다.', 'success');
             setTimeout(() => window.location.reload(), 1000);
           }
-        } catch (err) { showToast('오류 발생: ' + err.message, 'error'); hideLoading(); }
+        } catch (err) {
+          showToast('오류 발생: ' + err.message, 'error');
+          hideLoading();
+        }
       };
-      reader.readAsText(file); input.value = '';
+      reader.readAsText(file);
+      input.value = '';
     }
   </script>
 </body>
