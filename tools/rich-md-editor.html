@@ -125,27 +125,40 @@
     .ProseMirror p.is-editor-empty:first-child::before {
       content: attr(data-placeholder); color: var(--muted); float: left; height: 0; pointer-events: none;
     }
-    /* 마크다운 원문 패널 */
-    .md-panel {
-      width: 400px; max-width: 42vw; flex-shrink: 0; border-left: 1px solid var(--border);
-      display: none; flex-direction: column; background: var(--panel);
+    /* 파일 열기/저장 액션 버튼 (아이콘 버튼과 달리 테두리·배경으로 '버튼'답게) */
+    .tb-action {
+      height: 30px; padding: 0 0.75rem; border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700;
+      display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
     }
-    .md-panel.open { display: flex; }
-    .md-panel-head { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
-    .md-panel textarea {
-      flex: 1; border: none; outline: none; resize: none; padding: 0.9rem 1rem; background: transparent;
-      color: var(--text); font-family: 'Fira Code', Consolas, monospace; font-size: 0.85rem; line-height: 1.6;
+    .tb-action:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+    /* MD 붙여넣기 다이얼로그 */
+    .mdimp-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none;
+      align-items: center; justify-content: center; z-index: 100;
     }
-    .md-actions { padding: 0.5rem 0.75rem; border-top: 1px solid var(--border); display: flex; gap: 0.4rem; flex-wrap: wrap; }
-    .sm-btn {
-      padding: 0.35rem 0.7rem; border: 1px solid var(--border); background: var(--bg); color: var(--text);
-      border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 600;
+    .mdimp-overlay.open { display: flex; }
+    .mdimp-box {
+      background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 12px;
+      width: min(680px, 92vw); max-height: 82vh; display: flex; flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3); overflow: hidden;
     }
-    .sm-btn:hover { border-color: var(--primary); color: var(--primary); }
-    .sm-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .mdimp-head { padding: 0.9rem 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 0.6rem; }
+    .mdimp-head span { font-size: 0.78rem; font-weight: 500; color: var(--muted); }
+    .mdimp-box textarea {
+      flex: 1; min-height: 320px; border: none; outline: none; resize: none; padding: 1rem 1.1rem;
+      background: transparent; color: var(--text); font-family: 'Fira Code', Consolas, monospace; font-size: 0.9rem; line-height: 1.6;
+    }
+    .mdimp-actions { padding: 0.75rem 1.1rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem; }
+    .dlg-btn {
+      padding: 0.5rem 1rem; border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      border-radius: 7px; cursor: pointer; font-weight: 700; font-size: 0.85rem;
+    }
+    .dlg-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .dlg-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
     @media (max-width: 820px) {
-      .sidebar { position: absolute; z-index: 40; height: calc(100% - 0px); box-shadow: 2px 0 12px rgba(0,0,0,0.15); }
-      .md-panel { position: fixed; inset: 0; width: 100%; max-width: 100%; z-index: 50; }
+      .sidebar { position: absolute; z-index: 40; height: 100%; box-shadow: 2px 0 12px rgba(0,0,0,0.15); }
     }
   </style>
 </head>
@@ -194,7 +207,10 @@
     <span class="tb-spacer"></span>
     <span class="save-state" id="saveState"></span>
     <div class="tb-group">
-      <button class="tb-btn wide" data-act="toggleMd" title="마크다운 원문 보기/편집">〈MD〉</button>
+      <button class="tb-action" id="btnImport" title="마크다운 텍스트를 붙여넣어 적용">📥 MD 붙여넣기</button>
+      <button class="tb-action" id="btnOpen" title="마크다운(.md) 파일을 새 노트로 열기">📂 열기</button>
+      <button class="tb-action" id="btnSave" title="현재 노트를 마크다운(.md) 파일로 저장">💾 저장</button>
+      <input type="file" id="mdFile" accept=".md,.markdown,text/markdown" style="display:none;">
       <button class="tb-btn" onclick="portalTheme.toggle()" title="다크/라이트">🌙</button>
     </div>
   </div>
@@ -213,19 +229,18 @@
     <div class="editor-area">
       <div class="editor-scroll"><div id="editor"></div></div>
     </div>
+  </div>
 
-    <aside class="md-panel" id="mdPanel">
-      <div class="md-panel-head">📝 마크다운 원문 <span style="margin-left:auto; font-weight:500;">편집 후 '적용'</span></div>
-      <textarea id="mdArea" spellcheck="false" placeholder="여기 마크다운을 붙여넣고 '적용'을 누르면 현재 노트에 반영됩니다."></textarea>
-      <div class="md-actions">
-        <button class="sm-btn primary" id="mdApply">← 적용(MD→노트)</button>
-        <button class="sm-btn" id="mdRefresh">노트→MD 새로고침</button>
-        <button class="sm-btn" id="mdCopy">복사</button>
-        <button class="sm-btn" id="mdDownload">.md 저장</button>
-        <button class="sm-btn" id="mdOpen">.md 열기(새 노트)</button>
-        <input type="file" id="mdFile" accept=".md,.markdown,text/markdown" style="display:none;">
+  <div class="mdimp-overlay" id="mdImpOverlay">
+    <div class="mdimp-box">
+      <div class="mdimp-head">📥 마크다운 붙여넣기 <span>여기에 붙여넣고 아래에서 적용하세요 (Esc 로 닫기)</span></div>
+      <textarea id="mdImpArea" spellcheck="false" placeholder="# 제목&#10;&#10;마크다운을 여기에 붙여넣으세요…"></textarea>
+      <div class="mdimp-actions">
+        <button class="dlg-btn" id="mdImpCancel">취소</button>
+        <button class="dlg-btn" id="mdImpNew">새 노트로 추가</button>
+        <button class="dlg-btn primary" id="mdImpApply">현재 노트에 적용</button>
       </div>
-    </aside>
+    </div>
   </div>
 
   <script>
@@ -363,9 +378,6 @@
         persistActiveId();
         renderList();
         setSaveState('저장됨');
-        if (mdPanel.classList.contains('open')) {
-          mdArea.value = note.content;
-        }
         if (!opts || opts.focus !== false) {
           editor.commands.focus('end');
         }
@@ -403,13 +415,6 @@
       }
 
       // ===== 자동 저장 =====
-      const mdArea = document.getElementById('mdArea');
-      const mdPanel = document.getElementById('mdPanel');
-      function refreshMdArea() {
-        if (mdPanel.classList.contains('open')) {
-          mdArea.value = getMd();
-        }
-      }
       function scheduleSave() {
         setSaveState('저장 중…');
         clearTimeout(saveTimer);
@@ -433,7 +438,6 @@
           return;
         }
         scheduleSave();
-        refreshMdArea();
       });
       editor.on('selectionUpdate', updateToolbarState);
       editor.on('transaction', updateToolbarState);
@@ -482,13 +486,6 @@
           if (url) {
             chain().setImage({ src: url }).run();
           }
-        },
-        toggleMd: () => {
-          const opening = !mdPanel.classList.contains('open');
-          mdPanel.classList.toggle('open', opening);
-          if (opening) {
-            mdArea.value = getMd();
-          }
         }
       };
       document.getElementById('toolbar').addEventListener('click', (e) => {
@@ -531,38 +528,59 @@
         }
       });
 
-      // ===== 마크다운 패널 =====
-      document.getElementById('mdApply').addEventListener('click', () => {
-        setMd(mdArea.value);
-        scheduleSave();
-        showToast('마크다운을 현재 노트에 반영했습니다.', 'success');
-      });
-      document.getElementById('mdRefresh').addEventListener('click', () => {
-        mdArea.value = getMd();
-      });
-      document.getElementById('mdCopy').addEventListener('click', async () => {
-        const md = getMd();
-        try {
-          if (navigator.clipboard && window.isSecureContext) {
-            await navigator.clipboard.writeText(md);
-          } else {
-            throw new Error('fallback');
-          }
-        } catch (e) {
-          const ta = document.createElement('textarea');
-          ta.value = md;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.select();
-          try {
-            document.execCommand('copy');
-          } catch (e2) {}
-          document.body.removeChild(ta);
+      // ===== MD 붙여넣기 다이얼로그 =====
+      const impOverlay = document.getElementById('mdImpOverlay');
+      const impArea = document.getElementById('mdImpArea');
+      function openImport() {
+        impArea.value = '';
+        impOverlay.classList.add('open');
+        setTimeout(() => impArea.focus(), 30);
+      }
+      function closeImport() {
+        impOverlay.classList.remove('open');
+      }
+      document.getElementById('btnImport').addEventListener('click', openImport);
+      document.getElementById('mdImpCancel').addEventListener('click', closeImport);
+      impOverlay.addEventListener('mousedown', (e) => {
+        if (e.target === impOverlay) {
+          closeImport();
         }
-        showToast('마크다운을 복사했습니다.', 'success');
       });
-      document.getElementById('mdDownload').addEventListener('click', () => {
+      impOverlay.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          closeImport();
+        }
+      });
+      document.getElementById('mdImpApply').addEventListener('click', () => {
+        const text = impArea.value;
+        if (!text.trim()) {
+          closeImport();
+          return;
+        }
+        setMd(text);
+        scheduleSave();
+        closeImport();
+        editor.commands.focus('end');
+        showToast('마크다운을 현재 노트에 적용했습니다.', 'success');
+      });
+      document.getElementById('mdImpNew').addEventListener('click', async () => {
+        const text = impArea.value;
+        if (!text.trim()) {
+          closeImport();
+          return;
+        }
+        const note = { id: genId(), title: deriveTitle(text), content: text, updatedAt: Date.now() };
+        notes.push(note);
+        await persistNote(note);
+        await openNote(note.id);
+        renderList();
+        closeImport();
+        showToast('새 노트로 추가했습니다.', 'success');
+      });
+
+      // ===== 파일 저장 / 열기 =====
+      document.getElementById('btnSave').addEventListener('click', () => {
         const note = findNote(activeId);
         const blob = new Blob([getMd()], { type: 'text/markdown' });
         const a = document.createElement('a');
@@ -572,7 +590,7 @@
         URL.revokeObjectURL(a.href);
       });
       const mdFile = document.getElementById('mdFile');
-      document.getElementById('mdOpen').addEventListener('click', () => mdFile.click());
+      document.getElementById('btnOpen').addEventListener('click', () => mdFile.click());
       mdFile.addEventListener('change', () => {
         const f = mdFile.files[0];
         if (!f) {
