@@ -7,6 +7,7 @@
   <script src="lib/tiptap.bundle.js"></script>
   <script src="lib/toast-utils.js"></script>
   <script src="lib/modal-utils.js"></script>
+  <script src="lib/db-manager.js"></script>
   <script src="lib/portal-theme.js"></script>
   <style>
     :root {
@@ -180,7 +181,19 @@
   <script>
     (function () {
       const { Editor, StarterKit, Markdown, Highlight, TaskList, TaskItem, Table, TableRow, TableCell, TableHeader, Image, TextAlign } = window.TT;
-      const STORAGE_KEY = 'rich-md-editor-content';
+      // 저장: dbManager(IndexedDB) — 다른 도구와 통일(용량 한계·크로스탭 대비). 구버전 localStorage 는 1회 이전.
+      const DB_NAME = 'note-editor-db', DB_STORE = 'state', DB_KEY = 'content';
+      const LEGACY_LS_KEY = 'rich-md-editor-content';
+      function saveContent(md) {
+        if (!dbManager.db) {
+          return;
+        }
+        if (md && md.trim()) {
+          dbManager.setItem(DB_STORE, DB_KEY, md).catch(() => {});
+        } else {
+          dbManager.removeItem(DB_STORE, DB_KEY).catch(() => {});
+        }
+      }
 
       const editor = new Editor({
         element: document.getElementById('editor'),
@@ -202,45 +215,49 @@
       });
 
       function getMd() {
-        if (typeof editor.getMarkdown === 'function') {
-          return editor.getMarkdown();
-        }
-        if (editor.storage && editor.storage.markdown && editor.storage.markdown.getMarkdown) {
-          return editor.storage.markdown.getMarkdown();
-        }
-        return '';
+        // 공식 @tiptap/markdown v3 는 editor.getMarkdown() 메서드를 제공한다(실측 확인).
+        return typeof editor.getMarkdown === 'function' ? editor.getMarkdown() : '';
       }
       function setMd(md) {
         editor.commands.setContent(md || '', { contentType: 'markdown' });
       }
 
-      // ===== 초기 콘텐츠 (localStorage 복원 or 샘플) =====
-      const saved = (function () {
+      // ===== 초기 콘텐츠: dbManager 복원 → 없으면 레거시 localStorage 1회 이전 → 없으면 샘플 =====
+      const SAMPLE_MD = [
+        '# 노트 편집기 (위지윅)',
+        '',
+        '이건 **TipTap** 으로 만든 실험용 새 도구입니다. 기존 마크다운 뷰어와 별개예요.',
+        '',
+        '- 위지윅으로 바로 편집',
+        '- 오른쪽 `〈MD〉` 버튼으로 마크다운 원문 보기/붙여넣기',
+        '- `.md` 열기/저장, 복사 지원',
+        '',
+        '> 밑줄·하이라이트색·정렬 등 일부는 마크다운 저장 시 표준 문법이 없어 유실될 수 있습니다.',
+        '',
+        '```js',
+        'const hello = "world";',
+        '```'
+      ].join('\n');
+      (async function loadInitial() {
+        let saved = null;
         try {
-          return localStorage.getItem(STORAGE_KEY);
+          await dbManager.init(DB_NAME, [DB_STORE]);
+          saved = await dbManager.getItem(DB_STORE, DB_KEY);
+          if (!saved) {
+            try {
+              const legacy = localStorage.getItem(LEGACY_LS_KEY);
+              if (legacy) {
+                saved = legacy;
+                await dbManager.setItem(DB_STORE, DB_KEY, legacy);
+                localStorage.removeItem(LEGACY_LS_KEY);
+              }
+            } catch (e) {}
+          }
         } catch (e) {
-          return null;
+          console.warn('저장소 초기화 실패:', e);
         }
+        setMd(saved || SAMPLE_MD);
       })();
-      if (saved) {
-        setMd(saved);
-      } else {
-        setMd([
-          '# 노트 편집기 (위지윅)',
-          '',
-          '이건 **TipTap** 으로 만든 실험용 새 도구입니다. 기존 마크다운 뷰어와 별개예요.',
-          '',
-          '- 위지윅으로 바로 편집',
-          '- 오른쪽 `〈MD〉` 버튼으로 마크다운 원문 보기/붙여넣기',
-          '- `.md` 열기/저장, 복사 지원',
-          '',
-          '> 밑줄·하이라이트색·정렬 등 일부는 마크다운 저장 시 표준 문법이 없어 유실될 수 있습니다.',
-          '',
-          '```js',
-          'const hello = "world";',
-          '```'
-        ].join('\n'));
-      }
 
       // ===== 자동 저장 + MD 패널 동기화 =====
       let saveTimer = null;
@@ -253,11 +270,7 @@
       }
       editor.on('update', () => {
         clearTimeout(saveTimer);
-        saveTimer = setTimeout(() => {
-          try {
-            localStorage.setItem(STORAGE_KEY, getMd());
-          } catch (e) {}
-        }, 400);
+        saveTimer = setTimeout(() => saveContent(getMd()), 400);
         refreshMdArea();
       });
       editor.on('selectionUpdate', updateToolbarState);
