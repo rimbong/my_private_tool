@@ -309,7 +309,6 @@
       const DB_NAME = 'note-editor-db';
       const STORE_NOTES = 'notes';
       const STORE_STATE = 'state';
-      const LEGACY_LS_KEY = 'rich-md-editor-content';
 
       // ===== 상태 =====
       let notes = [];          // { id, title, content, updatedAt }
@@ -434,6 +433,7 @@
         if (!note) {
           return;
         }
+        await flushActive();   // 이전 활성 노트의 미저장 편집을 먼저 확정(전환 시 마지막 입력 소실 방지)
         activeId = id;
         setMd(note.content);
         persistActiveId();
@@ -461,7 +461,9 @@
         }
         notes = notes.filter(n => n.id !== id);
         if (dbManager.db) {
-          dbManager.removeItem(STORE_NOTES, id).catch(() => {});
+          dbManager.removeItem(STORE_NOTES, id).catch(() => {
+            showToast('삭제가 저장소에 반영되지 않았을 수 있습니다. 새로고침 후에도 남아 있으면 다시 시도하세요.', 'error', 5000);
+          });
         }
         if (activeId === id) {
           if (notes.length) {
@@ -493,6 +495,23 @@
             renderList();
           } catch (e) {}
         }, 500);
+      }
+      // 노트 전환 직전, 현재 활성 노트의 미저장 편집을 즉시 반영(예약된 디바운스 저장이 뒤늦게
+      // 터지며 엉뚱한(전환된) 노트를 저장하고 직전 입력을 잃는 것을 방지)
+      async function flushActive() {
+        clearTimeout(saveTimer);
+        const note = findNote(activeId);
+        if (!note) {
+          return;
+        }
+        note.content = getMd();
+        note.title = deriveTitle(note.content);
+        note.updatedAt = Date.now();
+        try {
+          await persistNote(note);
+        } catch (e) {
+          // persistNote 가 이미 토스트·상태표시로 실패를 알림
+        }
       }
       editor.on('update', () => {
         if (loadingNote) {
@@ -796,22 +815,13 @@
           await dbManager.init(DB_NAME, [STORE_NOTES, STORE_STATE]);
           const all = await dbManager.getAll(STORE_NOTES);
           notes = Object.values(all || {});
-          // 구버전(단일 노트) → 노트로 이전
+          // 구버전(단일 노트, IndexedDB state/content) → 노트로 이전
           if (notes.length === 0) {
-            let legacy = await dbManager.getItem(STORE_STATE, 'content');   // 직전 버전의 단일 저장
-            if (!legacy) {
-              try {
-                const ls = localStorage.getItem(LEGACY_LS_KEY);            // 그 이전 localStorage
-                if (ls) {
-                  legacy = ls;
-                  localStorage.removeItem(LEGACY_LS_KEY);
-                }
-              } catch (e) {}
-            }
+            const legacy = await dbManager.getItem(STORE_STATE, 'content');
             if (legacy) {
               const n = { id: genId(), title: deriveTitle(legacy), content: legacy, updatedAt: Date.now() };
               notes.push(n);
-              await persistNote(n);
+              await persistNote(n);   // 실패 시 throw → 아래 원본 삭제에 도달하지 않음
               await dbManager.removeItem(STORE_STATE, 'content').catch(() => {});
             }
           }
