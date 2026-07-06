@@ -221,6 +221,64 @@
       scrollbar-width: thin;
     }
     .doc-tab-list { display: flex; align-items: flex-end; gap: 0.4rem; }
+    /* 엣지식 탭 그룹: 그룹 전체를 하나의 색 트레이로 묶는다 */
+    .tab-group {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 0.3rem;
+      align-self: flex-end;
+      position: relative;
+      bottom: -2px;
+      padding: 0.28rem 0.34rem 0;
+      border: 1.5px solid var(--gc);
+      border-bottom: none;
+      border-radius: 0.75rem 0.75rem 0 0;
+      background: var(--gcbg);
+    }
+    /* 그룹 라벨(알약) — 트레이 안 왼쪽에 색으로 채운 태그 */
+    .tab-group-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      align-self: center;
+      margin-bottom: 0.28rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: var(--gc);
+      color: #fff;
+      font-size: 0.76rem;
+      font-weight: 800;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .tab-group-pill:hover { filter: brightness(1.08); }
+    .tab-group.collapsed { padding-bottom: 0.28rem; }
+    .tab-group.collapsed .tab-group-pill { margin-bottom: 0; }
+    .tab-group-pill .tgp-caret { font-size: 0.66rem; line-height: 1; }
+    .tab-group-pill .tgp-icon { line-height: 1; }
+    /* 폴더 이름은 항상 아이콘만 보이고, '접힌' 그룹에 마우스오버할 때만 이름을 펼친다.
+       (펼친 그룹에선 이름이 나타났다 사라지며 탭 위치가 흔들려 불편 → 숨김 유지, 이름은 title 툴팁으로 확인) */
+    .tab-group-pill .tgp-name { display: none; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+    .tab-group.collapsed .tab-group-pill:hover .tgp-name { display: inline; }
+    .tab-group-pill .tgp-count {
+      font-size: 0.66rem; font-weight: 800;
+      background: rgba(255,255,255,0.3);
+      border-radius: 999px; padding: 0.02rem 0.42rem; line-height: 1.5;
+    }
+    /* 트레이 안의 탭은 개별 테두리를 줄이고 트레이에 얹혀 보이게 */
+    .tab-group .doc-tab {
+      bottom: 0;
+      box-shadow: none;
+      background: var(--editor-bg);
+      border-color: transparent;
+    }
+    .tab-group .doc-tab:hover { border-color: var(--gc); }
+    .tab-group .doc-tab.active {
+      background: var(--bg);
+      border-color: var(--gc);
+      border-top-width: 3px;
+      border-bottom: none;
+    }
     .doc-tab {
       display: inline-flex;
       align-items: center;
@@ -264,17 +322,17 @@
     }
     .doc-tab-close:hover { opacity: 1; background: var(--tab-border); }
     .doc-tab-del {
-      display: none;                 /* 평소 숨김, 탭에 마우스 올릴 때만 노출 */
+      display: inline-flex;          /* 항상 표시(평소 옅게) → 위치 고정, X 누를 때 튀어나오지 않음 */
       align-items: center;
       justify-content: center;
       width: 18px; height: 18px;
       border-radius: 50%;
       font-size: 0.68rem;
-      opacity: 0.6;
+      opacity: 0.4;
       flex-shrink: 0;
       transition: background 0.15s, opacity 0.15s;
     }
-    .doc-tab:hover .doc-tab-del { display: inline-flex; }
+    .doc-tab:hover .doc-tab-del { opacity: 0.6; }
     .doc-tab-del:hover { opacity: 1; background: var(--danger, #e5484d); color: #fff; }
     .doc-tab-add {
       align-self: flex-end;            /* 탭과 같은 바닥선에 정렬 */
@@ -320,13 +378,36 @@
 
     /* --- 문서 관리 다이얼로그 --- */
     .modal-content.doc-manager {
-      width: 600px;
-      max-width: 92vw;
-      height: auto;
-      max-height: 82vh;
+      width: 920px;
+      max-width: 95vw;
+      height: 80vh;
+      max-height: 88vh;
       margin: auto;
+      display: flex;
+      flex-direction: column;
     }
     .modal.center { align-items: center; justify-content: center; display: none; }  /* JS가 flex로 전환 */
+    /* 본문: 좌측 그룹 사이드바 + 우측 목록 */
+    .dm-body { flex: 1; display: flex; min-height: 0; }
+    .dm-sidebar {
+      width: 200px; flex-shrink: 0; overflow-y: auto;
+      border-right: 1px solid var(--border); background: var(--header-bg);
+      padding: 0.5rem; display: flex; flex-direction: column; gap: 0.12rem;
+    }
+    .dm-side-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.6rem; border-radius: 0.5rem; cursor: pointer;
+      font-size: 0.86rem; font-weight: 600; color: var(--text); user-select: none;
+      border: 1px solid transparent;
+    }
+    .dm-side-item:hover { background: var(--editor-bg); }
+    .dm-side-item.active { background: var(--accent); color: #fff; }
+    .dm-side-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dm-side-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dm-side-count { font-size: 0.72rem; opacity: 0.8; font-variant-numeric: tabular-nums; }
+    .dm-side-sep { height: 1px; background: var(--border); margin: 0.35rem 0.25rem; }
+    .dm-side-caption { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); padding: 0.2rem 0.6rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .dm-main-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     .dm-toolbar {
       display: flex; align-items: center; gap: 0.75rem;
       padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border);
@@ -347,6 +428,21 @@
       display: flex; flex-direction: column; gap: 0.35rem;
     }
     .dm-empty { padding: 2.5rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+    /* 행의 그룹 이동 셀렉트 · 폴더 태그 */
+    .dm-group-select {
+      flex-shrink: 0; max-width: 130px;
+      font-size: 0.76rem; padding: 0.28rem 0.35rem;
+      border: 1px solid var(--border); border-radius: 0.4rem;
+      background: var(--editor-bg); color: var(--text); cursor: pointer;
+    }
+    .dm-group-select:hover { border-color: var(--accent); }
+    .dm-folder-tag { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.68rem; font-weight: 700; margin-left: 0.45rem; color: var(--text-muted); vertical-align: middle; }
+    .dm-folder-tag .fdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dm-bulk-group {
+      font-size: 0.8rem; padding: 0.32rem 0.45rem;
+      border: 1px solid var(--border); border-radius: 0.4rem;
+      background: var(--editor-bg); color: var(--text); cursor: pointer;
+    }
     .dm-item {
       display: flex; align-items: center; gap: 0.6rem;
       padding: 0.55rem 0.65rem;
@@ -384,23 +480,7 @@
       display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;
     }
 
-    /* 필터 칩 + 선택 모드 토글 */
-    .dm-subbar {
-      display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.5rem 1.5rem; border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
-    }
-    .dm-filters { display: inline-flex; gap: 0.3rem; }
-    .dm-chip {
-      border: 1px solid var(--border); background: transparent; color: var(--text-muted);
-      padding: 0.32rem 0.65rem; border-radius: 999px; cursor: pointer;
-      font-size: 0.8rem; font-weight: 600; white-space: nowrap;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
-    }
-    .dm-chip:hover { border-color: var(--accent); color: var(--accent); }
-    .dm-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-    .dm-chip span { opacity: 0.85; font-variant-numeric: tabular-nums; }
-    .dm-select-toggle { margin-left: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; }
+    .dm-select-toggle { margin-left: auto; padding: 0.35rem 0.75rem; font-size: 0.8rem; white-space: nowrap; }
 
     /* 일괄 작업 바 */
     .dm-bulkbar {
@@ -421,6 +501,14 @@
       padding: 0.05rem 0.4rem; margin-left: 0.4rem; vertical-align: middle;
     }
     .dm-item.selected { border-color: var(--accent); background: var(--bg); }
+    /* 드래그로 순서 이동 표시 */
+    .dm-item { cursor: grab; }
+    .dm-item .dm-main { cursor: pointer; }
+    .doc-tab.dragging, .dm-item.dragging { opacity: 0.4; }
+    .dm-item.drop-before { box-shadow: inset 0 3px 0 var(--accent); }
+    .dm-item.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
+    .doc-tab.drop-before { box-shadow: inset 3px 0 0 var(--accent); }
+    .doc-tab.drop-after { box-shadow: inset -3px 0 0 var(--accent); }
 
     main {
       flex: 1;
@@ -683,6 +771,7 @@
       <h1>📝 마크다운</h1>
       <div class="action-group">
         <button class="btn" onclick="document.getElementById('fileInput').click()">파일 열기</button>
+        <button class="btn" onclick="document.getElementById('folderInput').click()" title="폴더를 통째로 열어 폴더별 그룹으로 봅니다 (.md + 참조 이미지)">📁 폴더 열기</button>
         <button class="btn" onclick="saveFile()">저장</button>
         <span class="drop-switch" id="dropModeToggle" role="switch" aria-checked="false" tabindex="0" onclick="toggleDropMode()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleDropMode();}" title="드래그앤드롭 시 동작 방식: 현재 탭 덮어쓰기 ↔ 끝에 이어붙이기">
           <span class="ds-cap">드롭</span>
@@ -692,6 +781,7 @@
         </span>
         <button class="btn" onclick="compactInlineImages()" title="본문에 길게 박힌 data: 이미지를 짧은 토큰으로 접습니다">🖼️ 이미지 접기</button>
         <input type="file" id="fileInput" class="file-input" accept=".md,.txt" onchange="loadFile(event)">
+        <input type="file" id="folderInput" class="file-input" webkitdirectory directory multiple onchange="loadFolder(event)">
       </div>
     </div>
     <div class="action-group">
@@ -768,32 +858,33 @@
     <div class="modal-content doc-manager">
       <div class="modal-header">
         <h2 style="margin:0; font-size:1.1rem;">📚 문서 관리</h2>
+        <span class="dm-hint" style="margin-left:auto; margin-right:1rem;">탭 표시 <b id="dmVisCount">0</b>/<span id="dmMax">5</span>(그룹=1) · 전체 <b id="dmAllCount">0</b></span>
         <button class="btn" onclick="closeDocManager()">닫기 (Esc)</button>
       </div>
-      <div class="dm-toolbar">
-        <input type="text" id="docSearch" placeholder="🔍 문서 검색..." oninput="renderDocManager()" autocomplete="off">
-        <span class="dm-hint">탭 표시 <b id="dmVisCount">0</b>/<span id="dmMax">5</span> · 전체 <b id="dmAllCount">0</b></span>
-      </div>
-      <div class="dm-subbar">
-        <div class="dm-filters">
-          <button class="dm-chip active" data-f="all" onclick="setDocFilter('all')">전체 <span id="cntAll">0</span></button>
-          <button class="dm-chip" data-f="visible" onclick="setDocFilter('visible')">탭 표시 <span id="cntVis">0</span></button>
-          <button class="dm-chip" data-f="hidden" onclick="setDocFilter('hidden')">숨김 <span id="cntHid">0</span></button>
+      <div class="dm-body">
+        <!-- 좌측: 그룹 사이드바 -->
+        <aside class="dm-sidebar" id="dmSidebar"></aside>
+        <!-- 우측: 도구모음 + 파일 목록 -->
+        <div class="dm-main-pane">
+          <div class="dm-toolbar">
+            <input type="text" id="docSearch" placeholder="🔍 문서 검색..." oninput="renderDocManager()" autocomplete="off">
+            <button class="btn dm-select-toggle" id="dmSelectToggle" onclick="toggleSelectMode()">☑ 선택</button>
+          </div>
+          <div class="dm-bulkbar" id="dmBulkBar">
+            <label class="dm-selall"><input type="checkbox" id="dmSelAll" onchange="toggleSelectAll(this.checked)"> 전체 선택</label>
+            <span class="dm-selcount"><b id="dmSelCount">0</b>개 선택</span>
+            <span style="flex:1;"></span>
+            <select class="dm-bulk-group" id="dmBulkGroup" onchange="onBulkGroupChange(this)" title="선택한 문서를 그룹으로 이동"></select>
+            <button class="btn" onclick="bulkShow()">📌 탭에 표시</button>
+            <button class="btn" onclick="bulkHide()">🙈 숨기기</button>
+            <button class="btn dm-danger-btn" onclick="bulkDelete()">🗑 삭제</button>
+          </div>
+          <div class="dm-list" id="docManagerList"></div>
+          <div class="dm-footer">
+            <button class="btn" onclick="newDocFromManager()">＋ 새 문서</button>
+            <span style="font-size:0.78rem; color:var(--text-muted);">☑ 탭 표시 · 클릭 → 전환 · 드래그 → 순서 이동 · [그룹▾] 이동 · 🗑 삭제</span>
+          </div>
         </div>
-        <button class="btn dm-select-toggle" id="dmSelectToggle" onclick="toggleSelectMode()">☑ 선택</button>
-      </div>
-      <div class="dm-bulkbar" id="dmBulkBar">
-        <label class="dm-selall"><input type="checkbox" id="dmSelAll" onchange="toggleSelectAll(this.checked)"> 전체 선택</label>
-        <span class="dm-selcount"><b id="dmSelCount">0</b>개 선택</span>
-        <span style="flex:1;"></span>
-        <button class="btn" onclick="bulkShow()">📌 탭에 표시</button>
-        <button class="btn" onclick="bulkHide()">🙈 숨기기</button>
-        <button class="btn dm-danger-btn" onclick="bulkDelete()">🗑 영구 삭제</button>
-      </div>
-      <div class="dm-list" id="docManagerList"></div>
-      <div class="dm-footer">
-        <button class="btn" onclick="newDocFromManager()">＋ 새 문서</button>
-        <span style="font-size:0.78rem; color:var(--text-muted);">☑ 탭에 표시 · 항목 클릭 → 현재 전환 · 🗑 영구 삭제</span>
       </div>
     </div>
   </div>
@@ -901,6 +992,25 @@
     let visibleIds = [];
     const accessTime = {};
 
+    // 탭 '슬롯' 개념: 무그룹 문서는 1개=1슬롯, 같은 폴더 그룹은 내부 탭이 몇 개든 1슬롯.
+    // 제한(MAX_VISIBLE)은 이 슬롯 수 기준으로 센다.
+    function slotKey(d) {
+      return d && d.folder ? 'f:' + d.folder : 'd:' + (d ? d.id : '');
+    }
+    function visibleSlots() {
+      const set = new Set();
+      for (const id of visibleIds) {
+        const d = docs.find(x => x.id === id);
+        if (d) {
+          set.add(slotKey(d));
+        }
+      }
+      return set;
+    }
+    function visibleSlotCount() {
+      return visibleSlots().size;
+    }
+
     // id를 탭 바에 노출 보장. 가득 차면 활성 문서를 제외하고 가장 오래 안 본 탭을 바에서 내림(문서는 보존).
     function ensureVisible(id) {
       accessTime[id] = Date.now();
@@ -908,22 +1018,41 @@
         return;
       }
       visibleIds.push(id);
-      while (visibleIds.length > MAX_VISIBLE) {
-        let victim = null, oldest = Infinity;
+      // 슬롯 수가 넘치면, 활성/방금 추가한 슬롯은 보호하고 가장 오래된 슬롯을 통째로 내린다.
+      const activeDoc = docs.find(x => x.id === activeDocId);
+      const addedDoc = docs.find(x => x.id === id);
+      const keepKeys = new Set([slotKey(activeDoc), slotKey(addedDoc)]);
+      while (visibleSlotCount() > MAX_VISIBLE) {
+        // 슬롯별 최신 접근시각(그 슬롯 안 문서들 중 가장 최근)
+        const slotTime = {};
         for (const v of visibleIds) {
-          if (v === activeDocId || v === id) {
+          const d = docs.find(x => x.id === v);
+          if (!d) {
             continue;
           }
+          const k = slotKey(d);
           const t = accessTime[v] || 0;
-          if (t < oldest) {
-            oldest = t;
-            victim = v;
+          if (slotTime[k] === undefined || t > slotTime[k]) {
+            slotTime[k] = t;
           }
         }
-        if (!victim) {
+        let victimKey = null, oldest = Infinity;
+        for (const k in slotTime) {
+          if (keepKeys.has(k)) {
+            continue;
+          }
+          if (slotTime[k] < oldest) {
+            oldest = slotTime[k];
+            victimKey = k;
+          }
+        }
+        if (!victimKey) {
           break;
         }
-        visibleIds = visibleIds.filter(v => v !== victim);
+        visibleIds = visibleIds.filter(v => {
+          const d = docs.find(x => x.id === v);
+          return d ? slotKey(d) !== victimKey : true;
+        });
       }
     }
 
@@ -960,6 +1089,7 @@
       dbManager.setItem('content', 'doc_order', docs.map(d => d.id)).catch(() => {});
       dbManager.setItem('content', 'active_doc', activeDocId).catch(() => {});
       dbManager.setItem('content', 'visible_docs', visibleIds).catch(() => {});
+      dbManager.setItem('content', 'collapsed_tab_groups', Array.from(collapsedTabGroups)).catch(() => {});
       notifySync();
     }
 
@@ -968,7 +1098,21 @@
         return;
       }
       list._delegated = true;
+      attachReorder(list, '.doc-tab[data-id]', true);   // 탭 드래그로 순서 이동(가로)
       list.addEventListener('click', (e) => {
+        // 그룹 라벨(알약) 클릭 → 해당 폴더 그룹 접기/펼치기
+        const pill = e.target.closest('.tab-group-pill[data-folder]');
+        if (pill && list.contains(pill)) {
+          const f = pill.dataset.folder;
+          if (collapsedTabGroups.has(f)) {
+            collapsedTabGroups.delete(f);
+          } else {
+            collapsedTabGroups.add(f);
+          }
+          renderTabs();
+          persistMeta();   // 접힘/펼침 상태 저장 → 새로고침해도 유지
+          return;
+        }
         const tab = e.target.closest('.doc-tab[data-id]');
         if (!tab || !list.contains(tab)) {
           return;
@@ -991,39 +1135,240 @@
         }
       });
     }
+    /* 그룹 색 배정
+       구별 잘 되는 12색 팔레트(hue)를 쓰고, '현재 존재하는 그룹들끼리는 서로 다른 색'이 되도록
+       충돌을 회피한다(같은 팔레트 칸이면 다음 빈 칸으로). 같은 그룹 이름은 (그룹 구성이 그대로면) 항상 같은 색.
+       이름 해시로 시작 칸을 정하므로 대체로 안정적이다. */
+    const GROUP_PALETTE = [210, 30, 150, 275, 90, 330, 55, 185, 300, 120, 240, 0];
+    function folderHue(name) {
+      let h = 0;
+      for (let i = 0; i < (name || '').length; i++) {
+        h = (h * 31 + name.charCodeAt(i)) % 360;
+      }
+      return h;
+    }
+    let _groupColorCache = { sig: '', map: new Map() };
+    function groupColorMap() {
+      const folders = Array.from(new Set(docs.map(d => d.folder).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko'));
+      const sig = folders.join('');
+      if (_groupColorCache.sig === sig) {
+        return _groupColorCache.map;
+      }
+      const map = new Map();
+      const used = new Set();
+      folders.forEach(f => {
+        const base = folderHue(f) % GROUP_PALETTE.length;   // 이름 해시 → 시작 칸(이름 안정성)
+        let idx = base;
+        for (let k = 0; k < GROUP_PALETTE.length; k++) {
+          const cand = (base + k) % GROUP_PALETTE.length;
+          if (!used.has(cand)) {
+            idx = cand;
+            break;
+          }
+        }
+        used.add(idx);
+        map.set(f, GROUP_PALETTE[idx]);
+      });
+      _groupColorCache = { sig, map };
+      return map;
+    }
+    // 그룹의 최종 색조(hue). 팔레트 배정값이 있으면 그것을, 없으면(임시) 이름 해시.
+    function groupHue(name) {
+      const h = groupColorMap().get(name);
+      return (h === undefined) ? folderHue(name) : h;
+    }
+    function folderColor(name) {
+      return 'hsl(' + groupHue(name) + ', 65%, 50%)';
+    }
+    /* ===== 드래그로 탭/문서 순서 이동 =====
+       순서의 원본은 docs[] 배열. 같은 그룹(또는 무그룹끼리) 안에서만 재정렬한다. */
+    let dragDocId = null;
+    function sameGroup(idA, idB) {
+      const a = docs.find(d => d.id === idA);
+      const b = docs.find(d => d.id === idB);
+      return !!a && !!b && (a.folder || '') === (b.folder || '');
+    }
+    function clearDropMarks(container) {
+      container.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
+    }
+    // docs[] 에서 draggedId 를 targetId 앞/뒤로 이동
+    function reorderDocs(draggedId, targetId, before) {
+      const from = docs.findIndex(d => d.id === draggedId);
+      if (from < 0 || draggedId === targetId) {
+        return;
+      }
+      const [moved] = docs.splice(from, 1);
+      let to = docs.findIndex(d => d.id === targetId);
+      if (to < 0) {
+        docs.splice(from, 0, moved);   // 타깃이 사라졌으면 원위치
+        return;
+      }
+      if (!before) {
+        to++;
+      }
+      docs.splice(to, 0, moved);
+      persistMeta();      // doc_order 저장
+      renderTabs();
+      const dm = document.getElementById('docManagerModal');
+      if (dm && dm.style.display === 'flex') {
+        renderDocManager();
+      }
+    }
+    // 컨테이너(탭바/목록)에 드래그 재정렬 리스너를 1회 부착. itemSel: 대상 요소 셀렉터, horizontal: 가로배치 여부
+    function attachReorder(container, itemSel, horizontal) {
+      container.addEventListener('dragstart', (e) => {
+        const el = e.target.closest(itemSel);
+        if (!el || !container.contains(el)) {
+          return;
+        }
+        // 목록 행에서 체크박스/셀렉트/버튼을 잡았으면 드래그하지 않음
+        if (e.target.closest('.dm-check, .dm-group-select, .dm-act')) {
+          e.preventDefault();
+          return;
+        }
+        dragDocId = el.dataset.id;
+        e.dataTransfer.effectAllowed = 'move';
+        try {
+          e.dataTransfer.setData('text/plain', dragDocId);
+        } catch (err) { /* IE 등 무시 */ }
+        el.classList.add('dragging');
+      });
+      container.addEventListener('dragend', () => {
+        dragDocId = null;
+        container.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
+        clearDropMarks(container);
+      });
+      container.addEventListener('dragover', (e) => {
+        if (!dragDocId) {
+          return;
+        }
+        const el = e.target.closest(itemSel);
+        if (!el || el.dataset.id === dragDocId || !sameGroup(dragDocId, el.dataset.id)) {
+          return;
+        }
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const r = el.getBoundingClientRect();
+        const before = horizontal ? (e.clientX - r.left) < r.width / 2 : (e.clientY - r.top) < r.height / 2;
+        clearDropMarks(container);
+        el.classList.add(before ? 'drop-before' : 'drop-after');
+      });
+      container.addEventListener('drop', (e) => {
+        if (!dragDocId) {
+          return;
+        }
+        const el = e.target.closest(itemSel);
+        if (!el || el.dataset.id === dragDocId || !sameGroup(dragDocId, el.dataset.id)) {
+          return;
+        }
+        e.preventDefault();
+        const r = el.getBoundingClientRect();
+        const before = horizontal ? (e.clientX - r.left) < r.width / 2 : (e.clientY - r.top) < r.height / 2;
+        const dragged = dragDocId;
+        dragDocId = null;
+        reorderDocs(dragged, el.dataset.id, before);
+      });
+    }
+
+    // 탭 하나 DOM 생성 (그룹 소속이면 왼쪽에 폴더 색 띠)
+    function makeTab(d) {
+      const tab = document.createElement('div');
+      tab.className = 'doc-tab' + (d.id === activeDocId ? ' active' : '') + (d.folder ? ' in-group' : '');
+      tab.dataset.id = d.id;
+      tab.draggable = true;   // 드래그로 순서 이동(같은 그룹 안)
+      tab.title = (d.folder ? '📁 ' + d.folder + ' / ' : '') + d.title + '  (드래그: 순서 이동 · 더블클릭: 이름 변경)';
+
+      const title = document.createElement('span');
+      title.className = 'doc-tab-title';
+      title.textContent = d.title;
+      tab.appendChild(title);
+
+      const del = document.createElement('span');
+      del.className = 'doc-tab-del';
+      del.textContent = '🗑';
+      del.title = '영구 삭제 (문서 자체를 제거, 되돌릴 수 없음)';
+      tab.appendChild(del);
+
+      const close = document.createElement('span');
+      close.className = 'doc-tab-close';
+      close.textContent = '✕';
+      close.title = '탭에서 숨기기 (문서는 보존) · Shift+클릭 시 영구 삭제';
+      tab.appendChild(close);
+      return tab;
+    }
     function renderTabs() {
       const list = document.getElementById('docTabList');
       setupTabDelegation(list);
       list.innerHTML = '';
-      // 전체 문서(docs) 순서를 유지하되, 탭 바에는 visibleIds에 속한 문서만 노출
-      docs.filter(d => visibleIds.includes(d.id)).forEach(d => {
-        const tab = document.createElement('div');
-        tab.className = 'doc-tab' + (d.id === activeDocId ? ' active' : '');
-        tab.dataset.id = d.id;
-        tab.title = d.title + '  (더블클릭: 이름 변경)';
+      // 탭 바에는 visibleIds에 속한 문서만 노출
+      const visible = docs.filter(d => visibleIds.includes(d.id));
+      // 폴더 없는 탭 먼저(그대로), 그다음 폴더별 그룹(엣지 탭 그룹 방식)
+      visible.filter(d => !d.folder).forEach(d => list.appendChild(makeTab(d)));
 
-        const title = document.createElement('span');
-        title.className = 'doc-tab-title';
-        title.textContent = d.title;
-        tab.appendChild(title);
-
-        const del = document.createElement('span');
-        del.className = 'doc-tab-del';
-        del.textContent = '🗑';
-        del.title = '영구 삭제 (문서 자체를 제거, 되돌릴 수 없음)';
-        tab.appendChild(del);
-
-        const close = document.createElement('span');
-        close.className = 'doc-tab-close';
-        close.textContent = '✕';
-        close.title = '탭에서 숨기기 (문서는 보존) · Shift+클릭 시 영구 삭제';
-        tab.appendChild(close);
-
-        list.appendChild(tab);
+      const groups = new Map();
+      visible.filter(d => d.folder).forEach(d => {
+        if (!groups.has(d.folder)) {
+          groups.set(d.folder, []);
+        }
+        groups.get(d.folder).push(d);
       });
+      const groupNames = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b, 'ko'));
+      groupNames.forEach(folder => {
+        const items = groups.get(folder);
+        const hue = groupHue(folder);
+        const collapsed = collapsedTabGroups.has(folder);
+        const hasActive = items.some(d => d.id === activeDocId);
+
+        // 그룹 전체를 하나의 색 트레이로 감싼다(엣지 탭 그룹처럼 묶여 보이게)
+        const tray = document.createElement('div');
+        tray.className = 'tab-group' + (collapsed ? ' collapsed' : '') + (hasActive ? ' has-active' : '');
+        tray.style.setProperty('--gc', 'hsl(' + hue + ', 65%, 45%)');
+        tray.style.setProperty('--gcbg', 'hsl(' + hue + ', 62%, 50%, 0.12)');
+
+        // 그룹 라벨(알약): 클릭하면 접힘/펼침
+        const pill = document.createElement('div');
+        pill.className = 'tab-group-pill' + (collapsed ? ' collapsed' : '') + (hasActive ? ' has-active' : '');
+        pill.dataset.folder = folder;
+        pill.title = "📁 " + folder + " (" + items.length + "개) · 클릭하면 " + (collapsed ? '펼침' : '접기');
+
+        const caret = document.createElement('span');
+        caret.className = 'tgp-caret';
+        caret.textContent = collapsed ? '▸' : '▾';
+        pill.appendChild(caret);
+
+        const icon = document.createElement('span');
+        icon.className = 'tgp-icon';
+        icon.textContent = '📁';
+        pill.appendChild(icon);
+
+        // 폴더 이름은 평소 숨김 → 마우스오버할 때만 펼쳐 보인다
+        const name = document.createElement('span');
+        name.className = 'tgp-name';
+        name.textContent = folder;
+        pill.appendChild(name);
+
+        const cnt = document.createElement('span');
+        cnt.className = 'tgp-count';
+        cnt.textContent = items.length;
+        pill.appendChild(cnt);
+        tray.appendChild(pill);
+
+        // 펼쳐진 그룹만 탭을 트레이 안에 그린다
+        if (!collapsed) {
+          items.forEach(d => tray.appendChild(makeTab(d)));
+        }
+        list.appendChild(tray);
+      });
+
       const activeTab = list.querySelector('.doc-tab.active');
       if (activeTab && activeTab.scrollIntoView) {
         activeTab.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+      } else {
+        // 활성 문서가 접힌 그룹 안이면 그 그룹 라벨을 보이게
+        const activePill = list.querySelector('.tab-group-pill.has-active');
+        if (activePill && activePill.scrollIntoView) {
+          activePill.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+        }
       }
 
       const countEl = document.getElementById('docTotalCount');
@@ -1064,10 +1409,13 @@
       persistMeta();
     }
 
-    function newDoc(initial) {
+    function newDoc(initial, folder) {
       saveToDB();          // 현재 문서 보존
       const content = (typeof initial === 'string') ? initial : '';
       const doc = { id: genDocId(), title: deriveTitle(content), content, customTitle: false, updatedAt: Date.now() };
+      if (folder) {
+        doc.folder = folder;   // 지정 그룹에 생성
+      }
       docs.push(doc);
       activeDocId = doc.id;
       ensureVisible(doc.id);
@@ -1249,16 +1597,17 @@
       return t.slice(0, 42);
     }
 
-    let dmFilter = 'all';        // 'all' | 'visible' | 'hidden'
+    let dmActiveGroup = 'all';   // 사이드바 선택: 'all' | '기타' | 폴더명
     let dmSelectMode = false;    // 일괄 선택 모드
     let dmSelected = new Set();  // 선택된 문서 id
+    let collapsedTabGroups = new Set();  // 탭 바에서 접힌 폴더 그룹 이름(새로고침해도 유지)
 
     function openDocManager() {
       saveToDB();   // 현재 편집/제목을 목록에 반영
       const modal = document.getElementById('docManagerModal');
       document.getElementById('dmMax').textContent = MAX_VISIBLE;
       // 다이얼로그 열 때 상태 초기화
-      dmFilter = 'all';
+      dmActiveGroup = 'all';
       dmSelectMode = false;
       dmSelected.clear();
       document.getElementById('docSearch').value = '';
@@ -1275,16 +1624,15 @@
       document.getElementById('docManagerModal').style.display = 'none';
     }
 
-    // 검색어 + 필터를 적용한 문서 목록
-    // 정렬하지 않고 docs[] 순서(= 탭/전체 리스트 순서)를 그대로 유지 →
-    // 현재 문서를 바꿔도 항목의 위치(인덱스)가 흔들리지 않는다.
+    // 검색어 + 사이드바 그룹 선택을 적용한 문서 목록
+    // 정렬하지 않고 docs[] 순서를 그대로 유지 → 현재 문서를 바꿔도 위치가 흔들리지 않는다.
     function getManagerDocs() {
       const term = (document.getElementById('docSearch').value || '').trim().toLowerCase();
       let list = docs.slice();
-      if (dmFilter === 'visible') {
-        list = list.filter(d => visibleIds.includes(d.id));
-      } else if (dmFilter === 'hidden') {
-        list = list.filter(d => !visibleIds.includes(d.id));
+      if (dmActiveGroup === '기타') {
+        list = list.filter(d => !d.folder);
+      } else if (dmActiveGroup && dmActiveGroup !== 'all') {
+        list = list.filter(d => d.folder === dmActiveGroup);
       }
       if (term) {
         list = list.filter(d => (d.title || '').toLowerCase().includes(term) || (d.content || '').toLowerCase().includes(term));
@@ -1297,15 +1645,17 @@
         return;
       }
       listEl._delegated = true;
+      attachReorder(listEl, '.dm-item[data-id]', false);   // 목록 드래그로 순서 이동(세로)
       listEl.addEventListener('click', (e) => {
+        // 체크박스·그룹 셀렉트 클릭은 change 에서 처리
+        if (e.target.closest('.dm-check') || e.target.closest('.dm-group-select')) {
+          return;
+        }
         const item = e.target.closest('.dm-item[data-id]');
         if (!item || !listEl.contains(item)) {
           return;
         }
         const id = item.dataset.id;
-        if (e.target.closest('.dm-check')) {
-          return;
-        }           // 체크박스는 change 에서 처리
         const act = e.target.closest('button.dm-act');
         if (act) {
           e.stopPropagation();
@@ -1317,6 +1667,15 @@
         }
       });
       listEl.addEventListener('change', (e) => {
+        // 그룹 이동 셀렉트
+        const gs = e.target.closest('.dm-group-select');
+        if (gs) {
+          const item = gs.closest('.dm-item[data-id]');
+          if (item) {
+            handleRowGroupChange(item.dataset.id, gs.value);
+          }
+          return;
+        }
         const chk = e.target.closest('.dm-check');
         if (!chk) {
           return;
@@ -1328,16 +1687,237 @@
         dmSelectMode ? toggleSelectDoc(item.dataset.id) : toggleVisibleFromManager(item.dataset.id);
       });
     }
+    // 현재 존재하는 폴더(그룹) 이름 목록
+    function existingFolders() {
+      return Array.from(new Set(docs.map(d => d.folder).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko'));
+    }
+
+    // 좌측 그룹 사이드바 렌더
+    function renderDmSidebar() {
+      const side = document.getElementById('dmSidebar');
+      if (!side) {
+        return;
+      }
+      const folders = new Map();
+      let etc = 0;
+      docs.forEach(d => {
+        if (d.folder) {
+          folders.set(d.folder, (folders.get(d.folder) || 0) + 1);
+        } else {
+          etc++;
+        }
+      });
+      const names = Array.from(folders.keys()).sort((a, b) => a.localeCompare(b, 'ko'));
+      side.innerHTML = '';
+      const addItem = (key, label, count, dotColor) => {
+        const it = document.createElement('div');
+        it.className = 'dm-side-item' + (dmActiveGroup === key ? ' active' : '');
+        it.onclick = () => selectDmGroup(key);
+        if (dotColor) {
+          const dt = document.createElement('span');
+          dt.className = 'dm-side-dot';
+          dt.style.background = dotColor;
+          it.appendChild(dt);
+        }
+        const nm = document.createElement('span');
+        nm.className = 'dm-side-name';
+        nm.textContent = label;
+        it.appendChild(nm);
+        const c = document.createElement('span');
+        c.className = 'dm-side-count';
+        c.textContent = count;
+        it.appendChild(c);
+        side.appendChild(it);
+      };
+      addItem('all', '📄 전체', docs.length, null);
+      addItem('기타', '🗂 기타', etc, null);
+      if (names.length) {
+        const cap = document.createElement('div');
+        cap.className = 'dm-side-caption';
+        cap.textContent = '그룹';
+        side.appendChild(cap);
+        names.forEach(f => addItem(f, '📁 ' + f, folders.get(f), folderColor(f)));
+      }
+    }
+    function selectDmGroup(key) {
+      dmActiveGroup = key;
+      renderDocManager();
+    }
+
+    // 행/일괄용 그룹 이동 셀렉트 옵션 구성
+    function buildGroupSelect(currentFolder) {
+      const sel = document.createElement('select');
+      sel.className = 'dm-group-select';
+      sel.title = '그룹 이동';
+      sel.add(new Option('🗂 기타', ''));
+      existingFolders().forEach(f => sel.add(new Option('📁 ' + f, f)));
+      sel.add(new Option('＋ 새 그룹…', '__new__'));
+      sel.value = currentFolder || '';
+      return sel;
+    }
+    function syncBulkGroupSelect() {
+      const sel = document.getElementById('dmBulkGroup');
+      if (!sel) {
+        return;
+      }
+      sel.innerHTML = '';
+      sel.add(new Option('그룹 이동…', ''));
+      sel.add(new Option('🗂 기타(그룹 해제)', '__etc__'));
+      existingFolders().forEach(f => sel.add(new Option('📁 ' + f, f)));
+      sel.add(new Option('＋ 새 그룹…', '__new__'));
+      sel.value = '';
+    }
+
+    // 문서들을 지정 그룹으로 이동(폴더 지정/해제). folder='' → 기타(그룹 해제)
+    function moveDocsToGroup(ids, folder) {
+      const target = folder || '';
+      let n = 0;
+      ids.forEach(id => {
+        const d = docs.find(x => x.id === id);
+        if (d && (d.folder || '') !== target) {
+          d.folder = target || undefined;
+          d.updatedAt = Date.now();
+          persistDoc(d);
+          n++;
+        }
+      });
+      if (n) {
+        renderTabs();
+        persistMeta();
+      }
+      renderDocManager();
+      if (n) {
+        showToast(`${n}개 문서를 ${target ? ('‘' + target + '’ 그룹으로') : '그룹 해제(기타)로'} 이동했어요.`, 'success');
+      }
+    }
+    function handleRowGroupChange(id, val) {
+      if (val === '__new__') {
+        const name = (window.prompt('새 그룹 이름을 입력하세요') || '').trim();
+        if (!name) {
+          renderDocManager();   // 취소 → 셀렉트 원복
+          return;
+        }
+        moveDocsToGroup([id], name);
+      } else {
+        moveDocsToGroup([id], val);   // '' → 기타
+      }
+    }
+    function onBulkGroupChange(sel) {
+      const v = sel.value;
+      sel.value = '';
+      if (!v) {
+        return;
+      }
+      const ids = Array.from(dmSelected);
+      if (!ids.length) {
+        showToast('선택된 문서가 없습니다.', 'info');
+        return;
+      }
+      if (v === '__new__') {
+        const name = (window.prompt('새 그룹 이름을 입력하세요') || '').trim();
+        if (!name) {
+          return;
+        }
+        moveDocsToGroup(ids, name);
+      } else if (v === '__etc__') {
+        moveDocsToGroup(ids, '');
+      } else {
+        moveDocsToGroup(ids, v);
+      }
+    }
+
+    // 문서 한 줄(행) 생성
+    function buildDmRow(d, inSel) {
+      const isActive = d.id === activeDocId;
+      const isVisible = visibleIds.includes(d.id);
+      const isSel = dmSelected.has(d.id);
+
+      const item = document.createElement('div');
+      item.className = 'dm-item' + (isActive ? ' active' : '') + (inSel && isSel ? ' selected' : '');
+      item.dataset.id = d.id;
+      item.draggable = true;   // 드래그로 순서 이동(같은 그룹 안)
+
+      const check = document.createElement('input');
+      check.type = 'checkbox';
+      check.className = 'dm-check';
+      if (inSel) {
+        check.checked = isSel;
+        check.title = '선택';
+      } else {
+        // 현재 문서는 항상 표시(체크 고정) — disabled로 회색 처리하면 '해제됨'처럼 보여서
+        // 정상 체크 모양을 유지하고, 클릭 시 안내 후 원복한다.
+        check.checked = isVisible;
+        check.title = isActive ? '현재 보고 있는 문서는 항상 탭에 표시됩니다' : '탭에 표시';
+      }
+      item.appendChild(check);
+
+      const main = document.createElement('div');
+      main.className = 'dm-main';
+      main.title = inSel ? '클릭하여 선택' : '클릭하여 현재 문서로 전환';
+
+      const title = document.createElement('div');
+      title.className = 'dm-title';
+      title.textContent = d.title || '제목 없음';
+      if (isActive) {
+        const badge = document.createElement('span');
+        badge.className = 'dm-badge';
+        badge.textContent = '● 현재';
+        title.appendChild(badge);
+      } else if (inSel && isVisible) {
+        const tag = document.createElement('span');
+        tag.className = 'dm-tag';
+        tag.textContent = '탭';
+        title.appendChild(tag);
+      }
+      // '전체' 보기에서는 어느 그룹인지 색 점 태그로 표시
+      if (dmActiveGroup === 'all' && d.folder) {
+        const ft = document.createElement('span');
+        ft.className = 'dm-folder-tag';
+        const dot = document.createElement('span');
+        dot.className = 'fdot';
+        dot.style.background = folderColor(d.folder);
+        ft.appendChild(dot);
+        ft.appendChild(document.createTextNode(d.folder));
+        title.appendChild(ft);
+      }
+      const meta = document.createElement('div');
+      meta.className = 'dm-meta';
+      const len = (d.content || '').length;
+      const prev = docPreview(d.content);
+      meta.textContent = `${timeAgo(d.updatedAt)} · ${len.toLocaleString()}자` + (prev ? ` · ${prev}` : '');
+      main.appendChild(title);
+      main.appendChild(meta);
+      item.appendChild(main);
+
+      // 그룹 이동 셀렉트(항상 노출)
+      item.appendChild(buildGroupSelect(d.folder || ''));
+
+      if (!inSel) {
+        const ren = document.createElement('button');
+        ren.className = 'dm-act';
+        ren.dataset.action = 'rename';
+        ren.textContent = '✏️';
+        ren.title = '이름 변경';
+        item.appendChild(ren);
+
+        const del = document.createElement('button');
+        del.className = 'dm-act danger';
+        del.dataset.action = 'del';
+        del.textContent = '🗑';
+        del.title = '영구 삭제';
+        item.appendChild(del);
+      }
+      return item;
+    }
+
     function renderDocManager() {
       const listEl = document.getElementById('docManagerList');
       setupDocManagerDelegation(listEl);
-      const allN = docs.length, visN = visibleIds.length, hidN = allN - visN;
-      document.getElementById('dmAllCount').textContent = allN;
-      document.getElementById('dmVisCount').textContent = visN;
-      document.getElementById('cntAll').textContent = allN;
-      document.getElementById('cntVis').textContent = visN;
-      document.getElementById('cntHid').textContent = hidN;
-      document.querySelectorAll('.dm-chip').forEach(c => c.classList.toggle('active', c.dataset.f === dmFilter));
+      document.getElementById('dmAllCount').textContent = docs.length;
+      // 헤더의 'N/5'는 슬롯 기준(그룹=1)으로 표시
+      document.getElementById('dmVisCount').textContent = visibleSlotCount();
+      renderDmSidebar();
+      syncBulkGroupSelect();
 
       const inSel = dmSelectMode;
       const filtered = getManagerDocs();
@@ -1353,86 +1933,11 @@
       if (!filtered.length) {
         const e = document.createElement('div');
         e.className = 'dm-empty';
-        e.textContent = allN ? '해당하는 문서가 없습니다.' : '문서가 없습니다.';
+        e.textContent = docs.length ? '이 그룹/검색에 해당하는 문서가 없습니다.' : '문서가 없습니다.';
         listEl.appendChild(e);
         return;
       }
-
-      filtered.forEach(d => {
-        const isActive = d.id === activeDocId;
-        const isVisible = visibleIds.includes(d.id);
-        const isSel = dmSelected.has(d.id);
-
-        const item = document.createElement('div');
-        item.className = 'dm-item' + (isActive ? ' active' : '') + (inSel && isSel ? ' selected' : '');
-        item.dataset.id = d.id;
-
-        const check = document.createElement('input');
-        check.type = 'checkbox';
-        check.className = 'dm-check';
-        if (inSel) {
-          // 선택 모드: 체크박스 = 다중 선택 (활성 문서 포함 선택 가능)
-          check.checked = isSel;
-          check.title = '선택';
-        } else {
-          // 일반 모드: 체크박스 = 탭에 표시
-          check.checked = isVisible;
-          check.disabled = isActive;
-          check.title = isActive ? '현재 보고 있는 문서는 항상 탭에 표시됩니다' : '탭에 표시';
-        }
-        item.appendChild(check);
-
-        const main = document.createElement('div');
-        main.className = 'dm-main';
-        main.title = inSel ? '클릭하여 선택' : '클릭하여 현재 문서로 전환';
-
-        const title = document.createElement('div');
-        title.className = 'dm-title';
-        title.textContent = d.title || '제목 없음';
-        if (isActive) {
-          const badge = document.createElement('span');
-          badge.className = 'dm-badge';
-          badge.textContent = '● 현재';
-          title.appendChild(badge);
-        } else if (inSel && isVisible) {
-          // 선택 모드에선 체크박스가 '선택'이므로 탭 표시 여부를 태그로 안내
-          const tag = document.createElement('span');
-          tag.className = 'dm-tag';
-          tag.textContent = '탭';
-          title.appendChild(tag);
-        }
-        const meta = document.createElement('div');
-        meta.className = 'dm-meta';
-        const len = (d.content || '').length;
-        const prev = docPreview(d.content);
-        meta.textContent = `${timeAgo(d.updatedAt)} · ${len.toLocaleString()}자` + (prev ? ` · ${prev}` : '');
-        main.appendChild(title);
-        main.appendChild(meta);
-        item.appendChild(main);
-
-        if (!inSel) {
-          const ren = document.createElement('button');
-          ren.className = 'dm-act';
-          ren.dataset.action = 'rename';
-          ren.textContent = '✏️';
-          ren.title = '이름 변경';
-          item.appendChild(ren);
-
-          const del = document.createElement('button');
-          del.className = 'dm-act danger';
-          del.dataset.action = 'del';
-          del.textContent = '🗑';
-          del.title = '영구 삭제';
-          item.appendChild(del);
-        }
-
-        listEl.appendChild(item);
-      });
-    }
-
-    function setDocFilter(f) {
-      dmFilter = f;
-      renderDocManager();
+      filtered.forEach(d => listEl.appendChild(buildDmRow(d, inSel)));
     }
 
     function toggleSelectMode() {
@@ -1477,7 +1982,10 @@
         if (visibleIds.includes(id)) {
           continue;
         }
-        if (visibleIds.length >= MAX_VISIBLE) {
+        const d = docs.find(x => x.id === id);
+        const cur = visibleSlots();
+        // 새 슬롯을 만들어야 하는데 이미 꽉 찼으면 제외(같은 그룹에 이어 붙는 건 슬롯 안 씀 → 허용)
+        if (!cur.has(slotKey(d)) && cur.size >= MAX_VISIBLE) {
           skipped++;
           continue;
         }
@@ -1584,13 +2092,18 @@
 
     function toggleVisibleFromManager(id) {
       if (id === activeDocId) {
+        // 활성 문서는 항상 표시 → 체크 해제 시도 시 안내하고 체크 상태 원복
+        showToast('현재 보고 있는 문서는 항상 탭에 표시됩니다.', 'info');
+        renderDocManager();
         return;
-      }   // 활성 문서는 항상 표시
+      }
       if (visibleIds.includes(id)) {
         visibleIds = visibleIds.filter(v => v !== id);
       } else {
-        if (visibleIds.length >= MAX_VISIBLE) {
-          showToast(`탭은 최대 ${MAX_VISIBLE}개까지 표시할 수 있어요. 다른 탭을 먼저 숨겨주세요.`, 'warning');
+        const d = docs.find(x => x.id === id);
+        const cur = visibleSlots();
+        if (!cur.has(slotKey(d)) && cur.size >= MAX_VISIBLE) {
+          showToast(`탭은 최대 ${MAX_VISIBLE}개(그룹은 1개로 계산)까지 표시할 수 있어요. 다른 탭을 먼저 숨겨주세요.`, 'warning');
           renderDocManager();   // 체크 상태 원복
           return;
         }
@@ -1602,8 +2115,16 @@
     }
 
     function newDocFromManager() {
-      closeDocManager();
-      newDoc();
+      // 현재 선택된 사이드바 그룹에 생성('전체'·'기타'는 그룹 없음)
+      const folder = (dmActiveGroup && dmActiveGroup !== 'all' && dmActiveGroup !== '기타') ? dmActiveGroup : '';
+      const doc = newDoc('', folder);
+      // 다이얼로그를 닫지 않고 목록을 갱신 → 새 문서가 현재 그룹에 바로 보인다
+      renderDocManager();
+      const el = document.querySelector(`#docManagerList .dm-item[data-id="${doc.id}"]`);
+      if (el && el.scrollIntoView) {
+        el.scrollIntoView({ block: 'nearest' });
+      }
+      showToast(folder ? `‘${folder}’ 그룹에 새 문서를 만들었어요.` : '새 문서를 만들었어요.', 'success');
     }
 
     // 'docs' 스토어 + 순서/활성 메타를 읽어 docs 배열 구성 (없으면 기존 단일 문서 이관)
@@ -1653,6 +2174,10 @@
       // 접근 시각 시드: 저장된 순서대로 오래된→최신 (안정적인 LRU 밀어내기용)
       const seedNow = Date.now();
       visibleIds.forEach((id, i) => { accessTime[id] = seedNow - (visibleIds.length - i) * 1000; });
+
+      // 탭 그룹 접힘 상태 복원(새로고침해도 유지)
+      const savedCollapsed = await dbManager.getItem('content', 'collapsed_tab_groups');
+      collapsedTabGroups = new Set(Array.isArray(savedCollapsed) ? savedCollapsed : []);
 
       const savedActive = await dbManager.getItem('content', 'active_doc');
       activeDocId = (savedActive && docs.some(d => d.id === savedActive)) ? savedActive : docs[0].id;
@@ -2025,6 +2550,102 @@ function hello() {
         // 문서 목록 로드 (없으면 기존 단일 문서 자동 이관) + 탭 렌더
         await loadAllDocs();
 
+        // 폴더 드래그앤드롭: 디렉터리를 통째로 떨어뜨리면 그룹으로 불러온다 (file:// 에서도 동작)
+        function readAllEntries(reader) {
+          // { entries, error }: file:// 페이지에선 readEntries 가 EncodingError 로 실패한다(디렉터리 못 읽음)
+          return new Promise((resolve) => {
+            const all = [];
+            const step = () => reader.readEntries((es) => {
+              if (!es.length) {
+                resolve({ entries: all, error: false });
+                return;
+              }
+              all.push(...es);
+              step();   // readEntries 는 100개씩 끊어서 준다 → 반복 호출
+            }, () => resolve({ entries: all, error: true }));
+            step();
+          });
+        }
+        function entryToFile(entry) {
+          return new Promise((resolve) => entry.file((f) => resolve(f), () => resolve(null)));
+        }
+        // 성공 시 true, 디렉터리 읽기 실패(file:// 제한 등) 시 false 반환
+        async function collectEntry(entry, prefix, out) {
+          if (entry.isFile) {
+            const f = await entryToFile(entry);
+            if (f) {
+              out.push({ file: f, rel: prefix + entry.name });
+            }
+            return true;
+          }
+          if (entry.isDirectory) {
+            const res = await readAllEntries(entry.createReader());
+            if (res.error) {
+              return false;
+            }
+            let ok = true;
+            for (const k of res.entries) {
+              if (!(await collectEntry(k, prefix + entry.name + '/', out))) {
+                ok = false;
+              }
+            }
+            return ok;
+          }
+          return true;
+        }
+        // 파일 드래그 시 브라우저가 파일을 여는 기본동작 차단(드롭 허용 커서)
+        document.addEventListener('dragover', (e) => {
+          if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) {
+            e.preventDefault();
+          }
+        }, true);
+        document.addEventListener('drop', async (e) => {
+          const items = e.dataTransfer && e.dataTransfer.items;
+          if (!items || !items.length) {
+            return;
+          }
+          // webkitGetAsEntry 는 drop 시점에 동기적으로 읽어야 함(이후 items 무효화)
+          const roots = [];
+          let hasDir = false;
+          for (let i = 0; i < items.length; i++) {
+            const it = items[i];
+            const entry = it.webkitGetAsEntry ? it.webkitGetAsEntry() : null;
+            if (entry) {
+              if (entry.isDirectory) {
+                hasDir = true;
+              }
+              roots.push(entry);
+            }
+          }
+          if (!hasDir) {
+            return;   // 폴더가 아니면 기존 파일 드롭 핸들러(editor)에 맡김
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          // editor 의 드롭 리스너를 건너뛰므로(stopPropagation) 드래그 하이라이트를 직접 해제
+          document.querySelectorAll('.drag-hover').forEach((el) => el.classList.remove('drag-hover'));
+          let totalFiles = 0;
+          let readErr = false;
+          for (const root of roots) {
+            if (!root.isDirectory) {
+              continue;
+            }
+            const out = [];
+            const ok = await collectEntry(root, '', out);
+            if (!ok) {
+              readErr = true;
+            }
+            totalFiles += out.length;
+            if (out.length) {
+              await importFolderFiles(out, root.name);
+            }
+          }
+          if (!totalFiles && readErr) {
+            // file:// 페이지의 브라우저 제한: 드래그로는 폴더 내용을 못 읽는다 → 버튼 안내
+            showToast("이 페이지(file://)에서는 폴더 드래그로 내용을 읽지 못합니다. 상단 '📁 폴더 열기' 버튼으로 폴더를 선택하세요.", 'warning', 6000);
+          }
+        }, true);   // 캡처 단계 → editor 드롭 핸들러보다 먼저 가로챔
+
         // Initialize File Drop Handler
         fileDropHandler.init(editor, {
           onImage: (base64, file) => {
@@ -2186,6 +2807,12 @@ function hello() {
           ? savedVisible.filter(id => docs.some(d => d.id === id))
           : visibleIds.filter(id => docs.some(d => d.id === id));
 
+        // 탭 그룹 접힘 상태도 동기화(다른 창의 접기/펼침 반영)
+        const remoteCollapsed = await dbManager.getItem('content', 'collapsed_tab_groups');
+        if (Array.isArray(remoteCollapsed)) {
+          collapsedTabGroups = new Set(remoteCollapsed);
+        }
+
         if (docs.some(d => d.id === prevActive)) {
           activeDocId = prevActive;                       // 이 창이 보던 문서는 그대로 유지
           if (!visibleIds.includes(activeDocId)) {
@@ -2254,6 +2881,137 @@ function hello() {
     window.addEventListener('load', initStorage);
 
     // File Operations
+    // ===== 폴더 열기 (폴더별 그룹 + 참조 이미지 해결) =====
+    const IMG_EXTS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'avif', 'ico'];
+    function fileExt(name) {
+      const m = /\.([^.]+)$/.exec(name || '');
+      return m ? m[1].toLowerCase() : '';
+    }
+    function dirOf(path) {
+      const i = path.lastIndexOf('/');
+      return i >= 0 ? path.slice(0, i) : '';
+    }
+    function baseName(path) {
+      const i = path.lastIndexOf('/');
+      return i >= 0 ? path.slice(i + 1) : path;
+    }
+    // base(디렉토리) 기준으로 ref(상대경로)를 폴더 내 절대경로로 정규화. ../ ./ 처리.
+    function resolveRelPath(baseDir, ref) {
+      let parts;
+      if (ref.charAt(0) === '/') {
+        parts = ref.slice(1).split('/');
+      } else {
+        parts = (baseDir ? baseDir.split('/') : []).concat(ref.split('/'));
+      }
+      const out = [];
+      for (const p of parts) {
+        if (p === '' || p === '.') {
+          continue;
+        }
+        if (p === '..') {
+          out.pop();
+        } else {
+          out.push(p);
+        }
+      }
+      return out.join('/');
+    }
+    // .md 본문의 상대경로 이미지 ![alt](path) 를 pathMap(정규화경로→img:토큰)으로 치환.
+    // http/data/img: 로 시작하면 건드리지 않음. 파일명만 있고 유일하면 파일명 매칭 폴백.
+    function rewriteImageRefs(md, mdPath, pathMap, nameMap) {
+      const baseDir = dirOf(mdPath);
+      return (md || '').replace(/(!\[[^\]]*\]\()\s*([^)\s]+)(\s*(?:"[^"]*"|'[^']*')?\s*\))/g, (whole, pre, url, post) => {
+        if (/^(https?:|data:|img:|\/\/)/i.test(url)) {
+          return whole;
+        }
+        let ref = url;
+        if (ref.charAt(0) === '<' && ref.charAt(ref.length - 1) === '>') {
+          ref = ref.slice(1, -1);
+        }
+        try {
+          ref = decodeURIComponent(ref.replace(/\\/g, '/'));
+        } catch (e) {
+          ref = ref.replace(/\\/g, '/');
+        }
+        const abs = resolveRelPath(baseDir, ref);
+        let token = pathMap[abs];
+        if (!token) {
+          const cand = nameMap[baseName(abs).toLowerCase()];
+          if (cand && cand.length === 1) {
+            token = cand[0];
+          }
+        }
+        return token ? (pre + token + post) : whole;
+      });
+    }
+    function readAsDataURL(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+    function readAsTextP(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsText(file);
+      });
+    }
+    // 폴더 파일 목록을 받아 그룹으로 불러온다. files: File[](webkitRelativePath 보유) 또는 {file, rel}[]
+    async function importFolderFiles(files, groupName) {
+      const list = files.map(f => (f.file ? f : { file: f, rel: (f.webkitRelativePath || f.name) }));
+      const group = groupName || ((list[0] && list[0].rel.split('/')[0]) || '폴더');
+      const pathMap = {};   // 정규화경로 → img:token
+      const nameMap = {};   // 파일명(소문자) → [img:token]
+      const mdFiles = [];
+      let imgCount = 0;
+      for (const { file, rel } of list) {
+        const ext = fileExt(file.name);
+        if (ext === 'md' || ext === 'markdown' || ext === 'txt') {
+          mdFiles.push({ file, rel });
+        } else if (IMG_EXTS.includes(ext)) {
+          try {
+            const token = 'img:' + addImage(await readAsDataURL(file), file.name);
+            pathMap[rel] = token;
+            const nm = baseName(rel).toLowerCase();
+            (nameMap[nm] = nameMap[nm] || []).push(token);
+            imgCount++;
+          } catch (e) {}
+        }
+      }
+      if (!mdFiles.length) {
+        showToast(`'${group}' 폴더에 .md 문서가 없습니다.`, 'warning');
+        return;
+      }
+      saveToDB();   // 현재 편집 중 문서 보존
+      let added = 0;
+      for (const { file, rel } of mdFiles) {
+        try {
+          const { text } = foldDataImages(await readAsTextP(file));
+          const content = rewriteImageRefs(text, rel, pathMap, nameMap);
+          const base = (file.name || '문서').replace(/\.[^.]+$/, '');
+          const doc = { id: genDocId(), title: base || deriveTitle(content), content, customTitle: !!base, folder: group, updatedAt: Date.now() };
+          docs.push(doc);
+          persistDoc(doc);   // 탭엔 자동 노출하지 않고(뒤섞임 방지) 문서 관리자 그룹에만 추가
+          added++;
+        } catch (e) {}
+      }
+      persistMeta();
+      renderTabs();
+      openDocManager();   // 그룹으로 정리된 목록을 바로 보여줌
+      showToast(`📁 '${group}' 에서 문서 ${added}개${imgCount ? `, 이미지 ${imgCount}개` : ''}를 불러왔습니다. (📚에서 그룹별로 열어보세요)`, 'success', 4500);
+    }
+    async function loadFolder(event) {
+      const files = Array.from(event.target.files || []);
+      event.target.value = '';
+      if (files.length) {
+        await importFolderFiles(files);
+      }
+    }
+
     function loadFile(event) {
       const file = event.target.files[0];
       if (!file) {
