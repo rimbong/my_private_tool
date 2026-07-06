@@ -91,6 +91,9 @@
     #selectViewPage { position: relative; }
     .nav-tabs { display: contents; } /* 데스크톱: 래퍼 없이 탭이 바에 그대로 흐름 */
     .nav-toggle { display: none; }    /* 데스크톱: 햄버거 숨김 */
+    /* 문서 계열 ↔ 개발 유틸 계열 구분선 */
+    .nav-sep { align-self: center; width: 1px; height: 1.3rem; background: #d0d7de; margin: 0 0.35rem; flex-shrink: 0; }
+    body.dark .nav-sep { background: #30363d; }
 
     /* --- 데스크톱: 상단 메뉴 자동 숨김 + 푸터 숨김 (콘텐츠 최대화) --- */
     @media (min-width: 641px) {
@@ -166,6 +169,8 @@
         display: block; width: 100%; box-sizing: border-box;
         padding: 0.75rem 0.9rem; font-size: 0.92rem; border-radius: 0.4rem;
       }
+      /* 드롭다운(세로)에서는 구분선을 가로선으로 */
+      .nav-sep { width: 100%; height: 1px; margin: 0.3rem 0; align-self: stretch; }
 
       .theme-btn { margin-left: auto; padding: 0.4rem 0.55rem; font-size: 0.9rem; flex-shrink: 0; }
       footer { font-size: 0.75rem; }
@@ -187,16 +192,19 @@
       <span class="nav-caret">▼</span>
     </button>
     <div class="nav-tabs" id="navTabs">
-      <input type="radio" name="selectView" id="selectTodo" value="./tools/todo-manager.html"><label for="selectTodo">TODO 관리</label>
+      <!-- 문서·작성 계열 (첫 항목=기본 진입 도구) -->
       <input type="radio" name="selectView" id="selectMdViewer" value="./tools/md-viewer.html"><label for="selectMdViewer">마크다운</label>
       <input type="radio" name="selectView" id="selectRichMd" value="./tools/rich-md-editor.html"><label for="selectRichMd">노트 편집기</label>
       <input type="radio" name="selectView" id="selectPdfViewer" value="./tools/pdf-viewer.html"><label for="selectPdfViewer">PDF 뷰어</label>
-      <input type="radio" name="selectView" id="selectUri" value="./tools/uri-tool.html"><label for="selectUri">URI 도구</label>
-      <!-- <input type="radio" name="selectView" id="selectSvnLog" value="./tools/svn-log-converter.html"><label for="selectSvnLog">패치내역만들기</label> -->
+      <input type="radio" name="selectView" id="selectTodo" value="./tools/todo-manager.html"><label for="selectTodo">TODO 관리</label>
+      <span class="nav-sep" aria-hidden="true"></span>
+      <!-- 개발 유틸 계열 -->
       <input type="radio" name="selectView" id="selectJson" value="./tools/json-tool.html"><label for="selectJson">JSON / XML</label>
+      <input type="radio" name="selectView" id="selectUri" value="./tools/uri-tool.html"><label for="selectUri">URI 도구</label>
       <input type="radio" name="selectView" id="selectDiff" value="./tools/diff-tool.html"><label for="selectDiff">텍스트 비교</label>
-      <input type="radio" name="selectView" id="selectTime" value="./tools/time-tool.html"><label for="selectTime">타임스탬프/Cron</label>
       <input type="radio" name="selectView" id="selectQueryPage" value="./tools/sql-converter.html"><label for="selectQueryPage">SQL 로그 변환</label>
+      <input type="radio" name="selectView" id="selectTime" value="./tools/time-tool.html"><label for="selectTime">타임스탬프/Cron</label>
+      <!-- <input type="radio" name="selectView" id="selectSvnLog" value="./tools/svn-log-converter.html"><label for="selectSvnLog">패치내역만들기</label> -->
     </div>
     <button class="theme-btn" id="themeToggle" onclick="portalTheme.toggle()" title="다크/라이트 모드 전환">🌙</button>
     <!-- <input type="radio" name="selectView" id="selectConfig" value="./tools/config-tool.html" checked><label for="selectConfig">Config 설정</label> -->

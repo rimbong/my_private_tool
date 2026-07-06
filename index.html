@@ -73,6 +73,18 @@
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 1.5rem;
         }
+        /* 계열 구분 섹션 라벨 (그리드 전체 폭) */
+        .grid-section {
+            grid-column: 1 / -1;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            letter-spacing: 0.03em;
+            margin: 0.6rem 0 -0.4rem;
+            padding-bottom: 0.45rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .grid-section:first-child { margin-top: 0; }
 
         .tool-card {
             background-color: var(--card-bg);
@@ -137,11 +149,7 @@
 
     <main>
         <div class="tool-grid">
-            <a href="tool.html?tool=todo" class="tool-card">
-                <div class="tool-icon">✅</div>
-                <h3 class="tool-name">TODO 관리</h3>
-                <p class="tool-desc">할 일 목록을 효율적으로 관리하고 진행 상황을 추적합니다.</p>
-            </a>
+            <div class="grid-section">문서 · 작성</div>
 
             <a href="tool.html?tool=md-viewer" class="tool-card">
                 <div class="tool-icon">📝</div>
@@ -161,22 +169,24 @@
                 <p class="tool-desc">여러 PDF를 문서 목록으로 전환하며 한 화면에서 보고, 마지막 본 페이지까지 기억합니다.</p>
             </a>
 
-            <a href="tool.html?tool=uri" class="tool-card">
-                <div class="tool-icon">🔗</div>
-                <h3 class="tool-name">URI 도구</h3>
-                <p class="tool-desc">URL 인코딩, 디코딩 및 쿼리 파라미터를 분석합니다.</p>
+            <a href="tool.html?tool=todo" class="tool-card">
+                <div class="tool-icon">✅</div>
+                <h3 class="tool-name">TODO 관리</h3>
+                <p class="tool-desc">할 일 목록을 효율적으로 관리하고 진행 상황을 추적합니다.</p>
             </a>
 
-            <!-- <a href="tool.html?tool=svn-log" class="tool-card">
-                <div class="tool-icon">📋</div>
-                <h3 class="tool-name">패치 내역 생성</h3>
-                <p class="tool-desc">SVN 로그를 바탕으로 배포용 패치 파일 목록을 생성합니다.</p>
-            </a> -->
+            <div class="grid-section">개발 유틸</div>
 
             <a href="tool.html?tool=json" class="tool-card">
                 <div class="tool-icon">🧩</div>
                 <h3 class="tool-name">JSON / XML 도구</h3>
                 <p class="tool-desc">JSON 포맷·압축·트리(검색)·키정렬과 XML 정렬·검증·escape, JSON↔XML·CSV 변환을 한 곳에서.</p>
+            </a>
+
+            <a href="tool.html?tool=uri" class="tool-card">
+                <div class="tool-icon">🔗</div>
+                <h3 class="tool-name">URI 도구</h3>
+                <p class="tool-desc">URL 인코딩, 디코딩 및 쿼리 파라미터를 분석합니다.</p>
             </a>
 
             <a href="tool.html?tool=diff" class="tool-card">
@@ -185,17 +195,23 @@
                 <p class="tool-desc">두 텍스트/코드를 줄 단위로 비교하여 추가·삭제를 강조합니다.</p>
             </a>
 
+            <a href="tool.html?tool=sql" class="tool-card">
+                <div class="tool-icon">🗃️</div>
+                <h3 class="tool-name">SQL 로그 변환</h3>
+                <p class="tool-desc">MyBatis 로그(Preparing/Parameters)를 실행 가능한 쿼리로 자동 변환·포맷합니다.</p>
+            </a>
+
             <a href="tool.html?tool=time" class="tool-card">
                 <div class="tool-icon">⏱️</div>
                 <h3 class="tool-name">타임스탬프 / Cron</h3>
                 <p class="tool-desc">Epoch↔날짜 변환과 Cron 표현식 해석·다음 실행 시각을 확인합니다.</p>
             </a>
 
-            <a href="tool.html?tool=sql" class="tool-card">
-                <div class="tool-icon">🗃️</div>
-                <h3 class="tool-name">SQL 로그 변환</h3>
-                <p class="tool-desc">MyBatis 로그(Preparing/Parameters)를 실행 가능한 쿼리로 자동 변환·포맷합니다.</p>
-            </a>
+            <!-- <a href="tool.html?tool=svn-log" class="tool-card">
+                <div class="tool-icon">📋</div>
+                <h3 class="tool-name">패치 내역 생성</h3>
+                <p class="tool-desc">SVN 로그를 바탕으로 배포용 패치 파일 목록을 생성합니다.</p>
+            </a> -->
             
             <!-- <a href="tool.html?tool=svn-merge" class="tool-card">
                 <div class="tool-icon">🔄</div>
