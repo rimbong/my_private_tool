@@ -2419,18 +2419,16 @@ function hello() {
           continue;
         }
 
-        // 헤더(ATX): H1/H2는 밑줄, H3+는 ▶ 표시
+        // 헤더(ATX): 밑줄 대신 제목 '앞'에 계층 기호를 붙인다(시작/끝 헷갈리는 가로줄 제거).
+        //   H1 ■ / H2 ▶ / H3 ▷ / H4~H6 · , 깊은 단계는 살짝 들여써서 계층을 표시
         const h = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
         if (h) {
           const level = h[1].length;
           const text = inlineToText(h[2]);
+          const sym = ({ 1: '■', 2: '▶', 3: '▷' })[level] || '·';
+          const indent = ' '.repeat(Math.max(0, level - 2) * 2);
           out.push('');
-          if (level <= 2) {
-            out.push(text);
-            out.push((level === 1 ? '═' : '─').repeat(Math.min(Math.max(text.length, 3), 40)));
-          } else {
-            out.push(`▶ ${text}`);
-          }
+          out.push(`${indent}${sym} ${text}`);
           i++;
           continue;
         }
