@@ -733,6 +733,8 @@
         max-width: 100% !important;
         background: white !important;
         color: black !important;
+        -webkit-print-color-adjust: exact !important;   /* Chrome/Edge/Safari: 배경색 강제 인쇄 */
+        print-color-adjust: exact !important;            /* 표준(Firefox 등) */
       }
 
       /* 화면 흐름과 자연스럽게 일치: 코드블록·표·이미지·인용은 페이지 중간에서 자르지 않고,
