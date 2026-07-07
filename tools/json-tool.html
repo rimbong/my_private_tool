@@ -102,6 +102,9 @@
       flex: 1; overflow: auto; padding: 1rem 1.25rem; background: var(--editor-bg);
       font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.9rem; line-height: 1.6;
     }
+    /* 색을 입힌 포맷 결과(읽기전용 표시) */
+    pre#outputCode { margin: 0; white-space: pre-wrap; word-break: break-word; color: var(--text); }
+    pre#outputCode:empty::before { content: '결과가 여기에 표시됩니다...'; color: var(--text-muted); }
     .tree, .tree ul { list-style: none; margin: 0; padding: 0; }
     .tree ul { padding-left: 1.25rem; border-left: 1px dashed var(--border); margin-left: 0.35rem; }
     .tree li { white-space: nowrap; }
@@ -213,7 +216,9 @@
           </div>
         </div>
       </div>
-      <textarea id="outputText" class="output" readonly placeholder="결과가 여기에 표시됩니다..." spellcheck="false" style="display:block;"></textarea>
+      <!-- 원본 텍스트 저장용(숨김). 화면에는 색을 입힌 outputCode 를 보여준다 -->
+      <textarea id="outputText" class="output" readonly placeholder="결과가 여기에 표시됩니다..." spellcheck="false" style="display:none;"></textarea>
+      <pre id="outputCode" class="output" style="display:block;"></pre>
       <div id="outputTree" class="output" style="display:none;"></div>
     </div>
   </main>
@@ -223,6 +228,7 @@
   <script>
     const input = document.getElementById('input');
     const outputText = document.getElementById('outputText');
+    const outputCode = document.getElementById('outputCode');
     const outputTree = document.getElementById('outputTree');
     const statusEl = document.getElementById('status');
     const fmtBadge = document.getElementById('fmtBadge');
@@ -394,7 +400,7 @@
       }
       lastValue = v;
       setView('formatted', true);
-      outputText.value = JSON.stringify(v);
+      setOut(JSON.stringify(v));
       setStatus('🗜️ 압축 완료 · ' + describe(v), 'ok');
     }
     function sortKeys() {
@@ -439,7 +445,7 @@
         return;
       }
       setView('formatted', true);
-      outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + serializeXml(doc.documentElement, 0);
+      setOut('<?xml version="1.0" encoding="UTF-8"?>\n' + serializeXml(doc.documentElement, 0));
       setStatus('✅ XML 정렬 완료', 'ok');
     }
     function serializeXml(node, depth) {
@@ -472,7 +478,7 @@
         return;
       }
       setView('formatted', true);
-      outputText.value = input.value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+      setOut(input.value.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
       setStatus('✅ Escape 완료', 'ok');
     }
     function unescapeXmlAction() {
@@ -481,7 +487,7 @@
         return;
       }
       setView('formatted', true);
-      outputText.value = input.value.replace(/&amp;|&lt;|&gt;|&quot;|&#39;|&apos;|&#x2F;/g, m => HTML_ENTITIES[m]);
+      setOut(input.value.replace(/&amp;|&lt;|&gt;|&quot;|&#39;|&apos;|&#x2F;/g, m => HTML_ENTITIES[m]));
       setStatus('✅ Unescape 완료', 'ok');
     }
     function validateXmlAction() {
@@ -508,7 +514,7 @@
       }
       setView('formatted', true);
       const xml = new XMLSerializer().serializeToString(doc.documentElement);
-      outputText.value = xml.replace(/>\s+</g, '><').trim();
+      setOut(xml.replace(/>\s+</g, '><').trim());
       setStatus('🗜️ XML 압축 완료', 'ok');
     }
 
@@ -524,7 +530,7 @@
         const xmlBody = Array.isArray(v)
           ? `<root>\n${v.map(item => nodeToXml('item', item, 2)).join('\n')}\n</root>`
           : nodeToXml('root', v, 1);
-        outputText.value = '<?xml version="1.0" encoding="UTF-8"?>\n' + xmlBody;
+        setOut('<?xml version="1.0" encoding="UTF-8"?>\n' + xmlBody);
         setStatus('✅ JSON → XML 변환 완료', 'ok');
       } else {
         const doc = requireXmlDoc();
@@ -639,7 +645,7 @@
         return;
       }
       setView('formatted', true);
-      outputText.value = JSON.stringify(txt);
+      setOut(JSON.stringify(txt));
       setStatus('✅ JSON 문자열로 escape 했습니다.', 'ok');
     }
     function unescapeJsonString() {
@@ -656,7 +662,7 @@
           unescaped = JSON.stringify(JSON.parse(unescaped), null, 2);
         } catch (e) {}
         setView('formatted', true);
-        outputText.value = unescaped;
+        setOut(unescaped);
         setStatus('✅ escape 문자열을 풀었습니다.', 'ok');
       } catch (e) {
         setStatus('⚠ 문자열 풀기 실패: ' + e.message, 'err');
@@ -673,7 +679,8 @@
       }
       currentView = view;
       document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-      outputText.style.display = view === 'formatted' ? 'block' : 'none';
+      outputText.style.display = 'none';   // 원본 저장용(항상 숨김)
+      outputCode.style.display = view === 'formatted' ? 'block' : 'none';
       outputTree.style.display = view === 'tree' ? 'block' : 'none';
       treeSearch.style.display = view === 'tree' ? 'block' : 'none';
       if (!skipRender) {
@@ -689,7 +696,7 @@
         lastValue = v;
       }
       if (currentView === 'formatted') {
-        outputText.value = JSON.stringify(lastValue, null, 2);
+        setOut(JSON.stringify(lastValue, null, 2));
       } else {
         renderTree();
       }
@@ -778,6 +785,63 @@
       return String(s).replace(/[<>&]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
     }
 
+    /* ===== 포맷 결과 색 입히기(구문 강조) =====
+       원본 텍스트는 outputText(textarea, 숨김)에 두고, 화면엔 색을 입힌 outputCode(pre)를 보여준다.
+       트리 뷰와 같은 색 클래스(k-key/k-string/k-number/k-bool/k-null/k-punc)를 재사용한다. */
+    const HL_MAX = 300000;   // 너무 크면 하이라이트 생략(성능)
+    function setOut(text) {
+      outputText.value = (text === undefined || text === null) ? '' : text;
+      renderHighlight(outputText.value);
+    }
+    function renderHighlight(text) {
+      if (text === undefined) {
+        text = outputText.value;
+      }
+      if (!text) {
+        outputCode.textContent = '';
+        return;
+      }
+      if (text.length > HL_MAX) {
+        outputCode.textContent = text;   // 대용량: 색 생략(성능)
+        return;
+      }
+      const first = text.replace(/^\s+/, '').charAt(0);
+      if (first === '<') {
+        outputCode.innerHTML = highlightXml(text);
+      } else if (first === '{' || first === '[' || first === '"') {
+        outputCode.innerHTML = highlightJson(text);
+      } else {
+        outputCode.textContent = text;   // JSON/XML 아닌 결과(escape 등)는 색 없이
+      }
+    }
+    // 이미 포맷된 JSON 문자열을 토큰별 색 span 으로 변환
+    function highlightJson(str) {
+      const esc = escHtml(str);
+      return esc.replace(/("(?:\\.|[^"\\])*"(?:\s*:)?|\b(?:true|false)\b|\bnull\b|-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g, (m) => {
+        let cls = 'k-number';
+        if (m.charAt(0) === '"') {
+          cls = /:\s*$/.test(m) ? 'k-key' : 'k-string';
+        } else if (m === 'true' || m === 'false') {
+          cls = 'k-bool';
+        } else if (m === 'null') {
+          cls = 'k-null';
+        }
+        return '<span class="' + cls + '">' + m + '</span>';
+      });
+    }
+    // XML: 태그명/속성/값에 색을 입힌다(선언·주석 등은 그대로)
+    function highlightXml(str) {
+      const esc = escHtml(str);   // < > & → 엔티티. 따옴표는 그대로 남는다.
+      return esc.replace(/&lt;(\/?)([\w:.\-]+)([^]*?)(\/?)&gt;/g, (whole, slash, name, attrs, selfClose) => {
+        const coloredAttrs = attrs.replace(/([\w:.\-]+)(=)("[^"]*"|'[^']*')/g,
+          '<span class="k-bool">$1</span><span class="k-punc">$2</span><span class="k-string">$3</span>');
+        return '<span class="k-punc">&lt;' + slash + '</span>'
+          + '<span class="k-key">' + name + '</span>'
+          + coloredAttrs
+          + '<span class="k-punc">' + selfClose + '&gt;</span>';
+      });
+    }
+
     function buildNode(key, value, path, term) {
       const li = document.createElement('li');
       const row = document.createElement('span');
@@ -854,7 +918,7 @@
       a.click(); URL.revokeObjectURL(a.href);
     }
     function clearAll() {
-      input.value = ''; outputText.value = ''; outputTree.innerHTML = ''; lastValue = undefined;
+      input.value = ''; setOut(''); outputTree.innerHTML = ''; lastValue = undefined;
       document.getElementById('inSize').textContent = '0 B'; setBadge(null); setStatus('준비됨');
       saveInput('');
       input.focus();
