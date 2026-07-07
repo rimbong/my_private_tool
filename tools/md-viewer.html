@@ -265,6 +265,12 @@
       background: rgba(255,255,255,0.3);
       border-radius: 999px; padding: 0.02rem 0.42rem; line-height: 1.5;
     }
+    .tab-group-pill .tgp-close {
+      margin-left: 0.1rem; width: 15px; height: 15px; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.66rem; border-radius: 50%; opacity: 0.75; cursor: pointer;
+    }
+    .tab-group-pill .tgp-close:hover { opacity: 1; background: rgba(255, 255, 255, 0.32); }
     /* 트레이 안의 탭은 개별 테두리를 줄이고 트레이에 얹혀 보이게 */
     .tab-group .doc-tab {
       bottom: 0;
@@ -1102,6 +1108,16 @@
       list._delegated = true;
       attachReorder(list, '.doc-tab[data-id]', true);   // 탭 드래그로 순서 이동(가로)
       list.addEventListener('click', (e) => {
+        // 그룹 라벨의 ✕ → 그룹 전체 닫기 (접기 토글보다 먼저 가로챔)
+        const gclose = e.target.closest('.tgp-close');
+        if (gclose) {
+          const gp = gclose.closest('.tab-group-pill[data-folder]');
+          if (gp) {
+            closeGroup(gp.dataset.folder);
+          }
+          e.stopPropagation();
+          return;
+        }
         // 그룹 라벨(알약) 클릭 → 해당 폴더 그룹 접기/펼치기
         const pill = e.target.closest('.tab-group-pill[data-folder]');
         if (pill && list.contains(pill)) {
@@ -1353,6 +1369,13 @@
         cnt.className = 'tgp-count';
         cnt.textContent = items.length;
         pill.appendChild(cnt);
+
+        // 그룹 전체 닫기(탭 바에서만 내림, 문서는 보존)
+        const gclose = document.createElement('span');
+        gclose.className = 'tgp-close';
+        gclose.textContent = '✕';
+        gclose.title = '이 그룹의 탭 전체 닫기 (문서는 보존 · 📚에서 다시 열 수 있어요)';
+        pill.appendChild(gclose);
         tray.appendChild(pill);
 
         // 펼쳐진 그룹만 탭을 트레이 안에 그린다
@@ -1531,6 +1554,32 @@
       if (!empty) {
         showToast('탭에서 숨겼습니다. 📚 전체에서 다시 열 수 있어요.', 'info');
       }
+    }
+
+    // 그룹의 탭 전체를 탭 바에서 닫는다(문서는 보존). 활성 문서가 그 그룹이면 다른 탭으로 전환.
+    function closeGroup(folder) {
+      const groupVisible = docs.filter(d => visibleIds.includes(d.id) && (d.folder || '') === folder);
+      if (!groupVisible.length) {
+        return;
+      }
+      const hadActive = groupVisible.some(d => d.id === activeDocId);
+      if (hadActive) {
+        saveToDB();   // 활성 문서 편집분 보존
+      }
+      const ids = new Set(groupVisible.map(d => d.id));
+      visibleIds = visibleIds.filter(v => !ids.has(v));
+      collapsedTabGroups.delete(folder);   // 닫았으니 접힘 상태도 정리
+      if (hadActive) {
+        if (visibleIds.length > 0) {
+          loadDoc(visibleIds[0]);   // 남은 탭으로 전환
+        } else {
+          newDoc();                 // 마지막 탭까지 닫혔으면 빈 새 탭
+        }
+      } else {
+        renderTabs();
+      }
+      persistMeta();
+      showToast(`‘${folder}’ 그룹 탭 ${groupVisible.length}개를 닫았어요. 📚에서 다시 열 수 있어요.`, 'info');
     }
 
     // 확인창 없이 탭에서 바로 영구 삭제 (🗑 클릭 또는 Shift+✕)
