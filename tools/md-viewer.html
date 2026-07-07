@@ -412,6 +412,12 @@
     .dm-side-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .dm-side-count { font-size: 0.72rem; opacity: 0.8; font-variant-numeric: tabular-nums; }
     .dm-side-sep { height: 1px; background: var(--border); margin: 0.35rem 0.25rem; }
+    .dm-side-newgroup {
+      margin-top: 0.5rem; padding: 0.5rem 0.6rem; border-radius: 0.5rem;
+      border: 1px dashed var(--border); background: transparent; color: var(--text-muted);
+      font-size: 0.83rem; font-weight: 700; cursor: pointer; text-align: left; width: 100%;
+    }
+    .dm-side-newgroup:hover { border-color: var(--accent); color: var(--accent); }
     .dm-side-caption { font-size: 0.68rem; font-weight: 700; color: var(--text-muted); padding: 0.2rem 0.6rem; text-transform: uppercase; letter-spacing: 0.03em; }
     .dm-main-pane { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     .dm-toolbar {
@@ -1803,10 +1809,33 @@
         side.appendChild(cap);
         names.forEach(f => addItem(f, '📁 ' + f, folders.get(f), folderColor(f)));
       }
+      // 새 그룹 만들기(선택 문서가 있으면 그걸로, 없으면 새 빈 문서로)
+      const newBtn = document.createElement('button');
+      newBtn.className = 'dm-side-newgroup';
+      newBtn.textContent = '＋ 새 그룹';
+      newBtn.title = '새 그룹 만들기 · 선택한 문서가 있으면 그 문서들로, 없으면 새 빈 문서로';
+      newBtn.onclick = createNewGroup;
+      side.appendChild(newBtn);
     }
     function selectDmGroup(key) {
       dmActiveGroup = key;
       renderDocManager();
+    }
+    // 새 그룹 생성: 선택모드에서 선택된 문서가 있으면 그 문서들을 새 그룹으로 이동,
+    // 없으면 새 빈 문서 1개를 그 그룹에 만들어 시작한다.
+    async function createNewGroup() {
+      const name = ((await promptModal('새 그룹 이름을 입력하세요:', '')) || '').trim();
+      if (!name) {
+        return;
+      }
+      if (dmSelectMode && dmSelected.size > 0) {
+        moveDocsToGroup(Array.from(dmSelected), name);   // 내부에서 렌더/선택셋 정리/토스트 처리
+      } else {
+        newDoc('', name);            // 그 그룹에 빈 문서 1개 생성(활성 전환)
+        dmActiveGroup = name;        // 사이드바를 새 그룹으로 이동
+        renderDocManager();
+        showToast(`‘${name}’ 그룹을 만들고 새 문서를 추가했어요.`, 'success');
+      }
     }
 
     // 행/일괄용 그룹 이동 셀렉트 옵션 구성
