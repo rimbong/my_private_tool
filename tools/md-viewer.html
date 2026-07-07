@@ -1497,6 +1497,7 @@
       docs.splice(idx, 1);
       visibleIds = visibleIds.filter(v => v !== id);
       delete accessTime[id];
+      dmSelected.delete(id);   // 선택셋 정리(선택모드 중 단건 삭제 대비)
       if (dbManager.db) {
         dbManager.removeItem('docs', id).catch(() => {});
       }
@@ -1835,6 +1836,7 @@
       if (n) {
         renderTabs();
         persistMeta();
+        dmSelected.clear();   // 이동으로 필터 밖으로 나간 문서가 '보이지 않는 선택'으로 남지 않도록
       }
       renderDocManager();
       if (n) {
@@ -2092,6 +2094,7 @@
       docs.splice(idx, 1);
       visibleIds = visibleIds.filter(v => v !== id);
       delete accessTime[id];
+      dmSelected.delete(id);   // 선택셋에 유령 id가 남지 않도록
       if (dbManager.db) {
         dbManager.removeItem('docs', id).catch(() => {});
       }
@@ -2588,6 +2591,12 @@ function hello() {
     }, 300);
 
     editor.addEventListener('input', debouncedUpdate);
+    // 탭 전환/닫기/새로고침 직전 마지막 편집분 저장(300ms 디바운스 대기 중 유실 방지)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        saveToDB();
+      }
+    });
 
     // Persistence Logic
     async function initStorage() {
