@@ -922,7 +922,7 @@
       const entry = { dataUrl, name: name || 'image' };
       imageStore.set(token, entry);
       if (dbManager.db) {
-        dbManager.setItem('images', token, entry).catch(() => {});
+        dbManager.setItem('images', token, entry).catch(notifyPersistError);
       }
       return token;
     }
@@ -1084,9 +1084,22 @@
       return docs.find(d => d.id === activeDocId) || null;
     }
 
+    // 저장(IndexedDB 쓰기) 실패를 사용자에게 알린다. 메모리는 반영됐지만 영속은 실패한
+    // 상태(용량 초과·abort 등)를 성공 토스트 뒤에서 삼키지 않도록. 연속 실패는 도배 방지로 한 번만.
+    let _persistErrAt = 0;
+    function notifyPersistError(err) {
+      console.error('저장 실패:', err);
+      const now = Date.now();
+      if (now - _persistErrAt < 4000) {
+        return;
+      }
+      _persistErrAt = now;
+      showToast('⚠ 변경 사항을 저장하지 못했어요 (저장 공간 초과 등). 이미지가 많으면 줄이거나 문서를 정리해 주세요.', 'error', 6000);
+    }
+
     function persistDoc(doc) {
       if (dbManager.db) {
-        dbManager.setItem('docs', doc.id, doc).catch(() => {});
+        dbManager.setItem('docs', doc.id, doc).catch(notifyPersistError);
       }
       notifySync();
     }
@@ -1094,10 +1107,10 @@
       if (!dbManager.db) {
         return;
       }
-      dbManager.setItem('content', 'doc_order', docs.map(d => d.id)).catch(() => {});
-      dbManager.setItem('content', 'active_doc', activeDocId).catch(() => {});
-      dbManager.setItem('content', 'visible_docs', visibleIds).catch(() => {});
-      dbManager.setItem('content', 'collapsed_tab_groups', Array.from(collapsedTabGroups)).catch(() => {});
+      dbManager.setItem('content', 'doc_order', docs.map(d => d.id)).catch(notifyPersistError);
+      dbManager.setItem('content', 'active_doc', activeDocId).catch(notifyPersistError);
+      dbManager.setItem('content', 'visible_docs', visibleIds).catch(notifyPersistError);
+      dbManager.setItem('content', 'collapsed_tab_groups', Array.from(collapsedTabGroups)).catch(notifyPersistError);
       notifySync();
     }
 
@@ -1499,7 +1512,7 @@
       delete accessTime[id];
       dmSelected.delete(id);   // 선택셋 정리(선택모드 중 단건 삭제 대비)
       if (dbManager.db) {
-        dbManager.removeItem('docs', id).catch(() => {});
+        dbManager.removeItem('docs', id).catch(notifyPersistError);
       }
       if (activeDocId === id) {
         if (docs.length === 0) {
@@ -2096,7 +2109,7 @@
       delete accessTime[id];
       dmSelected.delete(id);   // 선택셋에 유령 id가 남지 않도록
       if (dbManager.db) {
-        dbManager.removeItem('docs', id).catch(() => {});
+        dbManager.removeItem('docs', id).catch(notifyPersistError);
       }
       notifySync();
     }
