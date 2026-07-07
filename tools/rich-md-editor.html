@@ -234,6 +234,8 @@
         padding: 0 !important;
         margin: 0 !important;
         color: #000 !important;
+        -webkit-print-color-adjust: exact !important;   /* Chrome/Edge/Safari: 배경색 강제 인쇄 */
+        print-color-adjust: exact !important;            /* 표준(Firefox 등) */
       }
       /* 편집 전용 표시 숨김(표 선택 오버레이·열 리사이즈 핸들·빈문단 안내) */
       .ProseMirror .selectedCell::after,
