@@ -2676,7 +2676,24 @@ function hello() {
             }
           }
           if (!hasDir) {
-            return;   // 폴더가 아니면 기존 파일 드롭 핸들러(editor)에 맡김
+            // 폴더가 아님 → 텍스트 파일이 2개 이상이면 각각 새 문서로 불러온다.
+            // (fileDropHandler 는 파일마다 onText 를 호출해 '새로 쓰기'는 마지막만 남고
+            //  '이어붙이기'는 읽기-쓰기 경쟁으로 유실되므로, 다중 파일은 여기서 배치 처리)
+            const dropped = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+            const isTextFile = (f) => {
+              const ext = fileExt(f.name);
+              return ext === 'md' || ext === 'markdown' || ext === 'txt' || (f.type || '').startsWith('text/');
+            };
+            const textFiles = dropped.filter(isTextFile);
+            if (textFiles.length >= 2) {
+              e.preventDefault();
+              e.stopPropagation();
+              document.querySelectorAll('.drag-hover').forEach((el) => el.classList.remove('drag-hover'));
+              const imageFiles = dropped.filter(f => (f.type || '').startsWith('image/') || IMG_EXTS.includes(fileExt(f.name)));
+              await importTextFilesAsDocs(textFiles, imageFiles);
+              return;
+            }
+            return;   // 단일 파일/이미지 → 기존 파일 드롭 핸들러(editor)에 맡김
           }
           e.preventDefault();
           e.stopPropagation();
@@ -3017,6 +3034,41 @@ function hello() {
         r.onerror = reject;
         r.readAsText(file);
       });
+    }
+
+    // 드롭된 텍스트 파일 여러 개를 각각 새 문서로 불러온다(파일명이 제목).
+    // 같은 드롭에 이미지가 섞여 있으면 마지막 새 문서 끝에 첨부한다.
+    async function importTextFilesAsDocs(textFiles, imageFiles) {
+      saveToDB();   // 현재 편집 중 문서 보존
+      const newIds = [];
+      for (const file of textFiles) {
+        try {
+          const { text } = foldDataImages(await readAsTextP(file));
+          const base = (file.name || '문서').replace(/\.[^.]+$/, '');
+          const doc = { id: genDocId(), title: base || deriveTitle(text), content: text, customTitle: !!base, updatedAt: Date.now() };
+          docs.push(doc);
+          persistDoc(doc);
+          newIds.push(doc.id);
+        } catch (e) { /* 개별 파일 실패는 건너뜀 */ }
+      }
+      if (!newIds.length) {
+        showToast('불러올 수 있는 텍스트 파일이 없습니다.', 'warning');
+        return;
+      }
+      if (imageFiles && imageFiles.length) {
+        const lastDoc = docs.find(d => d.id === newIds[newIds.length - 1]);
+        for (const img of imageFiles) {
+          try {
+            const token = addImage(await readAsDataURL(img), img.name);
+            lastDoc.content += `\n\n![${img.name}](img:${token})\n`;
+          } catch (e) { /* 개별 이미지 실패 무시 */ }
+        }
+        persistDoc(lastDoc);
+      }
+      newIds.forEach(id => ensureVisible(id));
+      loadDoc(newIds[0]);   // 첫 파일로 전환(내부에서 노출/렌더 처리)
+      persistMeta();
+      showToast(`${newIds.length}개 파일을 새 문서로 불러왔어요.`, 'success');
     }
     // 폴더 파일 목록을 받아 그룹으로 불러온다. files: File[](webkitRelativePath 보유) 또는 {file, rel}[]
     async function importFolderFiles(files, groupName) {
