@@ -601,6 +601,19 @@
     /* 텍스트 추출 textarea는 선택(복사)이 목적 → 텍스트 커서 유지 (pointer 강제 금지) */
     #previewScroll #plainOutput { cursor: text; }
 
+    /* 이미지 문서 뷰어 */
+    .image-view {
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 1.5rem; min-height: 100%; box-sizing: border-box; background: var(--editor-bg);
+    }
+    .image-view img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); cursor: zoom-in; }
+    .image-view img.actual-size { max-width: none; cursor: zoom-out; }
+    /* 이미지 문서 모드: 편집 UI 숨기고 우측 뷰를 전폭으로 */
+    body.image-doc-mode #editorContainer,
+    body.image-doc-mode #resizer,
+    body.image-doc-mode .preview-toolbar { display: none !important; }
+    body.image-doc-mode .preview-container { flex: 1; width: 100%; }
+
     .view-seg {
       display: inline-flex;
       border: 1px solid var(--border);
@@ -790,6 +803,7 @@
       <div class="action-group">
         <button class="btn" onclick="document.getElementById('fileInput').click()">파일 열기</button>
         <button class="btn" onclick="document.getElementById('folderInput').click()" title="폴더를 통째로 열어 폴더별 그룹으로 봅니다 (.md + 참조 이미지)">📁 폴더 열기</button>
+        <button class="btn" onclick="document.getElementById('imgDocInput').click()" title="이미지 파일(png/jpg 등)을 그룹의 문서로 추가해 뷰어로 봅니다">🖼️ 이미지 추가</button>
         <button class="btn" onclick="saveFile()">저장</button>
         <span class="drop-switch" id="dropModeToggle" role="switch" aria-checked="false" tabindex="0" onclick="toggleDropMode()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleDropMode();}" title="드래그앤드롭 시 동작 방식: 현재 탭 덮어쓰기 ↔ 끝에 이어붙이기">
           <span class="ds-cap">드롭</span>
@@ -800,6 +814,7 @@
         <button class="btn" onclick="compactInlineImages()" title="본문에 길게 박힌 data: 이미지를 짧은 토큰으로 접습니다">🖼️ 이미지 접기</button>
         <input type="file" id="fileInput" class="file-input" accept=".md,.txt" onchange="loadFile(event)">
         <input type="file" id="folderInput" class="file-input" webkitdirectory directory multiple onchange="loadFolder(event)">
+        <input type="file" id="imgDocInput" class="file-input" accept="image/*" multiple onchange="onImgDocPick(event)">
       </div>
     </div>
     <div class="action-group">
@@ -842,6 +857,9 @@
       <div class="preview-scroll" id="previewScroll" ondblclick="onPreviewDblClick(event)" title="더블클릭하면 크게 보기">
         <div id="preview" class="markdown-body"></div>
         <textarea id="plainOutput" class="plain-output" readonly style="display:none;" placeholder="마크다운 문법이 제거된 순수 텍스트가 여기에 표시됩니다..."></textarea>
+        <div id="imageView" class="image-view" style="display:none;">
+          <img id="imageViewImg" alt="" title="더블클릭: 실제 크기 ↔ 맞춤" ondblclick="toggleImageActualSize()">
+        </div>
       </div>
     </div>
   </main>
@@ -1441,6 +1459,11 @@
       tab.draggable = true;   // 드래그로 순서 이동(같은 그룹 안)
       tab.title = (d.folder ? '📁 ' + d.folder + ' / ' : '') + d.title + '  (드래그: 순서 이동 · 더블클릭: 이름 변경)';
 
+      const icon = document.createElement('span');
+      icon.className = 'doc-tab-type';
+      icon.textContent = (d.type === 'image') ? '🖼️' : '📝';
+      tab.appendChild(icon);
+
       const title = document.createElement('span');
       title.className = 'doc-tab-title';
       title.textContent = d.title;
@@ -1562,12 +1585,50 @@
       }  // 문서 전환 시 새로고침 배너 닫기
       activeDocId = id;
       ensureVisible(id);   // 활성 문서는 항상 탭 바에 노출
+      renderDocView(doc);
+      renderTabs();
+    }
+
+    // 문서 타입에 맞춰 본문을 렌더한다(md=편집+미리보기, image=이미지 뷰어)
+    let currentImageUrl = null;
+    function renderDocView(doc) {
+      if (doc.type === 'image') {
+        document.body.classList.add('image-doc-mode');
+        const img = document.getElementById('imageViewImg');
+        img.classList.remove('actual-size');
+        if (currentImageUrl) {
+          URL.revokeObjectURL(currentImageUrl);   // 이전 objectURL 해제(누수 방지)
+          currentImageUrl = null;
+        }
+        img.removeAttribute('src');
+        if (dbManager.db) {
+          dbManager.getItem('imageblobs', doc.id).then(blob => {
+            if (blob && activeDocId === doc.id) {
+              currentImageUrl = URL.createObjectURL(blob);
+              img.src = currentImageUrl;
+              img.alt = doc.imgName || doc.title || '';
+            }
+          }).catch(err => console.warn('이미지 불러오기 실패:', err));
+        }
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('plainOutput').style.display = 'none';
+        document.getElementById('imageView').style.display = 'flex';
+        return;
+      }
+      // 마크다운 문서
+      document.body.classList.remove('image-doc-mode');
+      document.getElementById('imageView').style.display = 'none';
+      // 미리보기/텍스트 표시 상태 복원
+      document.getElementById('preview').style.display = (previewMode === 'text') ? 'none' : 'block';
+      document.getElementById('plainOutput').style.display = (previewMode === 'text') ? 'block' : 'none';
       editor.value = doc.content;
       updatePreview();
       if (previewMode === 'text') {
         updatePlain();
       }
-      renderTabs();
+    }
+    function toggleImageActualSize() {
+      document.getElementById('imageViewImg').classList.toggle('actual-size');
     }
 
     function switchDoc(id) {
@@ -1645,6 +1706,9 @@
       dmSelected.delete(id);   // 선택셋 정리(선택모드 중 단건 삭제 대비)
       if (dbManager.db) {
         dbManager.removeItem('docs', id).catch(notifyPersistError);
+        if (doc && doc.type === 'image') {
+          dbManager.removeItem('imageblobs', id).catch(() => {});   // 이미지 바이너리도 정리
+        }
       }
       if (activeDocId === id) {
         if (docs.length === 0) {
@@ -2138,7 +2202,7 @@
 
       const title = document.createElement('div');
       title.className = 'dm-title';
-      title.textContent = d.title || '제목 없음';
+      title.textContent = ((d.type === 'image') ? '🖼️ ' : '') + (d.title || '제목 없음');
       if (isActive) {
         const badge = document.createElement('span');
         badge.className = 'dm-badge';
@@ -2163,9 +2227,13 @@
       }
       const meta = document.createElement('div');
       meta.className = 'dm-meta';
-      const len = (d.content || '').length;
-      const prev = docPreview(d.content);
-      meta.textContent = `${timeAgo(d.updatedAt)} · ${len.toLocaleString()}자` + (prev ? ` · ${prev}` : '');
+      if (d.type === 'image') {
+        meta.textContent = `${timeAgo(d.updatedAt)} · 이미지` + (d.imgName ? ` · ${d.imgName}` : '');
+      } else {
+        const len = (d.content || '').length;
+        const prev = docPreview(d.content);
+        meta.textContent = `${timeAgo(d.updatedAt)} · ${len.toLocaleString()}자` + (prev ? ` · ${prev}` : '');
+      }
       main.appendChild(title);
       main.appendChild(meta);
       item.appendChild(main);
@@ -2319,12 +2387,16 @@
       if (idx === -1) {
         return;
       }
+      const removed = docs[idx];
       docs.splice(idx, 1);
       visibleIds = visibleIds.filter(v => v !== id);
       delete accessTime[id];
       dmSelected.delete(id);   // 선택셋에 유령 id가 남지 않도록
       if (dbManager.db) {
         dbManager.removeItem('docs', id).catch(notifyPersistError);
+        if (removed && removed.type === 'image') {
+          dbManager.removeItem('imageblobs', id).catch(() => {});   // 이미지 바이너리도 정리
+        }
       }
       notifySync();
     }
@@ -2429,7 +2501,10 @@
         if (typeof d.customTitle !== 'boolean') {
           d.customTitle = false;
         }
-        if (!d.title) {
+        if (!d.type) {
+          d.type = 'md';   // 구버전 문서는 마크다운으로 취급
+        }
+        if (!d.title && d.type === 'md') {
           d.title = deriveTitle(d.content);
         }
       });
@@ -2829,7 +2904,7 @@ function hello() {
     // Persistence Logic
     async function initStorage() {
       try {
-        await dbManager.init('MDViewerDB', ['content', 'images', 'docs']);
+        await dbManager.init('MDViewerDB', ['content', 'images', 'docs', 'imageblobs']);
         // 저장된 이미지 토큰 복원
         const storedImgs = await dbManager.getAll('images');
         Object.entries(storedImgs || {}).forEach(([token, val]) => imageStore.set(token, val));
@@ -2913,15 +2988,23 @@ function hello() {
               return ext === 'md' || ext === 'markdown' || ext === 'txt' || (f.type || '').startsWith('text/');
             };
             const textFiles = dropped.filter(isTextFile);
-            if (textFiles.length >= 2) {
+            const imageFiles = dropped.filter(f => (f.type || '').startsWith('image/') || IMG_EXTS.includes(fileExt(f.name)));
+            const onModal = !!e.target.closest('#docManagerModal');
+            const dropGroup = (onModal && dmActiveGroup && dmActiveGroup !== 'all' && dmActiveGroup !== '기타') ? dmActiveGroup : '';
+            // 텍스트 2개 이상 → md 문서 배치, 이미지만 있음 → 이미지 문서(에디터 본문에 드롭해도 이미지는 뷰어가 커버)
+            if (textFiles.length >= 2 || (imageFiles.length && textFiles.length === 0)) {
               e.preventDefault();
               e.stopPropagation();
               document.querySelectorAll('.drag-hover').forEach((el) => el.classList.remove('drag-hover'));
-              const imageFiles = dropped.filter(f => (f.type || '').startsWith('image/') || IMG_EXTS.includes(fileExt(f.name)));
-              await importTextFilesAsDocs(textFiles, imageFiles);
+              if (textFiles.length >= 2) {
+                await importTextFilesAsDocs(textFiles);
+              }
+              if (imageFiles.length) {
+                await addImageDocs(imageFiles, dropGroup);
+              }
               return;
             }
-            return;   // 단일 파일/이미지 → 기존 파일 드롭 핸들러(editor)에 맡김
+            return;   // 단일 텍스트(에디터) → 기존 onText 처리
           }
           e.preventDefault();
           e.stopPropagation();
@@ -2952,9 +3035,8 @@ function hello() {
         // Initialize File Drop Handler
         fileDropHandler.init(editor, {
           onImage: (base64, file) => {
-            const token = addImage(base64, file.name);
-            fileDropHandler.insertAtCursor(editor, `\n![${file.name}](img:${token})\n`);
-            showToast(`이미지 '${file.name}'가 첨부되었습니다.`, 'success');
+            // 이미지는 md 본문 인라인이 아니라 '이미지 문서'로(뷰어가 커버). 보통은 캡처 드롭 핸들러가 먼저 처리.
+            addImageDocs([file], '');
           },
           onText: (content, file) => {
             // 인라인 base64 이미지는 토큰으로 자동 접기
@@ -2998,8 +3080,8 @@ function hello() {
 
     function saveToDB() {
       const doc = getActiveDoc();
-      if (!doc) {
-        return;
+      if (!doc || doc.type === 'image') {
+        return;   // 이미지 문서는 editor.value 로 덮지 않는다(바이너리는 imageblobs 에 불변 저장)
       }
       const prevTitle = doc.title;
       doc.content = editor.value;
@@ -3100,7 +3182,10 @@ function hello() {
           if (typeof d.customTitle !== 'boolean') {
             d.customTitle = false;
           }
-          if (!d.title) {
+          if (!d.type) {
+            d.type = 'md';
+          }
+          if (!d.title && d.type === 'md') {
             d.title = deriveTitle(d.content);
           }
         });
@@ -3125,7 +3210,9 @@ function hello() {
             visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
           }
           const cur = getActiveDoc();
-          if (cur) {
+          if (cur && cur.type === 'image') {
+            renderDocView(cur);   // 이미지 문서는 editor 병합 없이 뷰만 갱신
+          } else if (cur) {
             const remoteContent = cur.content;   // DB(다른 창)의 현재 내용
             if ((editing || localUnsaved) && !force) {
               // 편집 중이거나 미저장 입력이 있으면 내 내용을 지키고(유실 방지),
@@ -3190,71 +3277,6 @@ function hello() {
       const m = /\.([^.]+)$/.exec(name || '');
       return m ? m[1].toLowerCase() : '';
     }
-    function dirOf(path) {
-      const i = path.lastIndexOf('/');
-      return i >= 0 ? path.slice(0, i) : '';
-    }
-    function baseName(path) {
-      const i = path.lastIndexOf('/');
-      return i >= 0 ? path.slice(i + 1) : path;
-    }
-    // base(디렉토리) 기준으로 ref(상대경로)를 폴더 내 절대경로로 정규화. ../ ./ 처리.
-    function resolveRelPath(baseDir, ref) {
-      let parts;
-      if (ref.charAt(0) === '/') {
-        parts = ref.slice(1).split('/');
-      } else {
-        parts = (baseDir ? baseDir.split('/') : []).concat(ref.split('/'));
-      }
-      const out = [];
-      for (const p of parts) {
-        if (p === '' || p === '.') {
-          continue;
-        }
-        if (p === '..') {
-          out.pop();
-        } else {
-          out.push(p);
-        }
-      }
-      return out.join('/');
-    }
-    // .md 본문의 상대경로 이미지 ![alt](path) 를 pathMap(정규화경로→img:토큰)으로 치환.
-    // http/data/img: 로 시작하면 건드리지 않음. 파일명만 있고 유일하면 파일명 매칭 폴백.
-    function rewriteImageRefs(md, mdPath, pathMap, nameMap) {
-      const baseDir = dirOf(mdPath);
-      return (md || '').replace(/(!\[[^\]]*\]\()\s*([^)\s]+)(\s*(?:"[^"]*"|'[^']*')?\s*\))/g, (whole, pre, url, post) => {
-        if (/^(https?:|data:|img:|\/\/)/i.test(url)) {
-          return whole;
-        }
-        let ref = url;
-        if (ref.charAt(0) === '<' && ref.charAt(ref.length - 1) === '>') {
-          ref = ref.slice(1, -1);
-        }
-        try {
-          ref = decodeURIComponent(ref.replace(/\\/g, '/'));
-        } catch (e) {
-          ref = ref.replace(/\\/g, '/');
-        }
-        const abs = resolveRelPath(baseDir, ref);
-        let token = pathMap[abs];
-        if (!token) {
-          const cand = nameMap[baseName(abs).toLowerCase()];
-          if (cand && cand.length === 1) {
-            token = cand[0];
-          }
-        }
-        return token ? (pre + token + post) : whole;
-      });
-    }
-    function readAsDataURL(file) {
-      return new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = reject;
-        r.readAsDataURL(file);
-      });
-    }
     function readAsTextP(file) {
       return new Promise((resolve, reject) => {
         const r = new FileReader();
@@ -3264,9 +3286,9 @@ function hello() {
       });
     }
 
-    // 드롭된 텍스트 파일 여러 개를 각각 새 문서로 불러온다(파일명이 제목).
-    // 같은 드롭에 이미지가 섞여 있으면 마지막 새 문서 끝에 첨부한다.
-    async function importTextFilesAsDocs(textFiles, imageFiles) {
+    // 드롭된 텍스트(.md/.txt) 파일 여러 개를 각각 새 md 문서로 불러온다(파일명이 제목).
+    // (이미지는 별도 이미지 문서로 처리 — md는 md만 관리)
+    async function importTextFilesAsDocs(textFiles) {
       saveToDB();   // 현재 편집 중 문서 보존
       const newIds = [];
       for (const file of textFiles) {
@@ -3285,70 +3307,108 @@ function hello() {
         showToast('불러올 수 있는 텍스트 파일이 없습니다.', 'warning');
         return;
       }
-      if (imageFiles && imageFiles.length) {
-        const lastDoc = docs.find(d => d.id === newIds[newIds.length - 1]);
-        for (const img of imageFiles) {
-          try {
-            const token = addImage(await readAsDataURL(img), img.name);
-            lastDoc.content += `\n\n![${img.name}](img:${token})\n`;
-          } catch (e) {
-            console.warn('드롭 이미지 첨부 실패:', img && img.name, e);
-          }
-        }
-        persistDoc(lastDoc);
-      }
       newIds.forEach(id => ensureVisible(id));
-      loadDoc(newIds[0]);   // 첫 파일로 전환(내부에서 노출/렌더 처리)
+      loadDoc(newIds[0]);
       persistMeta();
       showToast(`${newIds.length}개 파일을 새 문서로 불러왔어요.`, 'success');
     }
+
+    // 이미지 파일 하나를 '이미지 문서'로 만들어 docs 에 추가(바이너리는 imageblobs 에 Blob 저장). id 반환.
+    async function createImageDoc(file, folder) {
+      const doc = {
+        id: genDocId(),
+        title: (file.name || '이미지'),
+        type: 'image',
+        imgName: file.name || 'image',
+        imgType: file.type || '',
+        content: '',
+        customTitle: true,
+        folder: (folder || undefined),
+        updatedAt: Date.now()
+      };
+      if (dbManager.db) {
+        await dbManager.setItem('imageblobs', doc.id, file);   // File 은 Blob
+      }
+      docs.push(doc);
+      persistDoc(doc);
+      return doc.id;
+    }
+    // 이미지 파일들을 이미지 문서로 추가하고 첫 번째로 전환.
+    async function addImageDocs(fileList, folder) {
+      const files = Array.from(fileList || []).filter(f => (f.type || '').startsWith('image/') || IMG_EXTS.includes(fileExt(f.name)));
+      if (!files.length) {
+        return;
+      }
+      saveToDB();   // 현재 편집 중(md) 문서 보존
+      const newIds = [];
+      for (const file of files) {
+        try {
+          newIds.push(await createImageDoc(file, folder || ''));
+        } catch (e) {
+          console.warn('이미지 문서 추가 실패:', file && file.name, e);
+        }
+      }
+      if (!newIds.length) {
+        showToast('이미지를 추가하지 못했어요 (저장 공간 초과 등).', 'error');
+        return;
+      }
+      newIds.forEach(id => ensureVisible(id));
+      loadDoc(newIds[0]);
+      persistMeta();
+      showToast(`이미지 ${newIds.length}개를 추가했어요.${folder ? ` (‘${folder}’ 그룹)` : ''}`, 'success');
+    }
+    function onImgDocPick(event) {
+      const files = event.target.files;
+      addImageDocs(files, '');
+      event.target.value = '';   // 같은 파일 재선택 가능하게
+    }
+
     // 폴더 파일 목록을 받아 그룹으로 불러온다. files: File[](webkitRelativePath 보유) 또는 {file, rel}[]
+    // md 는 md 문서로, 이미지는 이미지 문서로(둘 다 같은 그룹) 각각 편입한다. (md는 md만 — 상대참조 자동 인라인 없음)
     async function importFolderFiles(files, groupName) {
       const list = files.map(f => (f.file ? f : { file: f, rel: (f.webkitRelativePath || f.name) }));
       const group = groupName || ((list[0] && list[0].rel.split('/')[0]) || '폴더');
-      const pathMap = {};   // 정규화경로 → img:token
-      const nameMap = {};   // 파일명(소문자) → [img:token]
       const mdFiles = [];
-      let imgCount = 0;
-      for (const { file, rel } of list) {
+      const imgFiles = [];
+      for (const { file } of list) {
         const ext = fileExt(file.name);
         if (ext === 'md' || ext === 'markdown' || ext === 'txt') {
-          mdFiles.push({ file, rel });
-        } else if (IMG_EXTS.includes(ext)) {
-          try {
-            const token = 'img:' + addImage(await readAsDataURL(file), file.name);
-            pathMap[rel] = token;
-            const nm = baseName(rel).toLowerCase();
-            (nameMap[nm] = nameMap[nm] || []).push(token);
-            imgCount++;
-          } catch (e) {
-            console.warn('폴더 이미지 불러오기 실패:', file && file.name, e);
-          }
+          mdFiles.push(file);
+        } else if ((file.type || '').startsWith('image/') || IMG_EXTS.includes(ext)) {
+          imgFiles.push(file);
         }
       }
-      if (!mdFiles.length) {
-        showToast(`'${group}' 폴더에 .md 문서가 없습니다.`, 'warning');
+      if (!mdFiles.length && !imgFiles.length) {
+        showToast(`'${group}' 폴더에 불러올 문서/이미지가 없습니다.`, 'warning');
         return;
       }
       saveToDB();   // 현재 편집 중 문서 보존
-      let added = 0;
-      for (const { file, rel } of mdFiles) {
+      let mdAdded = 0;
+      for (const file of mdFiles) {
         try {
           const { text } = foldDataImages(await readAsTextP(file));
-          const content = rewriteImageRefs(text, rel, pathMap, nameMap);
           const base = (file.name || '문서').replace(/\.[^.]+$/, '');
-          const doc = { id: genDocId(), title: base || deriveTitle(content), content, customTitle: !!base, folder: group, updatedAt: Date.now() };
+          const doc = { id: genDocId(), title: base || deriveTitle(text), content: text, customTitle: !!base, folder: group, updatedAt: Date.now() };
           docs.push(doc);
           persistDoc(doc);   // 탭엔 자동 노출하지 않고(뒤섞임 방지) 문서 관리자 그룹에만 추가
-          added++;
+          mdAdded++;
         } catch (e) {
           console.warn('폴더 문서 불러오기 실패:', file && file.name, e);
+        }
+      }
+      let imgAdded = 0;
+      for (const file of imgFiles) {
+        try {
+          await createImageDoc(file, group);
+          imgAdded++;
+        } catch (e) {
+          console.warn('폴더 이미지 불러오기 실패:', file && file.name, e);
         }
       }
       persistMeta();
       renderTabs();
       openDocManager();   // 그룹으로 정리된 목록을 바로 보여줌
-      showToast(`📁 '${group}' 에서 문서 ${added}개${imgCount ? `, 이미지 ${imgCount}개` : ''}를 불러왔습니다. (📚에서 그룹별로 열어보세요)`, 'success', 4500);
+      showToast(`📁 '${group}' 에서 문서 ${mdAdded}개${imgAdded ? `, 이미지 ${imgAdded}개` : ''}를 불러왔습니다. (📚에서 그룹별로 열어보세요)`, 'success', 4500);
     }
     async function loadFolder(event) {
       const files = Array.from(event.target.files || []);
