@@ -608,11 +608,21 @@
     }
     .image-view img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 12px rgba(0,0,0,0.18); cursor: zoom-in; }
     .image-view img.actual-size { max-width: none; cursor: zoom-out; }
-    /* 이미지 문서 모드: 편집 UI 숨기고 우측 뷰를 전폭으로 */
-    body.image-doc-mode #editorContainer,
-    body.image-doc-mode #resizer,
-    body.image-doc-mode .preview-toolbar { display: none !important; }
-    body.image-doc-mode .preview-container { flex: 1; width: 100%; }
+    /* 미리보기 미제공 파일 라벨 뷰 */
+    .file-view {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 0.6rem; padding: 2rem; min-height: 100%; box-sizing: border-box;
+      text-align: center; color: var(--text-muted);
+    }
+    .file-view .fv-icon { font-size: 3rem; }
+    .file-view .fv-name { font-size: 1.05rem; font-weight: 700; color: var(--text); word-break: break-all; max-width: 90%; }
+    .file-view .fv-msg { font-size: 0.9rem; }
+    .file-view .fv-type { font-size: 0.8rem; }
+    /* 이미지/파일 문서 모드: 편집 UI 숨기고 우측 뷰를 전폭으로 */
+    body.doc-view-mode #editorContainer,
+    body.doc-view-mode #resizer,
+    body.doc-view-mode .preview-toolbar { display: none !important; }
+    body.doc-view-mode .preview-container { flex: 1; width: 100%; }
 
     .view-seg {
       display: inline-flex;
@@ -859,6 +869,12 @@
         <textarea id="plainOutput" class="plain-output" readonly style="display:none;" placeholder="마크다운 문법이 제거된 순수 텍스트가 여기에 표시됩니다..."></textarea>
         <div id="imageView" class="image-view" style="display:none;">
           <img id="imageViewImg" alt="" title="더블클릭: 실제 크기 ↔ 맞춤" ondblclick="toggleImageActualSize()">
+        </div>
+        <div id="fileView" class="file-view">
+          <div class="fv-icon">📄</div>
+          <div class="fv-name" id="fileViewName">파일</div>
+          <div class="fv-msg">이 형식은 미리보기를 제공하지 않습니다. (그룹에 파일이 있다는 기록만 보관합니다)</div>
+          <div class="fv-type" id="fileViewType"></div>
         </div>
       </div>
     </div>
@@ -1451,6 +1467,16 @@
       });
     }
 
+    // 문서 타입 아이콘(md/image/file)
+    function docTypeIcon(d) {
+      if (d.type === 'image') {
+        return '🖼️';
+      }
+      if (d.type === 'file') {
+        return '📄';
+      }
+      return '📝';
+    }
     // 탭 하나 DOM 생성 (그룹 소속이면 왼쪽에 폴더 색 띠)
     function makeTab(d) {
       const tab = document.createElement('div');
@@ -1461,7 +1487,7 @@
 
       const icon = document.createElement('span');
       icon.className = 'doc-tab-type';
-      icon.textContent = (d.type === 'image') ? '🖼️' : '📝';
+      icon.textContent = docTypeIcon(d);
       tab.appendChild(icon);
 
       const title = document.createElement('span');
@@ -1589,17 +1615,20 @@
       renderTabs();
     }
 
-    // 문서 타입에 맞춰 본문을 렌더한다(md=편집+미리보기, image=이미지 뷰어)
+    // 문서 타입에 맞춰 본문을 렌더한다(md=편집+미리보기, image=이미지 뷰어, file=미리보기 미제공 라벨)
     let currentImageUrl = null;
+    function releaseImageUrl() {
+      if (currentImageUrl) {
+        URL.revokeObjectURL(currentImageUrl);   // 이전 objectURL 해제(누수 방지)
+        currentImageUrl = null;
+      }
+    }
     function renderDocView(doc) {
       if (doc.type === 'image') {
-        document.body.classList.add('image-doc-mode');
+        document.body.classList.add('doc-view-mode');
         const img = document.getElementById('imageViewImg');
         img.classList.remove('actual-size');
-        if (currentImageUrl) {
-          URL.revokeObjectURL(currentImageUrl);   // 이전 objectURL 해제(누수 방지)
-          currentImageUrl = null;
-        }
+        releaseImageUrl();
         img.removeAttribute('src');
         if (dbManager.db) {
           dbManager.getItem('imageblobs', doc.id).then(blob => {
@@ -1612,12 +1641,27 @@
         }
         document.getElementById('preview').style.display = 'none';
         document.getElementById('plainOutput').style.display = 'none';
+        document.getElementById('fileView').style.display = 'none';
         document.getElementById('imageView').style.display = 'flex';
         return;
       }
+      if (doc.type === 'file') {
+        // 미리보기를 제공하지 않는 형식(pdf 등) — 파일이 그룹에 있다는 것만 라벨로 표시(실물 저장 안 함)
+        document.body.classList.add('doc-view-mode');
+        releaseImageUrl();
+        document.getElementById('fileViewName').textContent = doc.fileName || doc.title || '파일';
+        document.getElementById('fileViewType').textContent = doc.fileType ? ('형식: ' + doc.fileType) : '';
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('plainOutput').style.display = 'none';
+        document.getElementById('imageView').style.display = 'none';
+        document.getElementById('fileView').style.display = 'flex';
+        return;
+      }
       // 마크다운 문서
-      document.body.classList.remove('image-doc-mode');
+      document.body.classList.remove('doc-view-mode');
+      releaseImageUrl();
       document.getElementById('imageView').style.display = 'none';
+      document.getElementById('fileView').style.display = 'none';
       // 미리보기/텍스트 표시 상태 복원
       document.getElementById('preview').style.display = (previewMode === 'text') ? 'none' : 'block';
       document.getElementById('plainOutput').style.display = (previewMode === 'text') ? 'block' : 'none';
@@ -2202,7 +2246,7 @@
 
       const title = document.createElement('div');
       title.className = 'dm-title';
-      title.textContent = ((d.type === 'image') ? '🖼️ ' : '') + (d.title || '제목 없음');
+      title.textContent = ((d.type === 'image' || d.type === 'file') ? (docTypeIcon(d) + ' ') : '') + (d.title || '제목 없음');
       if (isActive) {
         const badge = document.createElement('span');
         badge.className = 'dm-badge';
@@ -2229,6 +2273,8 @@
       meta.className = 'dm-meta';
       if (d.type === 'image') {
         meta.textContent = `${timeAgo(d.updatedAt)} · 이미지` + (d.imgName ? ` · ${d.imgName}` : '');
+      } else if (d.type === 'file') {
+        meta.textContent = `${timeAgo(d.updatedAt)} · 파일(미리보기 미제공)` + (d.fileName ? ` · ${d.fileName}` : '');
       } else {
         const len = (d.content || '').length;
         const prev = docPreview(d.content);
@@ -2987,20 +3033,25 @@ function hello() {
               const ext = fileExt(f.name);
               return ext === 'md' || ext === 'markdown' || ext === 'txt' || (f.type || '').startsWith('text/');
             };
+            const isImageFile = (f) => (f.type || '').startsWith('image/') || IMG_EXTS.includes(fileExt(f.name));
             const textFiles = dropped.filter(isTextFile);
-            const imageFiles = dropped.filter(f => (f.type || '').startsWith('image/') || IMG_EXTS.includes(fileExt(f.name)));
+            const imageFiles = dropped.filter(isImageFile);
+            const otherFiles = dropped.filter(f => !isTextFile(f) && !isImageFile(f));   // pdf 등 → 라벨
             const onModal = !!e.target.closest('#docManagerModal');
             const dropGroup = (onModal && dmActiveGroup && dmActiveGroup !== 'all' && dmActiveGroup !== '기타') ? dmActiveGroup : '';
-            // 텍스트 2개 이상 → md 문서 배치, 이미지만 있음 → 이미지 문서(에디터 본문에 드롭해도 이미지는 뷰어가 커버)
-            if (textFiles.length >= 2 || (imageFiles.length && textFiles.length === 0)) {
+            // 텍스트 2개 이상 → md 문서, 이미지 → 이미지 문서, 그 외 파일 → 라벨. (단일 텍스트만 있으면 아래 onText 로)
+            if (textFiles.length >= 2 || imageFiles.length || otherFiles.length) {
               e.preventDefault();
               e.stopPropagation();
               document.querySelectorAll('.drag-hover').forEach((el) => el.classList.remove('drag-hover'));
-              if (textFiles.length >= 2) {
+              if (textFiles.length) {
                 await importTextFilesAsDocs(textFiles);
               }
               if (imageFiles.length) {
                 await addImageDocs(imageFiles, dropGroup);
+              }
+              if (otherFiles.length) {
+                await addFileDocs(otherFiles, dropGroup);
               }
               return;
             }
@@ -3080,8 +3131,8 @@ function hello() {
 
     function saveToDB() {
       const doc = getActiveDoc();
-      if (!doc || doc.type === 'image') {
-        return;   // 이미지 문서는 editor.value 로 덮지 않는다(바이너리는 imageblobs 에 불변 저장)
+      if (!doc || doc.type === 'image' || doc.type === 'file') {
+        return;   // 이미지/파일 문서는 editor.value 로 덮지 않는다(md 전용 저장)
       }
       const prevTitle = doc.title;
       doc.content = editor.value;
@@ -3210,8 +3261,8 @@ function hello() {
             visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
           }
           const cur = getActiveDoc();
-          if (cur && cur.type === 'image') {
-            renderDocView(cur);   // 이미지 문서는 editor 병합 없이 뷰만 갱신
+          if (cur && (cur.type === 'image' || cur.type === 'file')) {
+            renderDocView(cur);   // 이미지/파일 문서는 editor 병합 없이 뷰만 갱신
           } else if (cur) {
             const remoteContent = cur.content;   // DB(다른 창)의 현재 내용
             if ((editing || localUnsaved) && !force) {
@@ -3363,6 +3414,47 @@ function hello() {
       event.target.value = '';   // 같은 파일 재선택 가능하게
     }
 
+    // 미리보기를 제공하지 않는 파일(pdf 등)을 '파일 라벨 문서'로 기록(실물 저장 안 함). id 반환.
+    function createFileDoc(file, folder) {
+      const doc = {
+        id: genDocId(),
+        title: (file.name || '파일'),
+        type: 'file',
+        fileName: file.name || '파일',
+        fileType: file.type || (fileExt(file.name) ? ('.' + fileExt(file.name)) : ''),
+        content: '',
+        customTitle: true,
+        folder: (folder || undefined),
+        updatedAt: Date.now()
+      };
+      docs.push(doc);
+      persistDoc(doc);   // 작은 메타만 저장(바이너리 없음)
+      return doc.id;
+    }
+    // 파일 라벨 문서들을 추가하고 첫 번째로 전환.
+    async function addFileDocs(fileList, folder) {
+      const files = Array.from(fileList || []);
+      if (!files.length) {
+        return;
+      }
+      saveToDB();
+      const newIds = [];
+      for (const file of files) {
+        try {
+          newIds.push(createFileDoc(file, folder || ''));
+        } catch (e) {
+          console.warn('파일 라벨 추가 실패:', file && file.name, e);
+        }
+      }
+      if (!newIds.length) {
+        return;
+      }
+      newIds.forEach(id => ensureVisible(id));
+      loadDoc(newIds[0]);
+      persistMeta();
+      showToast(`파일 ${newIds.length}개를 그룹에 기록했어요 (미리보기 미제공).${folder ? ` (‘${folder}’ 그룹)` : ''}`, 'info');
+    }
+
     // 폴더 파일 목록을 받아 그룹으로 불러온다. files: File[](webkitRelativePath 보유) 또는 {file, rel}[]
     // md 는 md 문서로, 이미지는 이미지 문서로(둘 다 같은 그룹) 각각 편입한다. (md는 md만 — 상대참조 자동 인라인 없음)
     async function importFolderFiles(files, groupName) {
@@ -3370,16 +3462,19 @@ function hello() {
       const group = groupName || ((list[0] && list[0].rel.split('/')[0]) || '폴더');
       const mdFiles = [];
       const imgFiles = [];
+      const otherFiles = [];
       for (const { file } of list) {
         const ext = fileExt(file.name);
         if (ext === 'md' || ext === 'markdown' || ext === 'txt') {
           mdFiles.push(file);
         } else if ((file.type || '').startsWith('image/') || IMG_EXTS.includes(ext)) {
           imgFiles.push(file);
+        } else {
+          otherFiles.push(file);   // pdf 등 미리보기 미제공 → 라벨로 기록
         }
       }
-      if (!mdFiles.length && !imgFiles.length) {
-        showToast(`'${group}' 폴더에 불러올 문서/이미지가 없습니다.`, 'warning');
+      if (!mdFiles.length && !imgFiles.length && !otherFiles.length) {
+        showToast(`'${group}' 폴더에 불러올 파일이 없습니다.`, 'warning');
         return;
       }
       saveToDB();   // 현재 편집 중 문서 보존
@@ -3405,10 +3500,26 @@ function hello() {
           console.warn('폴더 이미지 불러오기 실패:', file && file.name, e);
         }
       }
+      let fileAdded = 0;
+      for (const file of otherFiles) {
+        try {
+          createFileDoc(file, group);   // 미리보기 미제공 파일은 라벨로만 기록
+          fileAdded++;
+        } catch (e) {
+          console.warn('폴더 파일 라벨 실패:', file && file.name, e);
+        }
+      }
       persistMeta();
       renderTabs();
       openDocManager();   // 그룹으로 정리된 목록을 바로 보여줌
-      showToast(`📁 '${group}' 에서 문서 ${mdAdded}개${imgAdded ? `, 이미지 ${imgAdded}개` : ''}를 불러왔습니다. (📚에서 그룹별로 열어보세요)`, 'success', 4500);
+      const parts = [`문서 ${mdAdded}개`];
+      if (imgAdded) {
+        parts.push(`이미지 ${imgAdded}개`);
+      }
+      if (fileAdded) {
+        parts.push(`기타 파일 ${fileAdded}개`);
+      }
+      showToast(`📁 '${group}' 에서 ${parts.join(', ')}를 불러왔습니다. (📚에서 그룹별로 열어보세요)`, 'success', 4500);
     }
     async function loadFolder(event) {
       const files = Array.from(event.target.files || []);
