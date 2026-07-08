@@ -443,10 +443,11 @@
     .dm-empty { padding: 2.5rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
     /* 행의 그룹 이동 셀렉트 · 폴더 태그 */
     .dm-group-select {
-      flex-shrink: 0; max-width: 130px;
+      flex-shrink: 0; max-width: 200px;
       font-size: 0.76rem; padding: 0.28rem 0.35rem;
       border: 1px solid var(--border); border-radius: 0.4rem;
       background: var(--editor-bg); color: var(--text); cursor: pointer;
+      text-overflow: ellipsis;   /* 긴 그룹명은 …으로 잘리게(전체는 title 툴팁) */
     }
     .dm-group-select:hover { border-color: var(--accent); }
     .dm-folder-tag { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.68rem; font-weight: 700; margin-left: 0.45rem; color: var(--text-muted); vertical-align: middle; }
@@ -899,7 +900,7 @@
           <div class="dm-list" id="docManagerList"></div>
           <div class="dm-footer">
             <button class="btn" onclick="newDocFromManager()">＋ 새 문서</button>
-            <span style="font-size:0.78rem; color:var(--text-muted);">☑ 탭 표시 · 클릭 → 전환 · 드래그 → 순서 이동 · [그룹▾] 이동 · 🗑 삭제</span>
+            <span style="font-size:0.78rem; color:var(--text-muted);">☑ 탭 표시 · 더블클릭 → 전환 · 드래그 → 순서·그룹 이동 · [그룹▾] 이동 · 🗑 삭제</span>
           </div>
         </div>
       </div>
@@ -1358,7 +1359,9 @@
         e.dataTransfer.effectAllowed = 'move';
         try {
           e.dataTransfer.setData('text/plain', dragDocId);
-        } catch (err) { /* IE 등 무시 */ }
+        } catch (err) {
+          console.debug('dataTransfer.setData 미지원(무시):', err);
+        }
         el.classList.add('dragging');
       });
       container.addEventListener('dragend', () => {
@@ -2025,7 +2028,7 @@
     function buildGroupSelect(currentFolder) {
       const sel = document.createElement('select');
       sel.className = 'dm-group-select';
-      sel.title = '그룹 이동';
+      sel.title = currentFolder ? ('그룹: ' + currentFolder + ' (바꾸려면 선택)') : '그룹 없음 (그룹으로 이동하려면 선택)';
       sel.add(new Option('🗂 기타', ''));
       existingFolders().forEach(f => sel.add(new Option('📁 ' + f, f)));
       sel.add(new Option('＋ 새 그룹…', '__new__'));
@@ -3274,7 +3277,9 @@ function hello() {
           docs.push(doc);
           persistDoc(doc);
           newIds.push(doc.id);
-        } catch (e) { /* 개별 파일 실패는 건너뜀 */ }
+        } catch (e) {
+          console.warn('텍스트 파일 불러오기 실패:', file && file.name, e);
+        }
       }
       if (!newIds.length) {
         showToast('불러올 수 있는 텍스트 파일이 없습니다.', 'warning');
@@ -3286,7 +3291,9 @@ function hello() {
           try {
             const token = addImage(await readAsDataURL(img), img.name);
             lastDoc.content += `\n\n![${img.name}](img:${token})\n`;
-          } catch (e) { /* 개별 이미지 실패 무시 */ }
+          } catch (e) {
+            console.warn('드롭 이미지 첨부 실패:', img && img.name, e);
+          }
         }
         persistDoc(lastDoc);
       }
@@ -3314,7 +3321,9 @@ function hello() {
             const nm = baseName(rel).toLowerCase();
             (nameMap[nm] = nameMap[nm] || []).push(token);
             imgCount++;
-          } catch (e) {}
+          } catch (e) {
+            console.warn('폴더 이미지 불러오기 실패:', file && file.name, e);
+          }
         }
       }
       if (!mdFiles.length) {
@@ -3332,7 +3341,9 @@ function hello() {
           docs.push(doc);
           persistDoc(doc);   // 탭엔 자동 노출하지 않고(뒤섞임 방지) 문서 관리자 그룹에만 추가
           added++;
-        } catch (e) {}
+        } catch (e) {
+          console.warn('폴더 문서 불러오기 실패:', file && file.name, e);
+        }
       }
       persistMeta();
       renderTabs();
