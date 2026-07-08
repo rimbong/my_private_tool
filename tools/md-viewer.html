@@ -204,8 +204,13 @@
     .modal-body {
       flex: 1;
       overflow-y: auto;
-      padding: 2rem;
+      padding: 1.5rem 1.25rem;   /* 좌우 여백을 줄여 표 등이 넓게 보이도록 */
       background: var(--header-bg);
+    }
+    /* 크게보기 모달의 본문은 폭 제한 없이 모달 폭을 꽉 채운다(표 찌그러짐 방지) */
+    .modal-body .markdown-body {
+      max-width: 100%;
+      padding: 0;
     }
 
     /* --- 문서 탭 바 --- */
