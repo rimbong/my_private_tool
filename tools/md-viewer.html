@@ -408,6 +408,7 @@
     }
     .dm-side-item:hover { background: var(--editor-bg); }
     .dm-side-item.active { background: var(--accent); color: #fff; }
+    .dm-side-item.dm-drop-target, .dm-side-newgroup.dm-drop-target { box-shadow: inset 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
     .dm-side-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dm-side-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .dm-side-count { font-size: 0.72rem; opacity: 0.8; font-variant-numeric: tabular-nums; }
@@ -521,6 +522,8 @@
     .dm-item.drop-after { box-shadow: inset 0 -3px 0 var(--accent); }
     .doc-tab.drop-before { box-shadow: inset 3px 0 0 var(--accent); }
     .doc-tab.drop-after { box-shadow: inset -3px 0 0 var(--accent); }
+    /* 가운데에 겹쳐 그룹으로 묶기 표시 */
+    .doc-tab.drop-group { box-shadow: inset 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--editor-bg)); }
 
     main {
       flex: 1;
@@ -1125,7 +1128,7 @@
         return;
       }
       list._delegated = true;
-      attachReorder(list, '.doc-tab[data-id]', true);   // 탭 드래그로 순서 이동(가로)
+      attachReorder(list, '.doc-tab[data-id]', true, true);   // 탭 드래그: 가장자리=순서 이동, 가운데=그룹(엣지식)
       list.addEventListener('click', (e) => {
         // 그룹 라벨의 ✕ → 그룹 전체 닫기 (접기 토글보다 먼저 가로챔)
         const gclose = e.target.closest('.tgp-close');
@@ -1166,12 +1169,48 @@
         switchDoc(id);
       });
       list.addEventListener('dblclick', (e) => {
+        // 그룹 라벨 더블클릭 → 그룹 이름 변경
+        const pill = e.target.closest('.tab-group-pill[data-folder]');
+        if (pill && list.contains(pill)) {
+          renameGroup(pill.dataset.folder);
+          return;
+        }
         const tab = e.target.closest('.doc-tab[data-id]');
         if (tab && list.contains(tab)) {
           renameDoc(tab.dataset.id);
         }
       });
     }
+    // 그룹 이름 변경(그 그룹 문서 전부의 folder 갱신). 기존 그룹명으로 바꾸면 그 그룹과 합쳐짐.
+    async function renameGroup(oldName) {
+      const name = ((await promptModal('그룹 이름 변경:', oldName)) || '').trim();
+      if (!name || name === oldName) {
+        return;
+      }
+      let n = 0;
+      docs.forEach(d => {
+        if ((d.folder || '') === oldName) {
+          d.folder = name;
+          d.updatedAt = Date.now();
+          persistDoc(d);
+          n++;
+        }
+      });
+      if (collapsedTabGroups.has(oldName)) {
+        collapsedTabGroups.delete(oldName);
+        collapsedTabGroups.add(name);
+      }
+      if (n) {
+        renderTabs();
+        persistMeta();
+        showToast(`그룹 이름을 ‘${name}’(으)로 바꿨어요.`, 'success');
+      }
+      const dm = document.getElementById('docManagerModal');
+      if (dm && dm.style.display === 'flex') {
+        renderDocManager();
+      }
+    }
+    /* 그룹 색 배정
     /* 그룹 색 배정
        구별 잘 되는 12색 팔레트(hue)를 쓰고, '현재 존재하는 그룹들끼리는 서로 다른 색'이 되도록
        충돌을 회피한다(같은 팔레트 칸이면 다음 빈 칸으로). 같은 그룹 이름은 (그룹 구성이 그대로면) 항상 같은 색.
@@ -1226,7 +1265,59 @@
       return !!a && !!b && (a.folder || '') === (b.folder || '');
     }
     function clearDropMarks(container) {
-      container.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
+      container.querySelectorAll('.drop-before, .drop-after, .drop-group').forEach(el => el.classList.remove('drop-before', 'drop-after', 'drop-group'));
+    }
+    // 두 탭을 그룹으로 묶을 수 있는가(이미 같은 이름 그룹이면 불필요)
+    function canGroup(idA, idB) {
+      const a = docs.find(d => d.id === idA);
+      const b = docs.find(d => d.id === idB);
+      if (!a || !b) {
+        return false;
+      }
+      if (a.folder && a.folder === b.folder) {
+        return false;   // 이미 같은 그룹
+      }
+      return true;
+    }
+    // 중복되지 않는 새 그룹 이름 생성('새 그룹', '새 그룹 2', …)
+    function uniqueGroupName() {
+      const existing = new Set(docs.map(d => d.folder).filter(Boolean));
+      const base = '새 그룹';
+      let name = base;
+      let n = 1;
+      while (existing.has(name)) {
+        n++;
+        name = base + ' ' + n;
+      }
+      return name;
+    }
+    // 엣지식: 끌던 탭을 대상 탭에 '겹쳐' 그룹으로 묶는다.
+    // 대상이 이미 그룹이면 합류, 둘 다 무그룹이면 새 그룹을 만들어 둘 다 편입.
+    function groupTabs(draggedId, targetId) {
+      const a = docs.find(d => d.id === draggedId);
+      const b = docs.find(d => d.id === targetId);
+      if (!a || !b || !canGroup(draggedId, targetId)) {
+        return;
+      }
+      let target;
+      if (b.folder) {
+        target = b.folder;
+      } else {
+        target = uniqueGroupName();
+        b.folder = target;
+        b.updatedAt = Date.now();
+        persistDoc(b);
+      }
+      a.folder = target;
+      a.updatedAt = Date.now();
+      persistDoc(a);
+      persistMeta();
+      renderTabs();
+      const dm = document.getElementById('docManagerModal');
+      if (dm && dm.style.display === 'flex') {
+        renderDocManager();
+      }
+      showToast(`‘${target}’ 그룹으로 묶었어요. (라벨 더블클릭으로 이름 변경)`, 'success');
     }
     // docs[] 에서 draggedId 를 targetId 앞/뒤로 이동
     function reorderDocs(draggedId, targetId, before) {
@@ -1252,7 +1343,7 @@
       }
     }
     // 컨테이너(탭바/목록)에 드래그 재정렬 리스너를 1회 부착. itemSel: 대상 요소 셀렉터, horizontal: 가로배치 여부
-    function attachReorder(container, itemSel, horizontal) {
+    function attachReorder(container, itemSel, horizontal, allowGroup) {
       container.addEventListener('dragstart', (e) => {
         const el = e.target.closest(itemSel);
         if (!el || !container.contains(el)) {
@@ -1274,35 +1365,67 @@
         dragDocId = null;
         container.querySelectorAll('.dragging').forEach(el => el.classList.remove('dragging'));
         clearDropMarks(container);
+        document.querySelectorAll('.dm-drop-target').forEach(el => el.classList.remove('dm-drop-target'));
       });
       container.addEventListener('dragover', (e) => {
         if (!dragDocId) {
           return;
         }
         const el = e.target.closest(itemSel);
-        if (!el || el.dataset.id === dragDocId || !sameGroup(dragDocId, el.dataset.id)) {
+        if (!el || el.dataset.id === dragDocId) {
+          return;
+        }
+        const r = el.getBoundingClientRect();
+        let mode = null;   // 'group' | 'before' | 'after'
+        if (allowGroup && horizontal) {
+          // 엣지식: 가운데(30~70%)=그룹, 가장자리=순서 이동
+          const ratio = (e.clientX - r.left) / r.width;
+          if (ratio >= 0.30 && ratio <= 0.70 && canGroup(dragDocId, el.dataset.id)) {
+            mode = 'group';
+          } else if (sameGroup(dragDocId, el.dataset.id)) {
+            mode = ratio < 0.5 ? 'before' : 'after';
+          }
+        } else if (sameGroup(dragDocId, el.dataset.id)) {
+          const before = horizontal ? (e.clientX - r.left) < r.width / 2 : (e.clientY - r.top) < r.height / 2;
+          mode = before ? 'before' : 'after';
+        }
+        if (!mode) {
           return;
         }
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
-        const r = el.getBoundingClientRect();
-        const before = horizontal ? (e.clientX - r.left) < r.width / 2 : (e.clientY - r.top) < r.height / 2;
         clearDropMarks(container);
-        el.classList.add(before ? 'drop-before' : 'drop-after');
+        el.classList.add(mode === 'group' ? 'drop-group' : (mode === 'before' ? 'drop-before' : 'drop-after'));
       });
       container.addEventListener('drop', (e) => {
         if (!dragDocId) {
           return;
         }
         const el = e.target.closest(itemSel);
-        if (!el || el.dataset.id === dragDocId || !sameGroup(dragDocId, el.dataset.id)) {
+        if (!el || el.dataset.id === dragDocId) {
+          return;
+        }
+        const r = el.getBoundingClientRect();
+        const dragged = dragDocId;
+        dragDocId = null;
+        if (allowGroup && horizontal) {
+          const ratio = (e.clientX - r.left) / r.width;
+          if (ratio >= 0.30 && ratio <= 0.70 && canGroup(dragged, el.dataset.id)) {
+            e.preventDefault();
+            groupTabs(dragged, el.dataset.id);
+            return;
+          }
+          if (sameGroup(dragged, el.dataset.id)) {
+            e.preventDefault();
+            reorderDocs(dragged, el.dataset.id, ratio < 0.5);
+          }
+          return;
+        }
+        if (!sameGroup(dragged, el.dataset.id)) {
           return;
         }
         e.preventDefault();
-        const r = el.getBoundingClientRect();
         const before = horizontal ? (e.clientX - r.left) < r.width / 2 : (e.clientY - r.top) < r.height / 2;
-        const dragged = dragDocId;
-        dragDocId = null;
         reorderDocs(dragged, el.dataset.id, before);
       });
     }
@@ -1717,6 +1840,7 @@
       }
       listEl._delegated = true;
       attachReorder(listEl, '.dm-item[data-id]', false);   // 목록 드래그로 순서 이동(세로)
+      setupSidebarDrop();   // 목록 문서를 사이드바 그룹으로 드래그해 이동
       listEl.addEventListener('click', (e) => {
         // 체크박스·그룹 셀렉트 클릭은 change 에서 처리
         if (e.target.closest('.dm-check') || e.target.closest('.dm-group-select')) {
@@ -1734,7 +1858,15 @@
           return;
         }
         if (e.target.closest('.dm-main')) {
-          dmSelectMode ? toggleSelectDoc(id) : openFromManager(id);
+          // 행 클릭은 체크박스와 동일하게: 선택모드=선택, 일반=탭 표시 토글(현재 문서로 전환하지 않음)
+          dmSelectMode ? toggleSelectDoc(id) : toggleVisibleFromManager(id);
+        }
+      });
+      // 더블클릭 → 그 문서를 현재 문서로 열기(의도적 전환)
+      listEl.addEventListener('dblclick', (e) => {
+        const item = e.target.closest('.dm-item[data-id]');
+        if (item && listEl.contains(item) && !e.target.closest('.dm-check, .dm-group-select, .dm-act')) {
+          openFromManager(item.dataset.id);
         }
       });
       listEl.addEventListener('change', (e) => {
@@ -1758,6 +1890,56 @@
         dmSelectMode ? toggleSelectDoc(item.dataset.id) : toggleVisibleFromManager(item.dataset.id);
       });
     }
+    // 목록의 문서를 사이드바 그룹(또는 ＋새 그룹)에 떨어뜨려 그 그룹으로 이동
+    function setupSidebarDrop() {
+      const side = document.getElementById('dmSidebar');
+      if (!side || side._dropSetup) {
+        return;
+      }
+      side._dropSetup = true;
+      const dropTargetOf = (t) => t.closest('.dm-side-item[data-group], .dm-side-newgroup');
+      side.addEventListener('dragover', (e) => {
+        if (!dragDocId) {
+          return;
+        }
+        const it = dropTargetOf(e.target);
+        if (!it || it.dataset.group === 'all') {
+          return;   // '전체'로는 이동 개념이 없음
+        }
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        side.querySelectorAll('.dm-drop-target').forEach(el => el.classList.remove('dm-drop-target'));
+        it.classList.add('dm-drop-target');
+      });
+      side.addEventListener('drop', async (e) => {
+        if (!dragDocId) {
+          return;
+        }
+        const it = dropTargetOf(e.target);
+        if (!it || it.dataset.group === 'all') {
+          return;
+        }
+        e.preventDefault();
+        side.querySelectorAll('.dm-drop-target').forEach(el => el.classList.remove('dm-drop-target'));
+        // 선택모드에서 끌던 문서가 선택에 포함돼 있으면 선택 전체를, 아니면 그 문서 하나만 이동
+        const ids = (dmSelectMode && dmSelected.has(dragDocId) && dmSelected.size > 0) ? Array.from(dmSelected) : [dragDocId];
+        dragDocId = null;
+        if (it.classList.contains('dm-side-newgroup')) {
+          const name = ((await promptModal('새 그룹 이름을 입력하세요:', '')) || '').trim();
+          if (name) {
+            moveDocsToGroup(ids, name);
+          }
+          return;
+        }
+        const key = it.dataset.group;
+        if (key === '기타') {
+          moveDocsToGroup(ids, '');   // 그룹 해제
+        } else if (key) {
+          moveDocsToGroup(ids, key);
+        }
+      });
+    }
+
     // 현재 존재하는 폴더(그룹) 이름 목록
     function existingFolders() {
       return Array.from(new Set(docs.map(d => d.folder).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ko'));
@@ -1783,6 +1965,7 @@
       const addItem = (key, label, count, dotColor) => {
         const it = document.createElement('div');
         it.className = 'dm-side-item' + (dmActiveGroup === key ? ' active' : '');
+        it.dataset.group = key;   // 드롭 대상 식별용
         it.onclick = () => selectDmGroup(key);
         if (dotColor) {
           const dt = document.createElement('span');
@@ -1885,9 +2068,9 @@
         showToast(`${n}개 문서를 ${target ? ('‘' + target + '’ 그룹으로') : '그룹 해제(기타)로'} 이동했어요.`, 'success');
       }
     }
-    function handleRowGroupChange(id, val) {
+    async function handleRowGroupChange(id, val) {
       if (val === '__new__') {
-        const name = (window.prompt('새 그룹 이름을 입력하세요') || '').trim();
+        const name = ((await promptModal('새 그룹 이름을 입력하세요:', '')) || '').trim();
         if (!name) {
           renderDocManager();   // 취소 → 셀렉트 원복
           return;
@@ -1897,7 +2080,7 @@
         moveDocsToGroup([id], val);   // '' → 기타
       }
     }
-    function onBulkGroupChange(sel) {
+    async function onBulkGroupChange(sel) {
       const v = sel.value;
       sel.value = '';
       if (!v) {
@@ -1909,7 +2092,7 @@
         return;
       }
       if (v === '__new__') {
-        const name = (window.prompt('새 그룹 이름을 입력하세요') || '').trim();
+        const name = ((await promptModal('새 그룹 이름을 입력하세요:', '')) || '').trim();
         if (!name) {
           return;
         }
