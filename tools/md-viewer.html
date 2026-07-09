@@ -178,6 +178,14 @@
     /* 표시 시 부드러운 fade-in (display:none↔flex 전환에서도 동작하도록 transition 대신 keyframe 사용) */
     @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
     .modal[style*="flex"], .modal.center[style*="flex"] { animation: modalFadeIn .16s ease-out; }
+    /* 크게보기가 열리면 뒤 콘텐츠를 브라우저 찾기(Ctrl+F)에서 제외 → 모달 미리보기만 검색됨.
+       모달이 80% 불투명이라 시각 변화는 없다. */
+    body.preview-modal-open > header,
+    body.preview-modal-open > .doc-tabs,
+    body.preview-modal-open > main,
+    body.preview-modal-open > footer {
+      visibility: hidden;
+    }
 
     .modal-content {
       background: var(--header-bg);
@@ -3682,6 +3690,7 @@ function hello() {
       const modal = document.getElementById('previewModal');
       modal.style.display = 'block';
       document.body.style.overflow = 'hidden'; // Prevent scrolling background
+      document.body.classList.add('preview-modal-open'); // 뒤 콘텐츠를 Ctrl+F 검색 대상에서 제외
     }
 
     // 오른쪽 미리보기/텍스트 추출 영역을 더블클릭하면 크게 보기 실행 (모드 무관)
@@ -3710,6 +3719,7 @@ function hello() {
     function closeModal() {
       document.getElementById('previewModal').style.display = 'none';
       document.body.style.overflow = '';
+      document.body.classList.remove('preview-modal-open');
     }
 
     function printMarkdown() {
