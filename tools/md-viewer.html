@@ -795,18 +795,29 @@
         height: auto !important;
       }
 
-      /* 본문: 폭은 @page 여백이 잡아주므로 채우되, 순수 검정 대신 부드러운 먹색 +
-         화면보다 여유 있는 줄간격으로 딱딱하지 않게 한다. */
+      /* 본문: 폭은 @page 여백이 잡아주므로 채우되, 순수 검정 대신 부드러운 먹색.
+         인쇄 폭(A4-여백)이 화면보다 좁아 큰 글자가 2줄로 접히므로 본문 글자를
+         약간 줄여(10.5pt) 한 줄로 깔끔하게 들어오게 한다. */
       .markdown-body {
         padding: 0 !important;
         margin: 0 auto !important;
         max-width: 100% !important;
         background: white !important;
         color: #1f2328 !important;                       /* 순수 #000 대신 부드러운 먹색 */
-        line-height: 1.65 !important;                    /* 읽기 좋은 줄간격 */
+        font-size: 10pt !important;                      /* 화면보다 작게 (인쇄 양쪽 여백만큼 폭이 좁아 줄바꿈 방지) */
+        line-height: 1.55 !important;                    /* 작아진 글자에 맞춘 줄간격 */
         -webkit-print-color-adjust: exact !important;   /* Chrome/Edge/Safari: 배경색 강제 인쇄 */
         print-color-adjust: exact !important;            /* 표준(Firefox 등) */
       }
+
+      /* 제목: 기본(h1 2em 등)은 인쇄 폭에서 너무 커 2줄로 접힌다 → 단계별로 줄여
+         한 줄에 담기게 하고, 위/아래 간격도 인쇄에 맞게 정리한다. */
+      .markdown-body h1 { font-size: 1.6em !important; }
+      .markdown-body h2 { font-size: 1.35em !important; }
+      .markdown-body h3 { font-size: 1.15em !important; }
+      .markdown-body h4,
+      .markdown-body h5,
+      .markdown-body h6 { font-size: 1em !important; }
 
       /* 표: 화면 기본 스타일엔 테두리가 없어 인쇄하면 칸 구분이 흐릿하다 →
          옅은 회색 테두리 + 머리행 배경으로 문서답게 또렷하게. */
