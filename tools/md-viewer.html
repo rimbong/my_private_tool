@@ -179,12 +179,15 @@
     @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
     .modal[style*="flex"], .modal.center[style*="flex"] { animation: modalFadeIn .16s ease-out; }
     /* 크게보기가 열리면 뒤 콘텐츠를 브라우저 찾기(Ctrl+F)에서 제외 → 모달 미리보기만 검색됨.
-       모달이 80% 불투명이라 시각 변화는 없다. */
-    body.preview-modal-open > header,
-    body.preview-modal-open > .doc-tabs,
-    body.preview-modal-open > main,
-    body.preview-modal-open > footer {
-      visibility: hidden;
+       모달이 80% 불투명이라 시각 변화는 없다. @media screen 한정: 인쇄 미디어는
+       모달을 숨기고 main의 #preview 를 인쇄하므로 여기서 main을 숨기면 백지가 된다. */
+    @media screen {
+      body.preview-modal-open > header,
+      body.preview-modal-open > .doc-tabs,
+      body.preview-modal-open > main,
+      body.preview-modal-open > footer {
+        visibility: hidden;
+      }
     }
 
     .modal-content {
@@ -764,6 +767,12 @@
       size: A4;
       margin: 14mm;
     }
+    /* 인쇄/PDF 저장 시 페이지 프레임: A4 + 넉넉한 여백으로 본문 폭·줄길이를 읽기 좋게 고정 */
+    @page {
+      size: A4;
+      margin: 18mm;
+    }
+
     @media print {
       header, .editor-container, .resizer, .modal-header, .action-group, .btn, .preview-toolbar, .doc-tabs {
         display: none !important;
@@ -786,14 +795,41 @@
         height: auto !important;
       }
 
+      /* 본문: 폭은 @page 여백이 잡아주므로 채우되, 순수 검정 대신 부드러운 먹색 +
+         화면보다 여유 있는 줄간격으로 딱딱하지 않게 한다. */
       .markdown-body {
         padding: 0 !important;
-        margin: 0 !important;
+        margin: 0 auto !important;
         max-width: 100% !important;
         background: white !important;
-        color: black !important;
+        color: #1f2328 !important;                       /* 순수 #000 대신 부드러운 먹색 */
+        line-height: 1.65 !important;                    /* 읽기 좋은 줄간격 */
         -webkit-print-color-adjust: exact !important;   /* Chrome/Edge/Safari: 배경색 강제 인쇄 */
         print-color-adjust: exact !important;            /* 표준(Firefox 등) */
+      }
+
+      /* 표: 화면 기본 스타일엔 테두리가 없어 인쇄하면 칸 구분이 흐릿하다 →
+         옅은 회색 테두리 + 머리행 배경으로 문서답게 또렷하게. */
+      .markdown-body table {
+        border-collapse: collapse !important;
+      }
+      .markdown-body th,
+      .markdown-body td {
+        border: 1px solid #d0d7de !important;
+        padding: 6px 10px !important;
+      }
+      .markdown-body th {
+        background: #f6f8fa !important;
+      }
+
+      /* 코드·인용도 옅은 배경/테두리로 화면 느낌을 유지 */
+      .markdown-body pre,
+      .markdown-body code {
+        background: #f6f8fa !important;
+      }
+      .markdown-body blockquote {
+        color: #57606a !important;
+        border-left: 3px solid #d0d7de !important;
       }
 
       /* 화면 흐름과 자연스럽게 일치: 코드블록·표·이미지·인용은 페이지 중간에서 자르지 않고,
@@ -819,7 +855,7 @@
 
       body {
         background: white !important;
-        color: black !important;
+        color: #1f2328 !important;
         overflow: visible !important;
         height: auto !important;
       }
