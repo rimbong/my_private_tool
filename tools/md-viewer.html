@@ -425,6 +425,13 @@
     .dm-side-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dm-side-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .dm-side-count { font-size: 0.72rem; opacity: 0.8; font-variant-numeric: tabular-nums; }
+    .dm-side-rename {
+      flex-shrink: 0; border: none; background: transparent; cursor: pointer;
+      font-size: 0.78rem; padding: 0 0.15rem; line-height: 1; border-radius: 0.3rem;
+      opacity: 0; transition: opacity 0.12s;
+    }
+    .dm-side-item:hover .dm-side-rename { opacity: 0.85; }
+    .dm-side-rename:hover { opacity: 1 !important; background: rgba(127,127,127,0.2); }
     .dm-side-sep { height: 1px; background: var(--border); margin: 0.35rem 0.25rem; }
     .dm-side-newgroup {
       margin-top: 0.5rem; padding: 0.5rem 0.6rem; border-radius: 0.5rem;
@@ -834,7 +841,6 @@
           <span class="ds-track"><span class="ds-knob"></span></span>
           <span class="ds-label ds-right">📎 이어붙이기</span>
         </span>
-        <button class="btn" onclick="compactInlineImages()" title="본문에 길게 박힌 data: 이미지를 짧은 토큰으로 접습니다">🖼️ 이미지 접기</button>
         <input type="file" id="fileInput" class="file-input" accept=".md,.txt" onchange="loadFile(event)">
         <input type="file" id="folderInput" class="file-input" webkitdirectory directory multiple onchange="loadFolder(event)">
         <input type="file" id="imgDocInput" class="file-input" accept="image/*" multiple onchange="onImgDocPick(event)">
@@ -1020,19 +1026,6 @@
       });
       return { text: out, count };
     }
-    // 헤더 '이미지 접기' 버튼: 현재 편집 중인 본문을 즉시 접기
-    function compactInlineImages() {
-      const { text, count } = foldDataImages(editor.value);
-      if (count) {
-        editor.value = text;
-        updatePreview();
-        saveToDB();
-        showToast(`이미지 ${count}개를 토큰으로 접었습니다.`, 'success');
-      } else {
-        showToast('접을 인라인 이미지(data:)가 없습니다.', 'info');
-      }
-    }
-
     function toggleDropMode() {
       appendMode = !appendMode;
       dropModeToggle.classList.toggle('on', appendMode);
@@ -1217,12 +1210,7 @@
         switchDoc(id);
       });
       list.addEventListener('dblclick', (e) => {
-        // 그룹 라벨 더블클릭 → 그룹 이름 변경
-        const pill = e.target.closest('.tab-group-pill[data-folder]');
-        if (pill && list.contains(pill)) {
-          renameGroup(pill.dataset.folder);
-          return;
-        }
+        // 탭 더블클릭 → 문서 이름 변경 (그룹 이름 변경은 문서관리 사이드바의 ✏️ 로)
         const tab = e.target.closest('.doc-tab[data-id]');
         if (tab && list.contains(tab)) {
           renameDoc(tab.dataset.id);
@@ -1248,6 +1236,9 @@
         collapsedTabGroups.delete(oldName);
         collapsedTabGroups.add(name);
       }
+      if (dmActiveGroup === oldName) {
+        dmActiveGroup = name;   // 문서관리에서 그 그룹을 보던 중이면 새 이름으로 따라감
+      }
       if (n) {
         renderTabs();
         persistMeta();
@@ -1258,7 +1249,6 @@
         renderDocManager();
       }
     }
-    /* 그룹 색 배정
     /* 그룹 색 배정
        구별 잘 되는 12색 팔레트(hue)를 쓰고, '현재 존재하는 그룹들끼리는 서로 다른 색'이 되도록
        충돌을 회피한다(같은 팔레트 칸이면 다음 빈 칸으로). 같은 그룹 이름은 (그룹 구성이 그대로면) 항상 같은 색.
@@ -2105,6 +2095,18 @@
         c.className = 'dm-side-count';
         c.textContent = count;
         it.appendChild(c);
+        if (dotColor) {
+          // 실제 폴더 그룹만 이름 변경 가능(전체/기타 제외)
+          const ren = document.createElement('button');
+          ren.className = 'dm-side-rename';
+          ren.textContent = '✏️';
+          ren.title = '그룹 이름 변경';
+          ren.onclick = (e) => {
+            e.stopPropagation();
+            renameGroup(key);
+          };
+          it.appendChild(ren);
+        }
         side.appendChild(it);
       };
       addItem('all', '📄 전체', docs.length, null);
