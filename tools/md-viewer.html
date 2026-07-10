@@ -641,11 +641,53 @@
     .file-view .fv-name { font-size: 1.05rem; font-weight: 700; color: var(--text); word-break: break-all; max-width: 90%; }
     .file-view .fv-msg { font-size: 0.9rem; }
     .file-view .fv-type { font-size: 0.8rem; }
+    /* HTML 뷰어(안전 렌더): iframe 을 영역 전체로 채운다 */
+    .html-view { width: 100%; height: 100%; background: #fff; }
+    .html-view iframe { width: 100%; height: 100%; border: none; display: block; background: #fff; }
     /* 이미지/파일 문서 모드: 편집 UI 숨기고 우측 뷰를 전폭으로 */
     body.doc-view-mode #editorContainer,
     body.doc-view-mode #resizer,
     body.doc-view-mode .preview-toolbar { display: none !important; }
     body.doc-view-mode .preview-container { flex: 1; width: 100%; }
+
+    /* 빈 상태(열린 문서 없음): 편집/미리보기 숨기고 드롭 존을 보여준다.
+       예전처럼 '제목 없음' 빈 문서를 자동 생성하지 않고, 여기로 파일을 끌어다 놓게 한다. */
+    #emptyState { display: none; }
+    body.no-doc #editorContainer,
+    body.no-doc #resizer,
+    body.no-doc .preview-container { display: none !important; }
+    body.no-doc #emptyState {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      box-sizing: border-box;
+    }
+    .empty-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55rem;
+      max-width: 440px;
+      text-align: center;
+      padding: 2.6rem 2rem;
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      background: var(--editor-bg);
+      color: var(--text-muted);
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .empty-ico { font-size: 3rem; line-height: 1; }
+    .empty-title { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+    .empty-sub { font-size: 0.9rem; line-height: 1.6; }
+    .empty-sub b { color: var(--text); }
+    .empty-actions { display: flex; gap: 0.5rem; margin-top: 0.7rem; flex-wrap: wrap; justify-content: center; }
+    /* 파일을 이 영역 위로 끌면 강조 */
+    #emptyState.drag-hover .empty-card {
+      border-color: var(--accent);
+      color: var(--text);
+    }
 
     .view-seg {
       display: inline-flex;
@@ -881,6 +923,7 @@
         <button class="btn" onclick="document.getElementById('fileInput').click()">파일 열기</button>
         <button class="btn" onclick="document.getElementById('folderInput').click()" title="폴더를 통째로 열어 폴더별 그룹으로 봅니다 (.md + 참조 이미지)">📁 폴더 열기</button>
         <button class="btn" onclick="document.getElementById('imgDocInput').click()" title="이미지 파일(png/jpg 등)을 그룹의 문서로 추가해 뷰어로 봅니다">🖼️ 이미지 추가</button>
+        <button class="btn" onclick="document.getElementById('htmlDocInput').click()" title="HTML 파일(.html)을 안전 렌더(스크립트 차단) 뷰어로 추가합니다">🌐 HTML 추가</button>
         <button class="btn" onclick="saveFile()">저장</button>
         <span class="drop-switch" id="dropModeToggle" role="switch" aria-checked="false" tabindex="0" onclick="toggleDropMode()" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleDropMode();}" title="드래그앤드롭 시 동작 방식: 현재 탭 덮어쓰기 ↔ 끝에 이어붙이기">
           <span class="ds-cap">드롭</span>
@@ -891,6 +934,7 @@
         <input type="file" id="fileInput" class="file-input" accept=".md,.txt" onchange="loadFile(event)">
         <input type="file" id="folderInput" class="file-input" webkitdirectory directory multiple onchange="loadFolder(event)">
         <input type="file" id="imgDocInput" class="file-input" accept="image/*" multiple onchange="onImgDocPick(event)">
+        <input type="file" id="htmlDocInput" class="file-input" accept=".html,.htm,text/html" multiple onchange="onHtmlDocPick(event)">
       </div>
     </div>
     <div class="action-group">
@@ -941,6 +985,22 @@
           <div class="fv-name" id="fileViewName">파일</div>
           <div class="fv-msg">이 형식은 미리보기를 제공하지 않습니다. (그룹에 파일이 있다는 기록만 보관합니다)</div>
           <div class="fv-type" id="fileViewType"></div>
+        </div>
+        <div id="htmlView" class="html-view" style="display:none;">
+          <!-- 안전 렌더: sandbox="" 로 스크립트/폼/외부이동 차단, HTML+CSS 만 표시 -->
+          <iframe id="htmlViewFrame" sandbox="" referrerpolicy="no-referrer" title="HTML 미리보기"></iframe>
+        </div>
+      </div>
+    </div>
+    <!-- 열린 문서가 없을 때: 드래그앤드롭 존(자동 새 문서 생성 대신 이 상태를 보여줌) -->
+    <div id="emptyState">
+      <div class="empty-card">
+        <div class="empty-ico">🗂️</div>
+        <div class="empty-title">열린 문서가 없어요</div>
+        <div class="empty-sub">여기로 <b>.md · 이미지 · HTML · 파일</b>을 끌어다 놓거나, 위 버튼으로 파일을 여세요.</div>
+        <div class="empty-actions">
+          <button class="btn btn-primary" onclick="newDoc()">＋ 새 문서</button>
+          <button class="btn" id="emptyReopenBtn" onclick="openDocManager()" style="display:none;">📚 전체 문서</button>
         </div>
       </div>
     </div>
@@ -1525,6 +1585,9 @@
       if (d.type === 'file') {
         return '📄';
       }
+      if (d.type === 'html') {
+        return '🌐';
+      }
       return '📝';
     }
     // 탭 하나 DOM 생성 (그룹 소속이면 왼쪽에 폴더 색 띠)
@@ -1660,6 +1723,7 @@
         hideSyncBanner();
       }  // 문서 전환 시 새로고침 배너 닫기
       activeDocId = id;
+      document.body.classList.remove('no-doc');   // 빈 상태 해제(문서를 연다)
       ensureVisible(id);   // 활성 문서는 항상 탭 바에 노출
       renderDocView(doc);
       renderTabs();
@@ -1692,6 +1756,8 @@
         document.getElementById('preview').style.display = 'none';
         document.getElementById('plainOutput').style.display = 'none';
         document.getElementById('fileView').style.display = 'none';
+        document.getElementById('htmlView').style.display = 'none';
+        clearHtmlFrame();
         document.getElementById('imageView').style.display = 'flex';
         return;
       }
@@ -1704,7 +1770,22 @@
         document.getElementById('preview').style.display = 'none';
         document.getElementById('plainOutput').style.display = 'none';
         document.getElementById('imageView').style.display = 'none';
+        document.getElementById('htmlView').style.display = 'none';
+        clearHtmlFrame();
         document.getElementById('fileView').style.display = 'flex';
+        return;
+      }
+      if (doc.type === 'html') {
+        // HTML 뷰어(안전 렌더): 샌드박스 iframe 으로 표시하며 스크립트는 실행하지 않는다.
+        document.body.classList.add('doc-view-mode');
+        releaseImageUrl();
+        document.getElementById('preview').style.display = 'none';
+        document.getElementById('plainOutput').style.display = 'none';
+        document.getElementById('imageView').style.display = 'none';
+        document.getElementById('fileView').style.display = 'none';
+        const frame = document.getElementById('htmlViewFrame');
+        frame.srcdoc = doc.content || '';   // sandbox="" → JS/폼/외부이동 차단, HTML+CSS만 렌더
+        document.getElementById('htmlView').style.display = 'block';
         return;
       }
       // 마크다운 문서
@@ -1712,6 +1793,8 @@
       releaseImageUrl();
       document.getElementById('imageView').style.display = 'none';
       document.getElementById('fileView').style.display = 'none';
+      document.getElementById('htmlView').style.display = 'none';
+      clearHtmlFrame();
       // 미리보기/텍스트 표시 상태 복원
       document.getElementById('preview').style.display = (previewMode === 'text') ? 'none' : 'block';
       document.getElementById('plainOutput').style.display = (previewMode === 'text') ? 'block' : 'none';
@@ -1719,6 +1802,13 @@
       updatePreview();
       if (previewMode === 'text') {
         updatePlain();
+      }
+    }
+    // iframe 내용 비우기(다른 문서로 전환 시 이전 HTML 이 남지 않도록)
+    function clearHtmlFrame() {
+      const frame = document.getElementById('htmlViewFrame');
+      if (frame && frame.srcdoc) {
+        frame.srcdoc = '';
       }
     }
     function toggleImageActualSize() {
@@ -1743,6 +1833,7 @@
       }
       docs.push(doc);
       activeDocId = doc.id;
+      document.body.classList.remove('no-doc');   // 빈 상태 해제
       ensureVisible(doc.id);
       editor.value = content;
       updatePreview();
@@ -1754,6 +1845,26 @@
       persistMeta();
       editor.focus();
       return doc;
+    }
+
+    /* 열린 문서가 없는 '빈 상태'로 전환한다. 예전엔 마지막 탭을 닫거나 문서를 모두
+       지우면 '제목 없음' 빈 문서를 자동 생성했는데, 그게 불편해서 대신 왼쪽 영역에
+       드롭 존(#emptyState)을 보여준다. 숨긴 문서가 있으면 '📚 전체'로 다시 열 수 있다. */
+    function showEmptyState() {
+      activeDocId = null;
+      releaseImageUrl();
+      if (typeof clearHtmlFrame === 'function') {
+        clearHtmlFrame();
+      }
+      editor.value = '';
+      document.body.classList.remove('doc-view-mode');
+      document.body.classList.add('no-doc');
+      const reopenBtn = document.getElementById('emptyReopenBtn');
+      if (reopenBtn) {
+        reopenBtn.style.display = docs.length ? 'inline-flex' : 'none';   // 남은(숨긴) 문서가 있을 때만
+      }
+      renderTabs();
+      persistMeta();
     }
 
     async function renameDoc(id) {
@@ -1806,10 +1917,7 @@
       }
       if (activeDocId === id) {
         if (docs.length === 0) {
-          const blank = { id: genDocId(), title: '제목 없음', content: '', customTitle: false, updatedAt: Date.now() };
-          docs.push(blank);
-          persistDoc(blank);
-          loadDoc(blank.id);
+          showEmptyState();   // 마지막 문서까지 지움 → 빈 상태(자동 새 문서 생성 안 함)
         } else {
           // 닫은 자리의 오른쪽 탭(없으면 마지막 탭)을 활성화 (브라우저 탭 동작과 동일)
           loadDoc(docs[Math.min(idx, docs.length - 1)].id);
@@ -1849,8 +1957,8 @@
         if (visibleIds.length > 0) {
           loadDoc(visibleIds[0]);  // 남은 탭으로 전환(숨긴 문서 미소환)
         } else {
-          newDoc();
-        }                                       // 마지막 탭 → 빈 새 탭
+          showEmptyState();        // 마지막 탭까지 닫힘 → 빈 상태(📚에서 다시 열 수 있음)
+        }
       } else {
         renderTabs();
       }
@@ -1877,7 +1985,7 @@
         if (visibleIds.length > 0) {
           loadDoc(visibleIds[0]);   // 남은 탭으로 전환
         } else {
-          newDoc();                 // 마지막 탭까지 닫혔으면 빈 새 탭
+          showEmptyState();         // 마지막 탭까지 닫힘 → 빈 상태
         }
       } else {
         renderTabs();
@@ -1904,8 +2012,8 @@
         if (visibleIds.length > 0) {
           loadDoc(visibleIds[0]); // 남은 탭으로 전환
         } else {
-          newDoc();
-        }                                      // 마지막 탭 → 빈 새 탭
+          showEmptyState();       // 마지막 탭 → 빈 상태
+        }
       } else {
         renderTabs();
       }
@@ -2308,7 +2416,7 @@
 
       const title = document.createElement('div');
       title.className = 'dm-title';
-      title.textContent = ((d.type === 'image' || d.type === 'file') ? (docTypeIcon(d) + ' ') : '') + (d.title || '제목 없음');
+      title.textContent = ((d.type === 'image' || d.type === 'file' || d.type === 'html') ? (docTypeIcon(d) + ' ') : '') + (d.title || '제목 없음');
       if (isActive) {
         const badge = document.createElement('span');
         badge.className = 'dm-badge';
@@ -2337,6 +2445,8 @@
         meta.textContent = `${timeAgo(d.updatedAt)} · 이미지` + (d.imgName ? ` · ${d.imgName}` : '');
       } else if (d.type === 'file') {
         meta.textContent = `${timeAgo(d.updatedAt)} · 파일(미리보기 미제공)` + (d.fileName ? ` · ${d.fileName}` : '');
+      } else if (d.type === 'html') {
+        meta.textContent = `${timeAgo(d.updatedAt)} · HTML(안전 렌더)` + (d.htmlName ? ` · ${d.htmlName}` : '');
       } else {
         const len = (d.content || '').length;
         const prev = docPreview(d.content);
@@ -2526,10 +2636,7 @@
       ids.forEach(removeDocCore);
       dmSelected.clear();
       if (docs.length === 0) {
-        const blank = { id: genDocId(), title: '제목 없음', content: '', customTitle: false, updatedAt: Date.now() };
-        docs.push(blank);
-        persistDoc(blank);
-        loadDoc(blank.id);
+        showEmptyState();   // 전부 삭제 → 빈 상태(자동 새 문서 생성 안 함)
       } else if (!docs.some(d => d.id === activeDocId)) {
         // 활성 문서가 삭제됨 → 가장 최근 문서로 전환
         const next = docs.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
@@ -2617,7 +2724,12 @@
         }
       });
 
-      if (docs.length === 0) {
+      // 활성 문서 복원값을 먼저 읽는다. null 이면 '사용자가 모든 탭을 닫아 빈 상태였음'을
+      // 의미하고(최초 실행은 undefined), 이때는 안내 문서를 새로 만들지도, 탭을 되살리지도 않는다.
+      const savedActive = await dbManager.getItem('content', 'active_doc');
+      const wasEmpty = savedActive === null;
+
+      if (docs.length === 0 && !wasEmpty) {
         // 최초 실행이거나 구버전(단일 문서) 사용자 → 이관
         const legacy = await dbManager.getItem('content', 'last_content');
         const content = (legacy && legacy.trim()) ? legacy : initialContent;
@@ -2630,10 +2742,10 @@
         }
       }
 
-      // 탭 바에 노출할 문서 집합 복원 (없으면 처음 MAX_VISIBLE개)
+      // 탭 바에 노출할 문서 집합 복원 (없으면 처음 MAX_VISIBLE개 — 단, 빈 상태였으면 비운 채로 둔다)
       const savedVisible = await dbManager.getItem('content', 'visible_docs');
       visibleIds = Array.isArray(savedVisible) ? savedVisible.filter(id => docs.some(d => d.id === id)) : [];
-      if (visibleIds.length === 0) {
+      if (visibleIds.length === 0 && !wasEmpty) {
         visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
       }
       // 접근 시각 시드: 저장된 순서대로 오래된→최신 (안정적인 LRU 밀어내기용)
@@ -2644,9 +2756,12 @@
       const savedCollapsed = await dbManager.getItem('content', 'collapsed_tab_groups');
       collapsedTabGroups = new Set(Array.isArray(savedCollapsed) ? savedCollapsed : []);
 
-      const savedActive = await dbManager.getItem('content', 'active_doc');
-      activeDocId = (savedActive && docs.some(d => d.id === savedActive)) ? savedActive : docs[0].id;
-      loadDoc(activeDocId);   // 활성 문서가 visible에 없으면 자동 편입
+      if (wasEmpty) {
+        showEmptyState();   // 빈 상태 복원(문서가 있어도 자동으로 열지 않음)
+      } else {
+        activeDocId = (savedActive && docs.some(d => d.id === savedActive)) ? savedActive : docs[0].id;
+        loadDoc(activeDocId);   // 활성 문서가 visible에 없으면 자동 편입
+      }
       persistMeta();
     }
 
@@ -3068,6 +3183,21 @@ function hello() {
             e.preventDefault();
           }
         }, true);
+        // 빈 상태 드롭 존: 파일을 끌어오면 시각적으로 강조(실제 드롭 처리는 아래 캡처 핸들러)
+        const emptyEl = document.getElementById('emptyState');
+        if (emptyEl) {
+          emptyEl.addEventListener('dragover', (e) => {
+            if (e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files')) {
+              emptyEl.classList.add('drag-hover');
+            }
+          });
+          emptyEl.addEventListener('dragleave', (e) => {
+            if (e.target === emptyEl) {
+              emptyEl.classList.remove('drag-hover');
+            }
+          });
+          emptyEl.addEventListener('drop', () => emptyEl.classList.remove('drag-hover'));
+        }
         document.addEventListener('drop', async (e) => {
           const items = e.dataTransfer && e.dataTransfer.items;
           if (!items || !items.length) {
@@ -3096,13 +3226,18 @@ function hello() {
               return ext === 'md' || ext === 'markdown' || ext === 'txt' || (f.type || '').startsWith('text/');
             };
             const isImageFile = (f) => (f.type || '').startsWith('image/') || IMG_EXTS.includes(fileExt(f.name));
-            const textFiles = dropped.filter(isTextFile);
+            const isHtmlFile = (f) => ['html', 'htm'].includes(fileExt(f.name));   // .html → HTML 뷰어(text/* 보다 먼저 분류)
+            const htmlFiles = dropped.filter(isHtmlFile);
+            const textFiles = dropped.filter(f => isTextFile(f) && !isHtmlFile(f));
             const imageFiles = dropped.filter(isImageFile);
-            const otherFiles = dropped.filter(f => !isTextFile(f) && !isImageFile(f));   // pdf 등 → 라벨
+            const otherFiles = dropped.filter(f => !isTextFile(f) && !isImageFile(f) && !isHtmlFile(f));   // pdf 등 → 라벨
             const onModal = !!e.target.closest('#docManagerModal');
             const dropGroup = (onModal && dmActiveGroup && dmActiveGroup !== 'all' && dmActiveGroup !== '기타') ? dmActiveGroup : '';
-            // 텍스트 2개 이상 → md 문서, 이미지 → 이미지 문서, 그 외 파일 → 라벨. (단일 텍스트만 있으면 아래 onText 로)
-            if (textFiles.length >= 2 || imageFiles.length || otherFiles.length) {
+            // 열린 md 문서가 없으면(빈 상태/이미지·파일 보기 중) 단일 텍스트도 새 문서로 만든다
+            const noActiveMd = !getActiveDoc() || getActiveDoc().type !== 'md';
+            // 텍스트 2개 이상 → md 문서, 이미지 → 이미지 문서, HTML → 뷰어, 그 외 파일 → 라벨.
+            // (단일 텍스트 + 열린 md 문서 있음 → 아래 onText 로 현재 탭에 덮기/이어붙이기)
+            if (textFiles.length >= 2 || imageFiles.length || htmlFiles.length || otherFiles.length || (textFiles.length === 1 && noActiveMd)) {
               e.preventDefault();
               e.stopPropagation();
               document.querySelectorAll('.drag-hover').forEach((el) => el.classList.remove('drag-hover'));
@@ -3111,6 +3246,9 @@ function hello() {
               }
               if (imageFiles.length) {
                 await addImageDocs(imageFiles, dropGroup);
+              }
+              if (htmlFiles.length) {
+                await addHtmlDocs(htmlFiles, dropGroup);
               }
               if (otherFiles.length) {
                 await addFileDocs(otherFiles, dropGroup);
@@ -3156,6 +3294,20 @@ function hello() {
             const folded = foldDataImages(content);
             content = folded.text;
             const imgNote = folded.count ? ` (이미지 ${folded.count}개 접음)` : '';
+            // 열린 md 문서가 없으면(빈 상태 등) 현재 탭에 덮지 않고 새 문서로 만든다
+            const activeMd = getActiveDoc();
+            if (!activeMd || activeMd.type !== 'md') {
+              const doc = newDoc(content);
+              const base = (file.name || '').replace(/\.[^.]+$/, '');
+              if (base) {
+                doc.customTitle = true;
+                doc.title = base;
+                renderTabs();
+                persistDoc(doc);
+              }
+              showToast(`파일 '${file.name}'을 새 문서로 불러왔습니다.${imgNote}`, 'success');
+              return;
+            }
             if (appendMode) {
               // 이어붙이기: 현재 문서 끝에 구분선과 함께 추가
               const prefix = editor.value.trim() ? `${editor.value.replace(/\s+$/, '')}\n\n--- [Dropped: ${file.name}] ---\n\n` : '';
@@ -3193,8 +3345,8 @@ function hello() {
 
     function saveToDB() {
       const doc = getActiveDoc();
-      if (!doc || doc.type === 'image' || doc.type === 'file') {
-        return;   // 이미지/파일 문서는 editor.value 로 덮지 않는다(md 전용 저장)
+      if (!doc || doc.type === 'image' || doc.type === 'file' || doc.type === 'html') {
+        return;   // 이미지/파일/HTML 문서는 editor.value 로 덮지 않는다(md 전용 저장)
       }
       const prevTitle = doc.title;
       doc.content = editor.value;
@@ -3323,8 +3475,8 @@ function hello() {
             visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
           }
           const cur = getActiveDoc();
-          if (cur && (cur.type === 'image' || cur.type === 'file')) {
-            renderDocView(cur);   // 이미지/파일 문서는 editor 병합 없이 뷰만 갱신
+          if (cur && (cur.type === 'image' || cur.type === 'file' || cur.type === 'html')) {
+            renderDocView(cur);   // 이미지/파일/HTML 문서는 editor 병합 없이 뷰만 갱신
           } else if (cur) {
             const remoteContent = cur.content;   // DB(다른 창)의 현재 내용
             if ((editing || localUnsaved) && !force) {
@@ -3352,7 +3504,7 @@ function hello() {
           }
           loadDoc(visibleIds[0] || docs[0].id);           // 보던 문서가 삭제됨 → 남은 문서로
         } else {
-          newDoc();                                        // 전부 사라짐 → 빈 새 문서
+          showEmptyState();                                // 다른 창에서 전부 삭제됨 → 빈 상태
         }
       } catch (e) {
         console.error('sync apply failed', e);
@@ -3475,6 +3627,10 @@ function hello() {
       addImageDocs(files, '');
       event.target.value = '';   // 같은 파일 재선택 가능하게
     }
+    function onHtmlDocPick(event) {
+      addHtmlDocs(event.target.files, '');
+      event.target.value = '';   // 같은 파일 재선택 가능하게
+    }
 
     // 미리보기를 제공하지 않는 파일(pdf 등)을 '파일 라벨 문서'로 기록(실물 저장 안 함). id 반환.
     function createFileDoc(file, folder) {
@@ -3517,6 +3673,45 @@ function hello() {
       showToast(`파일 ${newIds.length}개를 그룹에 기록했어요 (미리보기 미제공).${folder ? ` (‘${folder}’ 그룹)` : ''}`, 'info');
     }
 
+    // HTML 파일을 'HTML 뷰어 문서'로 추가한다(원문 텍스트를 content 에 저장, 안전 렌더). 첫 번째로 전환.
+    async function addHtmlDocs(fileList, folder) {
+      const files = Array.from(fileList || []);
+      if (!files.length) {
+        return;
+      }
+      saveToDB();
+      const newIds = [];
+      for (const file of files) {
+        try {
+          const html = await readAsTextP(file);
+          const base = (file.name || 'HTML').replace(/\.[^.]+$/, '');
+          const doc = {
+            id: genDocId(),
+            title: base || 'HTML',
+            type: 'html',
+            htmlName: file.name || '',
+            content: html,
+            customTitle: true,
+            folder: (folder || undefined),
+            updatedAt: Date.now()
+          };
+          docs.push(doc);
+          persistDoc(doc);
+          newIds.push(doc.id);
+        } catch (e) {
+          console.warn('HTML 문서 추가 실패:', file && file.name, e);
+        }
+      }
+      if (!newIds.length) {
+        showToast('HTML 파일을 추가하지 못했어요.', 'error');
+        return;
+      }
+      newIds.forEach(id => ensureVisible(id));
+      loadDoc(newIds[0]);
+      persistMeta();
+      showToast(`HTML ${newIds.length}개를 뷰어에 추가했어요.${folder ? ` (‘${folder}’ 그룹)` : ''}`, 'success');
+    }
+
     // 폴더 파일 목록을 받아 그룹으로 불러온다. files: File[](webkitRelativePath 보유) 또는 {file, rel}[]
     // md 는 md 문서로, 이미지는 이미지 문서로(둘 다 같은 그룹) 각각 편입한다. (md는 md만 — 상대참조 자동 인라인 없음)
     async function importFolderFiles(files, groupName) {
@@ -3524,10 +3719,13 @@ function hello() {
       const group = groupName || ((list[0] && list[0].rel.split('/')[0]) || '폴더');
       const mdFiles = [];
       const imgFiles = [];
+      const htmlFiles = [];
       const otherFiles = [];
       for (const { file } of list) {
         const ext = fileExt(file.name);
-        if (ext === 'md' || ext === 'markdown' || ext === 'txt') {
+        if (ext === 'html' || ext === 'htm') {
+          htmlFiles.push(file);   // HTML → 뷰어 문서(text 판정보다 먼저)
+        } else if (ext === 'md' || ext === 'markdown' || ext === 'txt') {
           mdFiles.push(file);
         } else if ((file.type || '').startsWith('image/') || IMG_EXTS.includes(ext)) {
           imgFiles.push(file);
@@ -3535,7 +3733,7 @@ function hello() {
           otherFiles.push(file);   // pdf 등 미리보기 미제공 → 라벨로 기록
         }
       }
-      if (!mdFiles.length && !imgFiles.length && !otherFiles.length) {
+      if (!mdFiles.length && !imgFiles.length && !htmlFiles.length && !otherFiles.length) {
         showToast(`'${group}' 폴더에 불러올 파일이 없습니다.`, 'warning');
         return;
       }
@@ -3562,6 +3760,19 @@ function hello() {
           console.warn('폴더 이미지 불러오기 실패:', file && file.name, e);
         }
       }
+      let htmlAdded = 0;
+      for (const file of htmlFiles) {
+        try {
+          const html = await readAsTextP(file);
+          const base = (file.name || 'HTML').replace(/\.[^.]+$/, '');
+          const doc = { id: genDocId(), title: base || 'HTML', type: 'html', htmlName: file.name || '', content: html, customTitle: true, folder: group, updatedAt: Date.now() };
+          docs.push(doc);
+          persistDoc(doc);
+          htmlAdded++;
+        } catch (e) {
+          console.warn('폴더 HTML 불러오기 실패:', file && file.name, e);
+        }
+      }
       let fileAdded = 0;
       for (const file of otherFiles) {
         try {
@@ -3577,6 +3788,9 @@ function hello() {
       const parts = [`문서 ${mdAdded}개`];
       if (imgAdded) {
         parts.push(`이미지 ${imgAdded}개`);
+      }
+      if (htmlAdded) {
+        parts.push(`HTML ${htmlAdded}개`);
       }
       if (fileAdded) {
         parts.push(`기타 파일 ${fileAdded}개`);
