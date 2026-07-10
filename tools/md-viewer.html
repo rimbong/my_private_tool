@@ -906,6 +906,11 @@
         display: none !important;
       }
 
+      /* 빈 상태 드롭 존 카드는 인쇄에 찍히지 않게(빈 상태에서 Ctrl+P 시 백지 카드 방지) */
+      #emptyState {
+        display: none !important;
+      }
+
       body {
         background: white !important;
         color: #1f2328 !important;
@@ -1324,9 +1329,20 @@
         }
       });
     }
+    // 그룹 이름 정규화: 앞뒤 공백 제거 + 내부 연속공백 1칸으로. (대소문자는 보존 —
+    // 의도적으로 다른 이름을 합치지 않기 위함) 생성/이름변경/이동/폴더임포트가 모두
+    // 이 관문을 거쳐 'A' 와 'A ' 가 별개 그룹으로 파편화되는 것을 막는다.
+    function normalizeGroupName(name) {
+      return String(name == null ? '' : name).trim().replace(/\s+/g, ' ');
+    }
+
     // 그룹 이름 변경(그 그룹 문서 전부의 folder 갱신). 기존 그룹명으로 바꾸면 그 그룹과 합쳐짐.
     async function renameGroup(oldName) {
-      const name = ((await promptModal('그룹 이름 변경:', oldName)) || '').trim();
+      const raw = await promptModal('그룹 이름 변경:', oldName);
+      if (raw === null) {
+        return;
+      }
+      const name = normalizeGroupName(raw);
       if (!name || name === oldName) {
         return;
       }
@@ -1846,7 +1862,11 @@
             window.mermaid.initialize({
               startOnLoad: false,
               theme: 'dark',
-              securityLevel: 'loose',
+              // 'strict': 라벨을 DOMPurify 로 정화한다. 다이어그램은 부모(도구) 문서에서
+              // 렌더되므로, 신뢰할 수 없는 .html 의 라벨에 심긴 onerror/script 가 도구
+              // 오리진에서 실행되지 않도록 반드시 strict 로 둔다('loose' 금지).
+              // strict 에서도 <br/> 줄바꿈·classDef·subgraph 는 정상 렌더됨(검증).
+              securityLevel: 'strict',
               flowchart: { htmlLabels: true, curve: 'basis' }
             });
           } catch (e) {
@@ -2030,7 +2050,9 @@
       }   // 활성 문서면 현재 편집분을 doc에 반영한 뒤 판단
 
       const doc = docs.find(d => d.id === id);
-      const empty = !doc || !(doc.content && doc.content.trim());
+      // '내용 없는 md' 만 조용히 영구 제거 대상. 타입 문서(이미지/HTML/파일)는 content 가
+      // 비어 있어도(바이너리/뷰 전용) 절대 무확인 삭제하지 않고 숨김만 한다(데이터 손실 방지).
+      const empty = !doc || ((!doc.type || doc.type === 'md') && !(doc.content && doc.content.trim()));
 
       if (empty) {
         removeDocCore(id);                               // docs/visibleIds/DB 에서 제거
@@ -2413,7 +2435,7 @@
 
     // 문서들을 지정 그룹으로 이동(폴더 지정/해제). folder='' → 기타(그룹 해제)
     function moveDocsToGroup(ids, folder) {
-      const target = folder || '';
+      const target = normalizeGroupName(folder);   // 공백 정규화(파편화 방지)
       let n = 0;
       ids.forEach(id => {
         const d = docs.find(x => x.id === id);
@@ -3551,7 +3573,17 @@ function hello() {
           collapsedTabGroups = new Set(remoteCollapsed);
         }
 
-        if (docs.some(d => d.id === prevActive)) {
+        if (prevActive === null && document.body.classList.contains('no-doc')) {
+          // 이 창은 '의도적으로 빈 상태'(사용자가 모든 탭을 닫음)였다. 다른 창이 어떤 문서를
+          // 편집·추가했다고 해서 이 창에 문서를 강제로 열지 않는다 → 빈 상태 유지.
+          activeDocId = null;
+          visibleIds = [];
+          const reopenBtn = document.getElementById('emptyReopenBtn');
+          if (reopenBtn) {
+            reopenBtn.style.display = docs.length ? 'inline-flex' : 'none';
+          }
+          renderTabs();
+        } else if (docs.some(d => d.id === prevActive)) {
           activeDocId = prevActive;                       // 이 창이 보던 문서는 그대로 유지
           if (!visibleIds.includes(activeDocId)) {
             ensureVisible(activeDocId);
@@ -3801,7 +3833,7 @@ function hello() {
     // md 는 md 문서로, 이미지는 이미지 문서로(둘 다 같은 그룹) 각각 편입한다. (md는 md만 — 상대참조 자동 인라인 없음)
     async function importFolderFiles(files, groupName) {
       const list = files.map(f => (f.file ? f : { file: f, rel: (f.webkitRelativePath || f.name) }));
-      const group = groupName || ((list[0] && list[0].rel.split('/')[0]) || '폴더');
+      const group = normalizeGroupName(groupName || ((list[0] && list[0].rel.split('/')[0]) || '폴더')) || '폴더';
       const mdFiles = [];
       const imgFiles = [];
       const htmlFiles = [];
@@ -3916,8 +3948,26 @@ function hello() {
       event.target.value = '';   // 같은 파일을 다시 열 수 있도록 초기화
     }
 
-    function saveFile() {
+    // 헤더 액션(저장/복사/크게보기/인쇄)은 마크다운 문서 전용이다. 타입 문서(이미지/HTML/파일)
+    // 가 활성일 때는 editor/preview 에 직전 md 내용이 남아 있어 그대로 쓰면 오작동하므로 막는다.
+    function requireMdDoc(action) {
       const doc = getActiveDoc();
+      if (!doc) {
+        showToast('열린 문서가 없어요.', 'info');
+        return null;
+      }
+      if (doc.type && doc.type !== 'md') {
+        showToast(`${action}은(는) 마크다운 문서에서만 쓸 수 있어요.`, 'info');
+        return null;
+      }
+      return doc;
+    }
+
+    function saveFile() {
+      const doc = requireMdDoc('저장');
+      if (!doc) {
+        return;
+      }
       const base = (doc && doc.title && doc.title !== '제목 없음') ? doc.title : 'document';
       const safe = base.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 60) || 'document';
       const blob = new Blob([inlineImages(editor.value)], { type: 'text/markdown' });
@@ -3931,6 +3981,9 @@ function hello() {
 
     // Copy Functions
     async function copyMarkdown() {
+      if (!requireMdDoc('MD 복사')) {
+        return;
+      }
       try {
         await navigator.clipboard.writeText(inlineImages(editor.value));
         showToast('마크다운 원문이 복사되었습니다. (이미지 포함)', 'success');
@@ -3940,6 +3993,9 @@ function hello() {
     }
 
     async function copyHTML() {
+      if (!requireMdDoc('HTML 복사')) {
+        return;
+      }
       try {
         const html = preview.innerHTML;
         // Wrap in a div with markdown-body class to help some targets recognize styles if they support it
@@ -4033,6 +4089,9 @@ function hello() {
     }
 
     function openModal() {
+      if (!requireMdDoc('크게 보기')) {
+        return;   // 타입 문서는 #preview 가 비어 있어 빈 모달이 뜨므로 막는다
+      }
       modalMode = previewMode === 'text' ? 'text' : 'preview'; // 현재 보던 모드 그대로 크게 열기
       renderModalView();
       const modal = document.getElementById('previewModal');
@@ -4045,6 +4104,11 @@ function hello() {
     function onPreviewDblClick(e) {
       // 텍스트 추출 textarea(#plainOutput) 안에서는 단어 선택(복사)이 우선 → 크게보기 미발동
       if (e && e.target && e.target.id === 'plainOutput') {
+        return;
+      }
+      // 타입 문서(이미지/HTML/파일)는 크게보기 대상이 아니다 → 안내 토스트 없이 조용히 무시
+      const cur = getActiveDoc();
+      if (cur && cur.type && cur.type !== 'md') {
         return;
       }
       openModal();
@@ -4065,12 +4129,19 @@ function hello() {
     }
 
     function closeModal() {
-      document.getElementById('previewModal').style.display = 'none';
+      const modal = document.getElementById('previewModal');
+      if (modal.style.display !== 'block') {
+        return;   // 크게보기 모달이 안 열려 있으면 아무것도 하지 않는다(다른 모달의 스크롤락 보호)
+      }
+      modal.style.display = 'none';
       document.body.style.overflow = '';
       document.body.classList.remove('preview-modal-open');
     }
 
     function printMarkdown() {
+      if (!requireMdDoc('인쇄')) {
+        return;   // 타입 문서는 #preview 가 비어 인쇄 시 백지가 되므로 막는다
+      }
       const currentTheme = mdRenderer.theme;
       const isDark = currentTheme === 'dark';
       
