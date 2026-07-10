@@ -1784,8 +1784,21 @@
         document.getElementById('imageView').style.display = 'none';
         document.getElementById('fileView').style.display = 'none';
         const frame = document.getElementById('htmlViewFrame');
-        frame.srcdoc = doc.content || '';   // sandbox="" → JS/폼/외부이동 차단, HTML+CSS만 렌더
         document.getElementById('htmlView').style.display = 'block';
+        frame.srcdoc = '';                  // 렌더 준비 동안 비움
+        const targetId = doc.id;
+        // 파일의 스크립트는 계속 차단(sandbox="")하되, .mermaid 다이어그램만 도구 자체
+        // mermaid 로 SVG 렌더해 끼워 넣는다(안전). 비동기 → 렌더 끝나면 아직 이 문서일 때만 반영.
+        renderHtmlContent(doc.content || '').then((html) => {
+          if (activeDocId === targetId) {
+            frame.srcdoc = html;
+          }
+        }).catch((err) => {
+          console.warn('HTML 렌더 처리 실패:', err);
+          if (activeDocId === targetId) {
+            frame.srcdoc = doc.content || '';   // 실패 시 원문 그대로
+          }
+        });
         return;
       }
       // 마크다운 문서
@@ -1810,6 +1823,78 @@
       if (frame && frame.srcdoc) {
         frame.srcdoc = '';
       }
+    }
+
+    /* ===== HTML 문서 안의 Mermaid 다이어그램 렌더 =====
+       안전 렌더(sandbox="")는 파일의 스크립트를 실행하지 않으므로, JS로 그리는 Mermaid
+       다이어그램은 소스 텍스트로만 보인다. 이를 위해 도구가 '자체 mermaid'로 .mermaid
+       블록만 미리 SVG 로 그려 HTML 에 끼워 넣는다. (파일의 외부 스크립트는 계속 차단 → 안전) */
+    let mermaidLoading = null;
+    let mmdSeq = 0;
+    function ensureMermaid() {
+      if (window.mermaid) {
+        return Promise.resolve(window.mermaid);
+      }
+      if (mermaidLoading) {
+        return mermaidLoading;
+      }
+      mermaidLoading = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'lib/mermaid.min.js';   // 도구에 내장(vendored)
+        s.onload = () => {
+          try {
+            window.mermaid.initialize({
+              startOnLoad: false,
+              theme: 'dark',
+              securityLevel: 'loose',
+              flowchart: { htmlLabels: true, curve: 'basis' }
+            });
+          } catch (e) {
+            console.warn('mermaid 초기화 경고:', e);
+          }
+          resolve(window.mermaid);
+        };
+        s.onerror = () => reject(new Error('mermaid 로드 실패 (lib/mermaid.min.js)'));
+        document.head.appendChild(s);
+      });
+      return mermaidLoading;
+    }
+    // 원문 HTML 을 받아 .mermaid 블록만 SVG 로 치환한 HTML 문자열을 돌려준다.
+    async function renderHtmlContent(rawHtml) {
+      let html = rawHtml || '';
+      if (!/class\s*=\s*["'][^"']*\bmermaid\b/i.test(html)) {
+        return html;   // mermaid 블록 없음 → 그대로
+      }
+      try {
+        const mmd = await ensureMermaid();
+        const dom = new DOMParser().parseFromString(html, 'text/html');
+        const blocks = dom.querySelectorAll('.mermaid');
+        for (let i = 0; i < blocks.length; i++) {
+          const el = blocks[i];
+          if (el.getAttribute('data-rendered') === '1') {
+            continue;
+          }
+          const code = (el.textContent || '').trim();
+          if (!code) {
+            continue;
+          }
+          try {
+            const out = await mmd.render('mmdv_' + (mmdSeq++), code);
+            const svg = (typeof out === 'string') ? out : (out && out.svg) || '';
+            const wrap = dom.createElement('div');
+            wrap.className = el.className || 'mermaid';   // 파일의 .mermaid 스타일(테두리/배경) 유지
+            wrap.setAttribute('data-rendered', '1');
+            wrap.innerHTML = svg;
+            el.replaceWith(wrap);
+          } catch (e) {
+            console.warn('mermaid 다이어그램 렌더 실패(소스 유지):', e);
+          }
+        }
+        html = '<!DOCTYPE html>' + dom.documentElement.outerHTML;
+      } catch (e) {
+        console.warn('mermaid 준비 실패(원문 렌더):', e);
+      }
+      return html;
     }
     function toggleImageActualSize() {
       document.getElementById('imageViewImg').classList.toggle('actual-size');
