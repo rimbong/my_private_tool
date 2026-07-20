@@ -1794,6 +1794,7 @@
       activeDocId = id;
       document.body.classList.remove('no-doc');   // 빈 상태 해제(문서를 연다)
       setEmptyIntent(false);
+      emptyByUser = false;
       ensureVisible(id);   // 활성 문서는 항상 탭 바에 노출
       renderDocView(doc);
       renderTabs();
@@ -1994,6 +1995,7 @@
       activeDocId = doc.id;
       document.body.classList.remove('no-doc');   // 빈 상태 해제
       setEmptyIntent(false);
+      emptyByUser = false;
       ensureVisible(doc.id);
       editor.value = content;
       updatePreview();
@@ -2029,10 +2031,14 @@
       if (reopenBtn) {
         reopenBtn.style.display = docs.length ? 'inline-flex' : 'none';   // 남은(숨긴) 문서가 있을 때만
       }
-      setEmptyIntent(true);   // 이 창은 새로고침해도 빈 상태를 유지(다른 창에는 영향 없음)
-      captureEmptySnapshot();   // 이후 다른 창이 실제로 바꾸면 그때 따라 연다
+      if (emptyByUser) {
+        // 이 창 사용자가 직접 닫은 경우만 기억한다(새로고침해도 빈 상태 유지).
+        // 다른 창 때문에 비워진 창까지 기억하면, 그 창은 새로고침해도 계속 빈 화면이 된다.
+        setEmptyIntent(true);
+      }
       renderTabs();
       persistMeta();
+      captureEmptySnapshot();   // 저장이 끝난 뒤의 값을 기준 지문으로 삼는다
     }
 
     async function renameDoc(id) {
@@ -2714,7 +2720,7 @@
     function activateIfEmpty(id) {
       if (activeDocId === null && id) {
         loadDoc(id);   // no-doc 해제 + 탭 렌더까지 처리
-        return true;
+        return activeDocId === id;   // 문서가 이미 지워졌으면 loadDoc 이 아무 일도 안 한다
       }
       return false;
     }
@@ -2740,6 +2746,7 @@
         }
         visibleIds.push(id);
         accessTime[id] = Date.now();
+        collapsedTabGroups.delete(d.folder || '');   // 접힌 그룹이면 펼친다(안 그러면 탭이 안 보인다)
         if (!firstAdded) {
           firstAdded = id;
         }
@@ -2864,6 +2871,7 @@
         }
         visibleIds.push(id);
         accessTime[id] = Date.now();
+        collapsedTabGroups.delete(d.folder || '');   // 접힌 그룹이면 펼친다(안 그러면 탭이 안 보인다)
         if (activateIfEmpty(id)) {
           persistMeta();
           return;   // loadDoc 이 탭 렌더까지 처리함
@@ -2936,8 +2944,11 @@
 
       // 탭 바에 노출할 문서 집합 복원 (없으면 처음 MAX_VISIBLE개 — 단, 빈 상태였으면 비운 채로 둔다)
       const savedVisible = await dbManager.getItem('content', 'visible_docs');
+      // 공유 기록에 '전부 닫힘'이 명시돼 있으면(빈 배열 + 활성 문서 없음) 새 창도 빈 상태로 시작한다.
+      // 그러지 않으면 창을 하나 여는 것만으로 다른 빈 창들의 탭이 되살아난다.
+      const sharedAllClosed = (Array.isArray(savedVisible) && savedVisible.length === 0 && savedActive === null);
       visibleIds = Array.isArray(savedVisible) ? savedVisible.filter(id => docs.some(d => d.id === id)) : [];
-      if (visibleIds.length === 0 && !wasEmpty) {
+      if (visibleIds.length === 0 && !wasEmpty && !sharedAllClosed) {
         visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
       }
       // 접근 시각 시드: 저장된 순서대로 오래된→최신 (안정적인 LRU 밀어내기용)
@@ -2948,8 +2959,8 @@
       const savedCollapsed = await dbManager.getItem('content', 'collapsed_tab_groups');
       collapsedTabGroups = new Set(Array.isArray(savedCollapsed) ? savedCollapsed : []);
 
-      if (wasEmpty || docs.length === 0) {
-        showEmptyState();   // 빈 상태 복원(문서가 있어도 자동으로 열지 않음) / 문서가 하나도 없음
+      if (wasEmpty || sharedAllClosed || docs.length === 0) {
+        showEmptyState();   // 빈 상태 복원 / 다른 창에서 전부 닫음 / 문서가 하나도 없음
       } else {
         activeDocId = (savedActive && docs.some(d => d.id === savedActive)) ? savedActive : docs[0].id;
         loadDoc(activeDocId);   // 활성 문서가 visible에 없으면 자동 편입
@@ -3591,15 +3602,27 @@ function hello() {
       }, 250);
     }
 
-    function scheduleRemoteReload() {
+    let pendingForce = false;   // 예약이 겹쳐도 강제 반영(배너 클릭) 요청을 잃지 않는다
+    function scheduleRemoteReload(force) {
+      if (force === true) {
+        pendingForce = true;
+      }
       clearTimeout(syncInTimer);
-      syncInTimer = setTimeout(applyRemote, 150);
+      syncInTimer = setTimeout(() => {
+        const f = pendingForce;
+        pendingForce = false;
+        applyRemote(f);
+      }, 150);
     }
 
     // 다른 창의 변경을 DB에서 다시 읽어 반영 (편집 중 에디터는 보호)
     // force=true 면 보호를 무시하고 강제로 원격 내용을 반영(새로고침 배너 클릭 시)
     async function applyRemote(force) {
-      if (!dbManager.db || applyingRemote) {
+      if (applyingRemote) {
+        scheduleRemoteReload(force);   // 진행 중이면 버리지 말고 다시 예약(변경을 놓치지 않도록)
+        return;
+      }
+      if (!dbManager.db) {
         return;
       }
       applyingRemote = true;
@@ -3676,6 +3699,12 @@ function hello() {
             reopenBtn.style.display = docs.length ? 'inline-flex' : 'none';
           }
           renderTabs();
+        } else if (remoteAllClosed && (editing || localUnsaved) && !force) {
+          // 다른 창이 탭을 전부 닫았지만 이 창엔 아직 저장 안 된 입력이 있다.
+          // 그대로 비우면 입력이 유실되므로 화면을 지키고 배너로 사용자에게 맡긴다.
+          ensureVisible(activeDocId);   // 내가 보던 문서의 탭은 남긴다
+          showSyncBanner(activeDocId);
+          renderTabs();
         } else if (remoteAllClosed) {
           showEmptyState();   // 다른 창에서 탭을 전부 닫음 → 이 창도 빈 상태로(공유 기록은 덮지 않음)
         } else if (docs.some(d => d.id === prevActive)) {
@@ -3715,6 +3744,7 @@ function hello() {
             visibleIds = docs.slice(0, MAX_VISIBLE).map(d => d.id);
           }
           loadDoc(visibleIds[0] || docs[0].id);           // 보던 문서가 삭제됨 → 남은 문서로
+          persistMeta();   // loadDoc 은 저장을 안 하므로, 새로 띄운 탭을 공유 기록에도 반영한다
         } else {
           showEmptyState();                                // 다른 창에서 전부 삭제됨 → 빈 상태
         }
