@@ -1265,13 +1265,66 @@
       }
       notifySync();
     }
+    /* '열린 문서가 없는 빈 상태'는 창(탭)마다 다른 상태다. 그래서 공유 저장소(IndexedDB)가
+       아니라 창별 sessionStorage 에 기록한다. 예전엔 active_doc=null 로 공유 저장했는데,
+       빈 창을 열면 그 값이 다른 창의 탭 목록까지 지워버리는 문제가 있었다. */
+    const EMPTY_STATE_KEY = 'mdv_empty_state';
+    function setEmptyIntent(on) {
+      try {
+        if (on) {
+          sessionStorage.setItem(EMPTY_STATE_KEY, '1');
+        } else {
+          sessionStorage.removeItem(EMPTY_STATE_KEY);
+        }
+      } catch (e) {
+        console.warn('빈 상태 플래그를 저장하지 못했습니다(sessionStorage 사용 불가)', e);
+      }
+    }
+    function isEmptyIntent() {
+      try {
+        return sessionStorage.getItem(EMPTY_STATE_KEY) === '1';
+      } catch (e) {
+        console.warn('빈 상태 플래그를 읽지 못했습니다(sessionStorage 사용 불가)', e);
+        return false;
+      }
+    }
+
+    /* 빈 상태 창이 '다른 창의 실제 변경'과 '단순 재확인'을 구분하기 위한 지문.
+       빈 상태로 들어간 시점의 공유 메타(문서 순서 + 탭 목록)를 기억해 두고,
+       나중에 값이 달라졌을 때만 빈 상태를 풀고 따라 연다. */
+    let emptySnapshotSig = null;
+    let emptyByUser = false;   // 이 창에서 사용자가 직접 닫아 빈 상태가 되었는가(전파 대상)
+    function metaSig(order, visible) {
+      return JSON.stringify([Array.isArray(order) ? order : [], Array.isArray(visible) ? visible : []]);
+    }
+    function captureEmptySnapshot() {
+      emptySnapshotSig = null;   // 읽어오기 전까지는 낡은 기준값을 쓰지 않는다
+      if (!dbManager.db) {
+        return;
+      }
+      Promise.all([
+        dbManager.getItem('content', 'doc_order'),
+        dbManager.getItem('content', 'visible_docs')
+      ]).then(([order, visible]) => {
+        emptySnapshotSig = metaSig(order, visible);
+      }).catch((e) => {
+        emptySnapshotSig = null;   // 못 읽으면 보수적으로 '변경 없음' 취급(빈 상태 유지)
+        console.warn('빈 상태 기준값을 읽지 못했습니다', e);
+      });
+    }
+
     function persistMeta() {
       if (!dbManager.db) {
         return;
       }
       dbManager.setItem('content', 'doc_order', docs.map(d => d.id)).catch(notifyPersistError);
-      dbManager.setItem('content', 'active_doc', activeDocId).catch(notifyPersistError);
-      dbManager.setItem('content', 'visible_docs', visibleIds).catch(notifyPersistError);
+      // 빈 상태인 창은 활성 문서/탭 목록을 공유 기록에 쓰지 않는다.
+      // (빈 창 하나 때문에 다른 창이 열어둔 탭이 전부 사라지던 문제 방지)
+      // 단, 사용자가 이 창에서 직접 닫아 비운 경우는 의도된 변경이므로 전파한다.
+      if (!document.body.classList.contains('no-doc') || emptyByUser) {
+        dbManager.setItem('content', 'active_doc', activeDocId).catch(notifyPersistError);
+        dbManager.setItem('content', 'visible_docs', visibleIds).catch(notifyPersistError);
+      }
       dbManager.setItem('content', 'collapsed_tab_groups', Array.from(collapsedTabGroups)).catch(notifyPersistError);
       notifySync();
     }
@@ -1740,6 +1793,7 @@
       }  // 문서 전환 시 새로고침 배너 닫기
       activeDocId = id;
       document.body.classList.remove('no-doc');   // 빈 상태 해제(문서를 연다)
+      setEmptyIntent(false);
       ensureVisible(id);   // 활성 문서는 항상 탭 바에 노출
       renderDocView(doc);
       renderTabs();
@@ -1939,6 +1993,7 @@
       docs.push(doc);
       activeDocId = doc.id;
       document.body.classList.remove('no-doc');   // 빈 상태 해제
+      setEmptyIntent(false);
       ensureVisible(doc.id);
       editor.value = content;
       updatePreview();
@@ -1954,9 +2009,15 @@
 
     /* 열린 문서가 없는 '빈 상태'로 전환한다. 예전엔 마지막 탭을 닫거나 문서를 모두
        지우면 '제목 없음' 빈 문서를 자동 생성했는데, 그게 불편해서 대신 왼쪽 영역에
-       드롭 존(#emptyState)을 보여준다. 숨긴 문서가 있으면 '📚 전체'로 다시 열 수 있다. */
-    function showEmptyState() {
+       드롭 존(#emptyState)을 보여준다. 숨긴 문서가 있으면 '📚 전체'로 다시 열 수 있다.
+
+       byUser=true 는 '사용자가 이 창에서 탭/문서를 직접 닫아서' 빈 상태가 된 경우다. 이때는
+       그 결과를 공유 기록에 저장해 다른 창에도 전파한다. byUser 가 아닌 경우(새로고침 복원,
+       다른 창의 변경 반영)는 이 창만의 화면 상태이므로 공유 기록을 덮지 않는다. */
+    function showEmptyState(byUser) {
+      emptyByUser = (byUser === true);
       activeDocId = null;
+      visibleIds = [];   // 빈 상태 = 탭도 없음(남겨두면 다음 동기화 때 빈 상태가 풀린다)
       releaseImageUrl();
       if (typeof clearHtmlFrame === 'function') {
         clearHtmlFrame();
@@ -1968,6 +2029,8 @@
       if (reopenBtn) {
         reopenBtn.style.display = docs.length ? 'inline-flex' : 'none';   // 남은(숨긴) 문서가 있을 때만
       }
+      setEmptyIntent(true);   // 이 창은 새로고침해도 빈 상태를 유지(다른 창에는 영향 없음)
+      captureEmptySnapshot();   // 이후 다른 창이 실제로 바꾸면 그때 따라 연다
       renderTabs();
       persistMeta();
     }
@@ -2022,7 +2085,7 @@
       }
       if (activeDocId === id) {
         if (docs.length === 0) {
-          showEmptyState();   // 마지막 문서까지 지움 → 빈 상태(자동 새 문서 생성 안 함)
+          showEmptyState(true);   // 마지막 문서까지 지움 → 빈 상태(자동 새 문서 생성 안 함)
         } else {
           // 닫은 자리의 오른쪽 탭(없으면 마지막 탭)을 활성화 (브라우저 탭 동작과 동일)
           loadDoc(docs[Math.min(idx, docs.length - 1)].id);
@@ -2064,7 +2127,7 @@
         if (visibleIds.length > 0) {
           loadDoc(visibleIds[0]);  // 남은 탭으로 전환(숨긴 문서 미소환)
         } else {
-          showEmptyState();        // 마지막 탭까지 닫힘 → 빈 상태(📚에서 다시 열 수 있음)
+          showEmptyState(true);        // 마지막 탭까지 닫힘 → 빈 상태(📚에서 다시 열 수 있음)
         }
       } else {
         renderTabs();
@@ -2092,7 +2155,7 @@
         if (visibleIds.length > 0) {
           loadDoc(visibleIds[0]);   // 남은 탭으로 전환
         } else {
-          showEmptyState();         // 마지막 탭까지 닫힘 → 빈 상태
+          showEmptyState(true);         // 마지막 탭까지 닫힘 → 빈 상태
         }
       } else {
         renderTabs();
@@ -2119,7 +2182,7 @@
         if (visibleIds.length > 0) {
           loadDoc(visibleIds[0]); // 남은 탭으로 전환
         } else {
-          showEmptyState();       // 마지막 탭 → 빈 상태
+          showEmptyState(true);       // 마지막 탭 → 빈 상태
         }
       } else {
         renderTabs();
@@ -2645,6 +2708,17 @@
       renderDocManager();
     }
 
+    /* 빈 상태에서 탭에 문서를 표시했으면 그 문서를 실제로 연다.
+       탭만 생기고 본문이 빈 화면인 채로 두면 (1) 사용자는 아무 문서도 선택 안 된 상태를 보고,
+       (2) 이 창이 여전히 '빈 상태'로 취급돼 다른 창과 동기화될 때 그 탭들이 통째로 사라진다. */
+    function activateIfEmpty(id) {
+      if (activeDocId === null && id) {
+        loadDoc(id);   // no-doc 해제 + 탭 렌더까지 처리
+        return true;
+      }
+      return false;
+    }
+
     // 선택한 문서들을 탭에 표시 (5개 제한 내에서)
     function bulkShow() {
       if (!dmSelected.size) {
@@ -2652,6 +2726,7 @@
         return;
       }
       let added = 0, skipped = 0;
+      let firstAdded = null;
       for (const id of dmSelected) {
         if (visibleIds.includes(id)) {
           continue;
@@ -2665,8 +2740,12 @@
         }
         visibleIds.push(id);
         accessTime[id] = Date.now();
+        if (!firstAdded) {
+          firstAdded = id;
+        }
         added++;
       }
+      activateIfEmpty(firstAdded);
       renderTabs(); persistMeta(); renderDocManager();
       if (added && skipped) {
         showToast(`${added}개 표시 · ${skipped}개는 ${MAX_VISIBLE}개 제한으로 제외됐어요.`, 'warning');
@@ -2743,7 +2822,7 @@
       ids.forEach(removeDocCore);
       dmSelected.clear();
       if (docs.length === 0) {
-        showEmptyState();   // 전부 삭제 → 빈 상태(자동 새 문서 생성 안 함)
+        showEmptyState(true);   // 전부 삭제 → 빈 상태(자동 새 문서 생성 안 함)
       } else if (!docs.some(d => d.id === activeDocId)) {
         // 활성 문서가 삭제됨 → 가장 최근 문서로 전환
         const next = docs.slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
@@ -2785,6 +2864,10 @@
         }
         visibleIds.push(id);
         accessTime[id] = Date.now();
+        if (activateIfEmpty(id)) {
+          persistMeta();
+          return;   // loadDoc 이 탭 렌더까지 처리함
+        }
       }
       renderTabs();           // 탭 바 + (열려있는) 목록 동기화
       persistMeta();
@@ -2831,12 +2914,14 @@
         }
       });
 
-      // 활성 문서 복원값을 먼저 읽는다. null 이면 '사용자가 모든 탭을 닫아 빈 상태였음'을
-      // 의미하고(최초 실행은 undefined), 이때는 안내 문서를 새로 만들지도, 탭을 되살리지도 않는다.
+      // 이 창이 '모든 탭을 닫은 빈 상태'였는지는 창별 플래그로 판정한다(공유 값이 아니므로
+      // 다른 창의 상태에 영향받지 않는다). 안내 문서 생성은 doc_order 기록이 아예 없는
+      // '진짜 최초 실행'에서만 한다(문서를 전부 지운 뒤 다시 생기던 문제 방지).
       const savedActive = await dbManager.getItem('content', 'active_doc');
-      const wasEmpty = savedActive === null;
+      const wasEmpty = isEmptyIntent();
+      const firstRun = (order === undefined || order === null);
 
-      if (docs.length === 0 && !wasEmpty) {
+      if (docs.length === 0 && firstRun) {
         // 최초 실행이거나 구버전(단일 문서) 사용자 → 이관
         const legacy = await dbManager.getItem('content', 'last_content');
         const content = (legacy && legacy.trim()) ? legacy : initialContent;
@@ -2863,8 +2948,8 @@
       const savedCollapsed = await dbManager.getItem('content', 'collapsed_tab_groups');
       collapsedTabGroups = new Set(Array.isArray(savedCollapsed) ? savedCollapsed : []);
 
-      if (wasEmpty) {
-        showEmptyState();   // 빈 상태 복원(문서가 있어도 자동으로 열지 않음)
+      if (wasEmpty || docs.length === 0) {
+        showEmptyState();   // 빈 상태 복원(문서가 있어도 자동으로 열지 않음) / 문서가 하나도 없음
       } else {
         activeDocId = (savedActive && docs.some(d => d.id === savedActive)) ? savedActive : docs[0].id;
         loadDoc(activeDocId);   // 활성 문서가 visible에 없으면 자동 편입
@@ -3520,6 +3605,7 @@ function hello() {
       applyingRemote = true;
       try {
         const prevActive = activeDocId;
+        const prevVisibleCount = visibleIds.length;   // 원격 값으로 덮기 전의 내 탭 개수
         const editing = (document.activeElement === editor);
         const localActive = getActiveDoc();
         // 디바운스 저장 대기 중인 미저장 입력 여부 (DB로 되돌리면 유실되므로 보호 대상)
@@ -3528,6 +3614,7 @@ function hello() {
         const all = (await dbManager.getAll('docs')) || {};
         const order = await dbManager.getItem('content', 'doc_order');
         const savedVisible = await dbManager.getItem('content', 'visible_docs');
+        const savedActive = await dbManager.getItem('content', 'active_doc');
 
         // 다른 탭이 추가한 이미지도 반영한다. imageStore(메모리 Map)는 최초 1회만 채워지므로,
         // 크로스탭 동기화 시 이미지를 다시 읽지 않으면 받는 탭에서 '이미지 없음'으로 뜨고
@@ -3573,9 +3660,15 @@ function hello() {
           collapsedTabGroups = new Set(remoteCollapsed);
         }
 
-        if (prevActive === null && document.body.classList.contains('no-doc')) {
-          // 이 창은 '의도적으로 빈 상태'(사용자가 모든 탭을 닫음)였다. 다른 창이 어떤 문서를
-          // 편집·추가했다고 해서 이 창에 문서를 강제로 열지 않는다 → 빈 상태 유지.
+        // 빈 상태인 창은, 다른 창이 실제로 문서 목록/탭을 바꿨을 때만 따라서 다시 연다.
+        // (탭 전환·단순 재확인처럼 바뀐 게 없을 때는 빈 상태를 그대로 둔다)
+        // 탭이 하나라도 떠 있으면 '빈 창'이 아니다(탭만 있고 활성 문서가 없는 상태를 지우지 않도록)
+        const wasEmptyWindow = (prevActive === null && prevVisibleCount === 0 && document.body.classList.contains('no-doc'));
+        const remoteChanged = (emptySnapshotSig !== null && metaSig(order, savedVisible) !== emptySnapshotSig);
+        // 다른 창에서 사용자가 탭을 전부 닫은 경우(빈 배열 + 활성 문서 없음) → 이 창도 따라 비운다
+        const remoteAllClosed = (Array.isArray(savedVisible) && savedVisible.length === 0 && savedActive === null);
+
+        if (wasEmptyWindow && !remoteChanged) {
           activeDocId = null;
           visibleIds = [];
           const reopenBtn = document.getElementById('emptyReopenBtn');
@@ -3583,6 +3676,8 @@ function hello() {
             reopenBtn.style.display = docs.length ? 'inline-flex' : 'none';
           }
           renderTabs();
+        } else if (remoteAllClosed) {
+          showEmptyState();   // 다른 창에서 탭을 전부 닫음 → 이 창도 빈 상태로(공유 기록은 덮지 않음)
         } else if (docs.some(d => d.id === prevActive)) {
           activeDocId = prevActive;                       // 이 창이 보던 문서는 그대로 유지
           if (!visibleIds.includes(activeDocId)) {
