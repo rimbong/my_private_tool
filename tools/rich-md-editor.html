@@ -987,14 +987,15 @@
           closeImport();
         }
       });
-      document.getElementById('mdImpApply').addEventListener('click', () => {
+      document.getElementById('mdImpApply').addEventListener('click', async () => {
         const text = impArea.value;
         if (!text.trim()) {
           closeImport();
           return;
         }
         setMarkdown(text);
-        scheduleSave();
+        await flushActive();   // 디바운스로 미루지 않고 즉시 저장(적용 직후 새로고침해도 유실 없게)
+        renderList();
         closeImport();
         editor.commands.focus('end');
         showToast('마크다운을 현재 노트에 적용했습니다.', 'success');
@@ -1053,6 +1054,18 @@
             }).catch(() => {});
           }
         }
+      });
+
+      // 페이지를 숨기거나(탭 전환/최소화) 벗어날 때(새로고침/닫기) 디바운스로 미뤄둔 저장을
+      // 즉시 확정한다. (예약된 500ms 저장이 터지기 전에 새로고침하면 마지막 편집/가져오기가
+      // 통째로 유실되던 문제 방지)
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          flushActive();
+        }
+      });
+      window.addEventListener('pagehide', () => {
+        flushActive();
       });
 
       // ===== 초기 로드 =====
