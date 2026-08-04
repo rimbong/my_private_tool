@@ -1987,7 +1987,7 @@
     function newDoc(initial, folder) {
       saveToDB();          // 현재 문서 보존
       const content = (typeof initial === 'string') ? initial : '';
-      const doc = { id: genDocId(), title: deriveTitle(content), content, customTitle: false, updatedAt: Date.now() };
+      const doc = { id: genDocId(), title: deriveTitle(content), content, type: 'md', customTitle: false, updatedAt: Date.now() };
       if (folder) {
         doc.folder = folder;   // 지정 그룹에 생성
       }
@@ -3539,7 +3539,7 @@ function hello() {
         console.error('Failed to init DB:', err);
         // DB 실패 시에도 인메모리 문서 1개로 동작 (영속만 안 됨)
         if (docs.length === 0) {
-          docs.push({ id: genDocId(), title: deriveTitle(initialContent), content: initialContent, customTitle: false, updatedAt: Date.now() });
+          docs.push({ id: genDocId(), title: deriveTitle(initialContent), content: initialContent, type: 'md', customTitle: false, updatedAt: Date.now() });
         }
         activeDocId = docs[0].id;
         loadDoc(activeDocId);
@@ -3802,7 +3802,7 @@ function hello() {
         try {
           const { text } = foldDataImages(await readAsTextP(file));
           const base = (file.name || '문서').replace(/\.[^.]+$/, '');
-          const doc = { id: genDocId(), title: base || deriveTitle(text), content: text, customTitle: !!base, updatedAt: Date.now() };
+          const doc = { id: genDocId(), title: base || deriveTitle(text), content: text, type: 'md', customTitle: !!base, updatedAt: Date.now() };
           docs.push(doc);
           persistDoc(doc);
           newIds.push(doc.id);
