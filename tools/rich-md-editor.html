@@ -45,6 +45,28 @@
     .tb-btn.active { background: var(--primary-soft); color: var(--primary); border-color: var(--primary); }
     .tb-spacer { flex: 1; }
     .tb-btn.wide { padding: 0 0.7rem; font-size: 0.8rem; }
+    /* 색 선택기: 아이콘 + 하단 색 띠 + 겹쳐진 투명 color input */
+    .tb-color {
+      position: relative; width: 30px; height: 30px; border-radius: 6px; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; overflow: hidden;
+      border: 1px solid transparent;
+    }
+    .tb-color:hover { background: var(--code-bg); }
+    .tb-color-ic { font-size: 0.9rem; font-weight: 800; line-height: 1; pointer-events: none; }
+    .tb-color-bar {
+      position: absolute; left: 4px; right: 4px; bottom: 3px; height: 4px; border-radius: 2px;
+      background: transparent; pointer-events: none;
+    }
+    .tb-color input[type="color"] {
+      position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; border: none;
+      padding: 0; cursor: pointer;
+    }
+    .tb-select {
+      height: 30px; padding: 0 0.35rem; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg); color: var(--text); font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      max-width: 96px;
+    }
+    .tb-select:hover { border-color: var(--primary); }
     .save-state { font-size: 0.75rem; color: var(--muted); white-space: nowrap; margin-right: 0.3rem; }
     /* ===== 본문 3열 ===== */
     .body { flex: 1; display: flex; min-height: 0; }
@@ -233,8 +255,9 @@
         max-width: 100% !important;
         padding: 0 !important;
         margin: 0 !important;
-        color: #000 !important;
-        -webkit-print-color-adjust: exact !important;   /* Chrome/Edge/Safari: 배경색 강제 인쇄 */
+        /* color 을 강제하지 않는다: 사용자가 칠한 글씨색이 PDF 에 그대로 나오도록.
+           색을 지정하지 않은 글자는 위 body 의 색(검정)을 물려받는다. */
+        -webkit-print-color-adjust: exact !important;   /* Chrome/Edge/Safari: 색/배경 강제 인쇄 */
         print-color-adjust: exact !important;            /* 표준(Firefox 등) */
       }
       /* 편집 전용 표시 숨김(표 선택 오버레이·열 리사이즈 핸들·빈문단 안내) */
@@ -280,9 +303,29 @@
     <div class="tb-group">
       <button class="tb-btn" data-act="bold" data-active="bold" title="굵게"><b>B</b></button>
       <button class="tb-btn" data-act="italic" data-active="italic" title="기울임"><i>I</i></button>
+      <button class="tb-btn" data-act="underline" data-active="underline" title="밑줄"><u>U</u></button>
       <button class="tb-btn" data-act="strike" data-active="strike" title="취소선"><s>S</s></button>
       <button class="tb-btn" data-act="code" data-active="code" title="인라인 코드">&lt;/&gt;</button>
-      <button class="tb-btn" data-act="highlight" data-active="highlight" title="하이라이트">🖍</button>
+      <button class="tb-btn" data-act="highlight" data-active="highlight" title="형광펜(기본색)">🖍</button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <label class="tb-color" title="글씨 색">
+        <span class="tb-color-ic" style="color:var(--text)">가</span>
+        <span class="tb-color-bar" id="textColorBar"></span>
+        <input type="color" id="textColor" value="#e11d48">
+      </label>
+      <label class="tb-color" title="배경(형광) 색">
+        <span class="tb-color-ic">▨</span>
+        <span class="tb-color-bar" id="bgColorBar"></span>
+        <input type="color" id="bgColor" value="#fff59d">
+      </label>
+      <button class="tb-btn" data-act="clearColor" title="글씨색·배경색 지우기">✕</button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <select id="fontSizeSel" class="tb-select" title="글자 크기"></select>
+      <select id="fontFamilySel" class="tb-select" title="글꼴"></select>
     </div>
     <span class="tb-sep"></span>
     <div class="tb-group">
@@ -309,10 +352,9 @@
     <span class="save-state" id="saveState"></span>
     <div class="tb-group">
       <button class="tb-action" id="btnImport" title="마크다운 텍스트를 붙여넣어 적용">📥 MD 붙여넣기</button>
-      <button class="tb-action" id="btnOpen" title="마크다운(.md) 파일을 새 노트로 열기">📂 열기</button>
-      <button class="tb-action" id="btnSave" title="현재 노트를 마크다운(.md) 파일로 저장">💾 저장</button>
+      <button class="tb-action" id="btnOpen" title="마크다운(.md) 파일을 새 노트로 열기">📂 MD 열기</button>
       <input type="file" id="mdFile" accept=".md,.markdown,text/markdown" style="display:none;">
-      <button class="tb-action" data-act="print" title="현재 노트를 인쇄 / PDF로 저장">🖨️ PDF</button>
+      <button class="tb-action" data-act="print" title="현재 노트를 인쇄 / PDF로 저장(고객 전달용)">🖨️ PDF 저장</button>
       <button class="tb-btn" onclick="portalTheme.toggle()" title="다크/라이트">🌙</button>
     </div>
   </div>
@@ -387,8 +429,8 @@
         extensions: [
           TT.StarterKit.configure({ codeBlock: false }),   // 기본 코드블록 끄고 아래 강조형으로 교체
           TT.CodeBlockLowlight.configure({ lowlight: TT.lowlight }),
-          TT.Markdown,
-          TT.Highlight,
+          TT.Markdown,                                       // md 원고 '가져오기' 파싱용(내보내기는 사용 안 함)
+          TT.Highlight.configure({ multicolor: true }),      // 배경(형광) 색 지정 허용
           TT.TaskList,
           TT.TaskItem.configure({ nested: true }),
           TT.Table.configure({ resizable: true }),
@@ -397,19 +439,52 @@
           TT.TableCell,
           TT.Image,
           TT.TextAlign.configure({ types: ['heading', 'paragraph'] }),
+          TT.TextStyle,                                      // 색/크기/글꼴 마크의 토대
+          TT.Color,                                          // 글씨(글자) 색
+          TT.FontSize,                                       // 글자 크기
+          TT.FontFamily,                                     // 글꼴
           TT.Placeholder.configure({ placeholder: '여기에 입력하세요. 첫 줄이 노트 제목이 됩니다…' })
         ],
         content: '',
         autofocus: true
       });
 
-      function getMd() {
-        return typeof editor.getMarkdown === 'function' ? editor.getMarkdown() : '';
+      // 저장 본문은 HTML(색/밑줄/크기/글꼴 유지). md 는 '가져오기 입력'으로만 쓴다.
+      function getHtml() {
+        return editor.getHTML();
       }
-      function setMd(md) {
+      // 마크다운 원고를 편집기로 가져온다(md -> 블로그 변환).
+      function setMarkdown(md) {
         loadingNote = true;
         editor.commands.setContent(md || '', { contentType: 'markdown' });
         loadingNote = false;
+      }
+      // 저장된 노트를 편집기에 싣는다. HTML 포맷이면 그대로, 구버전(마크다운)이면 파싱해 싣는다.
+      function loadNoteIntoEditor(note) {
+        loadingNote = true;
+        if (note && note.format === 'html') {
+          editor.commands.setContent(note.content || '');
+        } else {
+          editor.commands.setContent((note && note.content) || '', { contentType: 'markdown' });
+        }
+        loadingNote = false;
+      }
+      // 편집기 본문의 순수 텍스트 첫 줄을 노트 제목으로 삼는다.
+      function titleFromEditor() {
+        const text = editor.getText() || '';
+        const line = text.split('\n').map(s => s.trim()).find(s => s.length > 0) || '';
+        return line.slice(0, 60) || '제목 없음';
+      }
+      // 저장된 노트 본문에서 미리보기용 순수 텍스트를 뽑는다(HTML 은 DOMParser 로 안전 추출).
+      function noteToText(note) {
+        if (!note || !note.content) {
+          return '';
+        }
+        if (note.format === 'html') {
+          const doc = new DOMParser().parseFromString(note.content, 'text/html');
+          return (doc.body ? doc.body.textContent : '') || '';
+        }
+        return note.content;   // 구버전 마크다운
       }
 
       // ===== 유틸 =====
@@ -421,8 +496,9 @@
         const clean = line.replace(/^#{1,6}\s+/, '').replace(/[*_`~>#-]/g, '').trim();
         return clean.slice(0, 60) || '제목 없음';
       }
-      function preview(md) {
-        const body = (md || '').split('\n').map(s => s.trim()).filter(Boolean);
+      function preview(note) {
+        const text = noteToText(note);
+        const body = text.split('\n').map(s => s.trim()).filter(Boolean);
         body.shift();   // 제목 줄 제외
         return (body.join(' ') || '내용 없음').replace(/[#*_`~>-]/g, '').trim().slice(0, 50);
       }
@@ -483,7 +559,7 @@
         noteListEl.innerHTML = shown.map(n => (
           '<div class="note-item' + (n.id === activeId ? ' active' : '') + '" data-id="' + n.id + '">' +
             '<div class="n-title">' + esc(n.title || '제목 없음') + '</div>' +
-            '<div class="n-meta">' + timeAgo(n.updatedAt) + ' · ' + esc(preview(n.content)) + '</div>' +
+            '<div class="n-meta">' + timeAgo(n.updatedAt) + ' · ' + esc(preview(n)) + '</div>' +
             '<button class="n-del" data-del="' + n.id + '" title="삭제">🗑</button>' +
           '</div>'
         )).join('');
@@ -500,7 +576,7 @@
         }
         await flushActive();   // 이전 활성 노트의 미저장 편집을 먼저 확정(전환 시 마지막 입력 소실 방지)
         activeId = id;
-        setMd(note.content);
+        loadNoteIntoEditor(note);
         persistActiveId();
         renderList();
         setSaveState('저장됨');
@@ -551,8 +627,9 @@
           if (!note) {
             return;
           }
-          note.content = getMd();
-          note.title = deriveTitle(note.content);
+          note.content = getHtml();
+          note.format = 'html';
+          note.title = titleFromEditor();
           note.updatedAt = Date.now();
           try {
             await persistNote(note);
@@ -569,8 +646,9 @@
         if (!note) {
           return;
         }
-        note.content = getMd();
-        note.title = deriveTitle(note.content);
+        note.content = getHtml();
+        note.format = 'html';
+        note.title = titleFromEditor();
         note.updatedAt = Date.now();
         try {
           await persistNote(note);
@@ -617,9 +695,11 @@
         h3: () => chain().toggleHeading({ level: 3 }).run(),
         bold: () => chain().toggleBold().run(),
         italic: () => chain().toggleItalic().run(),
+        underline: () => chain().toggleUnderline().run(),
         strike: () => chain().toggleStrike().run(),
         code: () => chain().toggleCode().run(),
         highlight: () => chain().toggleHighlight().run(),
+        clearColor: () => chain().unsetColor().unsetHighlight().run(),
         bulletList: () => chain().toggleBulletList().run(),
         orderedList: () => chain().toggleOrderedList().run(),
         taskList: () => chain().toggleTaskList().run(),
@@ -670,6 +750,109 @@
         }
       });
 
+      // ===== 색 / 글꼴 / 글자 크기 컨트롤 =====
+      const textColorInput = document.getElementById('textColor');
+      const bgColorInput = document.getElementById('bgColor');
+      const textColorBar = document.getElementById('textColorBar');
+      const bgColorBar = document.getElementById('bgColorBar');
+      const fontSizeSel = document.getElementById('fontSizeSel');
+      const fontFamilySel = document.getElementById('fontFamilySel');
+
+      const FONT_SIZES = ['', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '40px'];
+      const FONT_FAMILIES = [
+        { label: '글꼴', value: '' },
+        { label: '맑은 고딕', value: "'Malgun Gothic', sans-serif" },
+        { label: '돋움', value: "Dotum, sans-serif" },
+        { label: '굴림', value: "Gulim, sans-serif" },
+        { label: '바탕', value: "Batang, serif" },
+        { label: '궁서', value: "Gungsuh, serif" },
+        { label: 'Arial', value: "Arial, sans-serif" },
+        { label: 'Georgia', value: "Georgia, serif" },
+        { label: '고정폭', value: "Consolas, 'Fira Code', monospace" }
+      ];
+      fontSizeSel.innerHTML = FONT_SIZES
+        .map(s => '<option value="' + s + '">' + (s ? s.replace('px', '') : '크기') + '</option>')
+        .join('');
+      fontFamilySel.innerHTML = FONT_FAMILIES
+        .map(f => '<option value="' + esc(f.value) + '">' + esc(f.label) + '</option>')
+        .join('');
+
+      // 네이티브 색 선택기/드롭다운을 열면 편집기 포커스와 선택이 그쪽으로 넘어간다.
+      // 값이 확정될 때쯤엔 선택이 어긋나 색이 엉뚱한 곳에 먹는다. 그래서 컨트롤을 누르는
+      // 순간(pointerdown) 선택 범위를 저장해 두고, 적용 시 그 범위를 복원한 뒤 서식을 건다.
+      let savedRange = null;
+      function rememberSelection() {
+        const sel = editor.state.selection;
+        savedRange = { from: sel.from, to: sel.to };
+      }
+      // 저장해 둔 범위를 복원하며 편집기에 명령을 적용한다(범위가 비어 있으면 현재 커서 유지).
+      function applyToSaved(build) {
+        const c = editor.chain().focus();
+        if (savedRange && savedRange.to > savedRange.from) {
+          c.setTextSelection(savedRange);
+        }
+        build(c);
+        c.run();
+      }
+      [textColorInput, bgColorInput, fontSizeSel, fontFamilySel].forEach((el) => {
+        el.addEventListener('pointerdown', rememberSelection);
+        el.addEventListener('focus', rememberSelection);
+      });
+
+      textColorInput.addEventListener('input', () => applyToSaved(c => c.setColor(textColorInput.value)));
+      bgColorInput.addEventListener('input', () => applyToSaved(c => c.setHighlight({ color: bgColorInput.value })));
+      fontSizeSel.addEventListener('change', () => {
+        const v = fontSizeSel.value;
+        applyToSaved(c => (v ? c.setFontSize(v) : c.unsetFontSize()));
+      });
+      fontFamilySel.addEventListener('change', () => {
+        const v = fontFamilySel.value;
+        applyToSaved(c => (v ? c.setFontFamily(v) : c.unsetFontFamily()));
+      });
+
+      // 현재 커서/선택 위치의 서식을 컨트롤에 반영
+      function syncFormatControls() {
+        const styleAttrs = editor.getAttributes('textStyle') || {};
+        const fg = styleAttrs.color;
+        if (fg) {
+          textColorBar.style.background = fg;
+          const hex = colorToHex(fg);
+          if (hex) {
+            textColorInput.value = hex;
+          }
+        } else {
+          textColorBar.style.background = 'transparent';
+        }
+        const hl = editor.getAttributes('highlight') || {};
+        if (hl.color) {
+          bgColorBar.style.background = hl.color;
+          const hex = colorToHex(hl.color);
+          if (hex) {
+            bgColorInput.value = hex;
+          }
+        } else {
+          bgColorBar.style.background = 'transparent';
+        }
+        fontSizeSel.value = FONT_SIZES.includes(styleAttrs.fontSize) ? styleAttrs.fontSize : '';
+        const fam = styleAttrs.fontFamily || '';
+        fontFamilySel.value = FONT_FAMILIES.some(f => f.value === fam) ? fam : '';
+      }
+      // rgb(...) 또는 #xxx 를 color input 용 #rrggbb 로 변환(실패하면 null)
+      function colorToHex(c) {
+        if (!c) {
+          return null;
+        }
+        if (/^#[0-9a-fA-F]{6}$/.test(c)) {
+          return c;
+        }
+        const m = c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (m) {
+          const h = (n) => Number(n).toString(16).padStart(2, '0');
+          return '#' + h(m[1]) + h(m[2]) + h(m[3]);
+        }
+        return null;
+      }
+
       function updateToolbarState() {
         document.querySelectorAll('#toolbar .tb-btn[data-active]').forEach((btn) => {
           const spec = btn.dataset.active;
@@ -682,6 +865,7 @@
           btn.classList.toggle('active', on);
         });
         updateContextBar();
+        syncFormatControls();
       }
 
       // ===== 컨텍스트 툴바(표/코드) =====
@@ -809,7 +993,7 @@
           closeImport();
           return;
         }
-        setMd(text);
+        setMarkdown(text);
         scheduleSave();
         closeImport();
         editor.commands.focus('end');
@@ -830,16 +1014,7 @@
         showToast('새 노트로 추가했습니다.', 'success');
       });
 
-      // ===== 파일 저장 / 열기 =====
-      document.getElementById('btnSave').addEventListener('click', () => {
-        const note = findNote(activeId);
-        const blob = new Blob([getMd()], { type: 'text/markdown' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = ((note && note.title) || 'note').replace(/[\\/:*?"<>|]/g, '_') + '.md';
-        a.click();
-        URL.revokeObjectURL(a.href);
-      });
+      // ===== 파일 열기(마크다운 가져오기) =====
       const mdFile = document.getElementById('mdFile');
       document.getElementById('btnOpen').addEventListener('click', () => mdFile.click());
       mdFile.addEventListener('change', () => {
@@ -868,8 +1043,9 @@
           clearTimeout(saveTimer);
           const note = findNote(activeId);
           if (note) {
-            note.content = getMd();
-            note.title = deriveTitle(note.content);
+            note.content = getHtml();
+            note.format = 'html';
+            note.title = titleFromEditor();
             note.updatedAt = Date.now();
             persistNote(note).then(() => {
               setSaveState('저장됨 · ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }));
@@ -883,13 +1059,14 @@
       const WELCOME_MD = [
         '# 노트 편집기에 오신 걸 환영합니다',
         '',
-        '위지윅으로 바로 편집하는 노트 도구입니다. **첫 줄이 노트 제목**이 됩니다.',
+        '위지윅으로 편집하는 리치 노트 도구입니다. **첫 줄이 노트 제목**이 됩니다.',
         '',
         '- 왼쪽 목록에서 노트를 만들고 전환하세요 (`+ 새 노트`)',
-        '- 편집 내용은 **자동 저장**됩니다',
-        '- 상단 `〈MD〉` 로 마크다운 원문 보기 / `.md` 열기·저장 가능',
+        '- 편집 내용은 **자동 저장**됩니다 (글씨색·배경색·글자 크기·글꼴·밑줄까지 그대로 보존)',
+        '- 원고는 상단 `📥 MD 붙여넣기` / `📂 MD 열기` 로 가져오세요 (마크다운 -> 리치 문서)',
+        '- 강조와 색을 입힌 뒤 `🖨️ PDF 저장` 으로 고객 전달용 PDF 를 만듭니다',
         '',
-        '> 참고: 밑줄·하이라이트색·정렬 등 일부 서식은 마크다운으로 저장할 때 표준 문법이 없어 유실될 수 있습니다.'
+        '> 팁: PDF 저장 창에서 배경 그래픽(색상 인쇄)을 켜면 칠한 색이 그대로 인쇄됩니다.'
       ].join('\n');
 
       (async function init() {
@@ -922,7 +1099,7 @@
           await openNote(savedActive, { focus: false });
         } catch (e) {
           console.warn('노트 저장소 초기화 실패:', e);
-          setMd(WELCOME_MD);
+          setMarkdown(WELCOME_MD);
         }
         updateToolbarState();
       })();
