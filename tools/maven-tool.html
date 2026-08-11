@@ -50,15 +50,15 @@
     <h2 class="card-title">Maven pom.xml 생성</h2>
     <div class="form-group">
       <label for="groupId">GroupId</label>
-      <input type="text" id="groupId" value="com.nanum">
+      <input type="text" id="groupId" placeholder="예: com.example">
     </div>
     <div class="form-group">
       <label for="artifactId">ArtifactId</label>
-      <input type="text" id="artifactId" value="smart-flow-ose">
+      <input type="text" id="artifactId" placeholder="예: my-web-app">
     </div>
     <div class="form-group">
       <label for="projectHome">Project Home Path</label>
-      <input type="text" id="projectHome" placeholder="예: D:\NANUM\workspaces\EX38\SmartFlowOSE3.8">
+      <input type="text" id="projectHome" placeholder="예: D:\workspaces\MyProject">
       <p class="note">프로젝트의 절대 경로를 입력하세요. `pom.xml`에서 `${project.home}`으로 사용됩니다.</p>
     </div>
     <div class="form-group">
@@ -83,7 +83,7 @@
       <input type="text" id="jspApiPath" value="lib/jsp-api.jar">
     </div>
     <div class="form-group file-upload-group">
-      <label for="srcFolders">src 폴더 선택 (예: C:\NANUM\workspaces\EX38\SmartFlowOSE3.8\src, 하위 폴더들이 소스 폴더로 자동인식)</label>
+      <label for="srcFolders">src 폴더 선택 (예: C:\workspaces\MyProject\src, 하위 폴더들이 소스 폴더로 자동인식)</label>
       <input type="file" id="srcFolders" webkitdirectory directory />
       <span class="srcFileCnt note">0개 폴더 선택됨</span>
     </div>
@@ -134,7 +134,7 @@
         <hr style="margin: 2rem 0;">
 
         <h2 class="card-title">문제 해결 가이드</h2>
-        <h3>오류: "Maven Update" 시도시 'src/{소스파일명}' 과 같은 에러 발생 (예: Cannot nest 'SmartFlowOSE3/src/hwp' inside 'SmartFlowOSE3/src'. To enable the nesting exclude 'hwp/' from 'SmartFlowOSE3/src') </h3>
+        <h3>오류: "Maven Update" 시도시 'src/{소스파일명}' 과 같은 에러 발생 (예: Cannot nest 'MyProject/src/hwp' inside 'MyProject/src'. To enable the nesting exclude 'hwp/' from 'MyProject/src') </h3>
         <p>프로젝트를 Maven 프로젝트로 변환한 후에도 문제가 발생한다면, Eclipse의 기존 설정과 충돌이 원인일 수 있습니다. 아래 단계를 따라 해결해 보세요.</p>
         <ol>
             <li><strong><code>.settings/org.eclipse.wst.common.component</code> 파일 삭제:</strong>
@@ -215,8 +215,8 @@
         }
 
         function generatePomXml() {
-            const groupId = document.getElementById('groupId').value;
-            const artifactId = document.getElementById('artifactId').value;
+            const groupId = document.getElementById('groupId').value.trim();
+            const artifactId = document.getElementById('artifactId').value.trim();
             const projectHome = document.getElementById('projectHome').value;
             const tomcatVersion = document.querySelector('input[name="tomcatVersion"]:checked').value;
             const tomcatWasPath = document.getElementById('tomcatHome').value.trim();
@@ -226,6 +226,14 @@
             const libFiles = document.getElementById('libFiles').files;
             const srcFiles = document.getElementById('srcFolders').files;
 
+            if (!groupId) {
+                showToast('GroupId를 입력해주세요.', 'warning');
+                return;
+            }
+            if (!artifactId) {
+                showToast('ArtifactId를 입력해주세요.', 'warning');
+                return;
+            }
             if (!projectHome) {
                 showToast('Project Home Path를 입력해주세요.', 'warning');
                 return;
