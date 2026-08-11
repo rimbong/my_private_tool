@@ -69,6 +69,19 @@
         <div class="radio-option"><input type="radio" name="tomcatVersion" id="version9" value="9"><label for="version9">Tomcat 9</label></div>
       </div>
     </div>
+    <div class="form-group">
+      <label for="tomcatHome">Tomcat Home Path</label>
+      <input type="text" id="tomcatHome" placeholder="예: D:\apache-tomcat-9.0.50">
+      <p class="note">Tomcat 설치 경로입니다. `pom.xml`에서 `${tomcat.home}`으로 쓰이며, 아래 servlet-api / jsp-api 의 기준 경로가 됩니다. 비워두면 Tomcat 라이브러리(servlet/jsp) 의존성은 생략됩니다.</p>
+    </div>
+    <div class="form-group">
+      <label for="servletApiPath">servlet-api jar 경로 (Tomcat Home 기준 상대경로)</label>
+      <input type="text" id="servletApiPath" value="lib/servlet-api.jar">
+    </div>
+    <div class="form-group">
+      <label for="jspApiPath">jsp-api jar 경로 (Tomcat Home 기준 상대경로)</label>
+      <input type="text" id="jspApiPath" value="lib/jsp-api.jar">
+    </div>
     <div class="form-group file-upload-group">
       <label for="srcFolders">src 폴더 선택 (예: C:\NANUM\workspaces\EX38\SmartFlowOSE3.8\src, 하위 폴더들이 소스 폴더로 자동인식)</label>
       <input type="file" id="srcFolders" webkitdirectory directory />
@@ -142,12 +155,21 @@
     const PARENT_ORIGIN = (location.origin && location.origin !== 'null') ? location.origin : '*';
     // pom 값에 &,<,>," 들어가면 무효 XML → 모든 보간값 이스케이프
     const escXml = s => (s == null ? '' : String(s)).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    // Tomcat 버전별 Servlet / JSP 스펙 버전(표준). pom 의존성 version 값에 쓴다.
+    const SERVLET_JSP_BY_TOMCAT = {
+        '7': { servlet: '3.0', jsp: '2.2' },
+        '8': { servlet: '3.1', jsp: '2.3' },
+        '9': { servlet: '4.0', jsp: '2.3' }
+    };
+    // config.js 없이도 동작한다. config 가 주입되면(포털 + Config 도구) 입력칸을 자동으로 채우는
+    // 하위호환만 유지한다.
     let configObj = {};
     let tomcatObj = null;
     function applyConfig(cfg) {
         configObj = cfg || {};
         tomcatObj = configObj.tomcatObj || null;
         setDefaultProjectHome();
+        fillTomcatFromConfig();
     }
 
         function setDefaultProjectHome() {
@@ -157,12 +179,29 @@
             }
         }
 
-        function checkConfig() {
-            if (!tomcatObj || Object.keys(tomcatObj).length === 0) {
-                showToast('config.js가 없거나 유효하지 않습니다. Config 도구에서 파일을 먼저 생성하세요.', 'warning', 5000);
-                return false;
+        // config.js 가 있을 때만: 현재 선택된 Tomcat 버전의 값으로 입력칸을 채운다(하위호환).
+        function fillTomcatFromConfig() {
+            if (!tomcatObj) {
+                return;
             }
-            return true;
+            const ver = document.querySelector('input[name="tomcatVersion"]:checked').value;
+            const obj = tomcatObj[ver];
+            if (!obj) {
+                return;
+            }
+            if (obj.wasHome) {
+                document.getElementById('tomcatHome').value = obj.wasHome;
+            }
+            if (Array.isArray(obj.lib)) {
+                const servletApi = obj.lib.find(lib => lib.includes('servlet-api'));
+                const jspApi = obj.lib.find(lib => lib.includes('jsp-api'));
+                if (servletApi) {
+                    document.getElementById('servletApiPath').value = servletApi;
+                }
+                if (jspApi) {
+                    document.getElementById('jspApiPath').value = jspApi;
+                }
+            }
         }
 
         function resetAll() {
@@ -176,15 +215,14 @@
         }
 
         function generatePomXml() {
-            if (!checkConfig()) {
-              return;
-            }
-
             const groupId = document.getElementById('groupId').value;
             const artifactId = document.getElementById('artifactId').value;
             const projectHome = document.getElementById('projectHome').value;
             const tomcatVersion = document.querySelector('input[name="tomcatVersion"]:checked').value;
-            const tomcatVersionObj = tomcatObj[tomcatVersion];
+            const tomcatWasPath = document.getElementById('tomcatHome').value.trim();
+            const servletApi = document.getElementById('servletApiPath').value.trim();
+            const jspApi = document.getElementById('jspApiPath').value.trim();
+            const specVer = SERVLET_JSP_BY_TOMCAT[tomcatVersion] || SERVLET_JSP_BY_TOMCAT['7'];
             const libFiles = document.getElementById('libFiles').files;
             const srcFiles = document.getElementById('srcFolders').files;
 
@@ -192,14 +230,9 @@
                 showToast('Project Home Path를 입력해주세요.', 'warning');
                 return;
             }
-            
+
             document.querySelector('.fileCnt').innerHTML = `${libFiles.length}개 선택됨`;
             document.querySelector('.srcFileCnt').innerHTML = `${srcFiles.length}개 파일(폴더 내) 선택됨`;
-
-            if (!tomcatVersionObj || !tomcatVersionObj.lib) {
-                showToast(`Tomcat ${tomcatVersion} 설정이 config.js에 없습니다.`, 'warning', 5000);
-                return;
-            }
 
             let dependencies = '';
 
@@ -217,27 +250,24 @@
         </dependency>`;
             }
 
-            // 톰캣 lib 추가
-            const tomcatWasPath = tomcatVersionObj.wasHome;
-            const servletApi = tomcatVersionObj.lib.find(lib => lib.includes('servlet-api'));
-            const jspApi = tomcatVersionObj.lib.find(lib => lib.includes('jsp-api'));
-
-            if (servletApi) {
+            // 톰캣 lib 추가: Tomcat Home 과 각 jar 경로가 입력된 경우에만.
+            // (Tomcat Home 이 비면 servlet/jsp 의존성은 생략한다.)
+            if (tomcatWasPath && servletApi) {
                  dependencies += `
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>servlet-api</artifactId>
-            <version>3.0</version> <!-- Version might need adjustment -->
+            <version>${escXml(specVer.servlet)}</version>
             <scope>system</scope>
             <systemPath>\${tomcat.home}/${escXml(servletApi)}</systemPath>
         </dependency>`;
             }
-            if (jspApi) {
+            if (tomcatWasPath && jspApi) {
                 dependencies += `
         <dependency>
             <groupId>javax.servlet</groupId>
             <artifactId>jsp-api</artifactId>
-            <version>2.2</version> <!-- Version might need adjustment -->
+            <version>${escXml(specVer.jsp)}</version>
             <scope>system</scope>
             <systemPath>\${tomcat.home}/${escXml(jspApi)}</systemPath>
         </dependency>`;
@@ -293,6 +323,10 @@
             </plugin>`;
             }
 
+            // tomcat.home 프로퍼티는 경로가 입력된 경우에만 넣는다(빈 태그 방지).
+            const tomcatHomeProp = tomcatWasPath ? `
+        <tomcat.home>${escXml(tomcatWasPath)}</tomcat.home>` : '';
+
             const pomTemplate = `
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -308,8 +342,7 @@
         <project.home>${escXml(projectHome.split('\\').join('/'))}</project.home>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <tomcat.home>${escXml(tomcatWasPath)}</tomcat.home>
+        <maven.compiler.target>1.8</maven.compiler.target>${tomcatHomeProp}
     </properties>
 
     <build>        
@@ -352,6 +385,11 @@
         document.getElementById('resetButton').addEventListener('click', resetAll);
         document.getElementById('copyPomButton').addEventListener('click', () => {
             copyAndAlert(document.getElementById('pomOutput').value, document.getElementById('copyPomAlert'));
+        });
+        // config.js 가 주입된 경우, Tomcat 버전을 바꾸면 해당 버전 값으로 입력칸을 다시 채운다.
+        // (config 가 없으면 fillTomcatFromConfig 는 아무것도 하지 않아 수동 입력이 유지된다.)
+        document.querySelectorAll('input[name="tomcatVersion"]').forEach((radio) => {
+            radio.addEventListener('change', fillTomcatFromConfig);
         });
         setDefaultProjectHome();
     });
