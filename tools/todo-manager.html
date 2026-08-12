@@ -7,42 +7,50 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
   <style>
     :root {
-      --primary: #6366f1;
-      --primary-hover: #4f46e5;
-      --primary-light: #e0e7ff;
-      --bg: #f8fafc;
+      --primary: #1a7f37;
+      --primary-hover: #166b2e;
+      --primary-light: rgba(26,127,55,0.10);
+      --bg: #f5f7f4;
       --card-bg: #ffffff;
-      --text-main: #1e293b;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --sunday: #ef4444;
-      --saturday: #3b82f6;
-      --danger: #f43f5e;
-      --danger-hover: #e11d48;
-      --success: #10b981;
-      --warning: #f59e0b;
+      --surface-alt: #eef1ee;
+      --text-main: #1b2430;
+      --text-muted: #5c6775;
+      --border: #d9dfd9;
+      --sunday: #cf222e;
+      --saturday: #0969da;
+      --danger: #cf222e;
+      --danger-hover: #a40e19;
+      --success: #1a7f37;
+      --warning: #9a6700;
+      --info: #0969da;
     }
 
-    body { 
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-      background: var(--bg); 
+    body {
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
+      background: var(--bg);
       margin: 0; 
       display: flex; 
       flex-direction: column; 
       height: 100vh; 
-      color: var(--text-main); 
+      color: var(--text-main);
       overflow: hidden;
     }
 
-    header { 
-      background: #fff; 
-      padding: 1rem 2rem; 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
+    /* 문서/미리보기 읽기 영역은 가독성 위해 본문 폰트 유지 (UI 껍데기만 모노) */
+    .markdown-body,
+    #detailMemoContent,
+    #detailTaskContent {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    header {
+      background: var(--card-bg);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       border-bottom: 1px solid var(--border);
       z-index: 100;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
 
     .month-nav { display: flex; align-items: center; gap: 1rem; }
@@ -51,50 +59,49 @@
     /* --- Button Design System --- */
     .btn {
       padding: 0.6rem 1.2rem;
-      border-radius: 12px;
+      border-radius: 4px;
       border: none;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.15s ease;
       font-size: 0.9rem;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
-    .btn:active { transform: scale(0.96); }
+    .btn:active { transform: scale(0.98); }
 
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
 
-    .btn-outline { background: white; border: 1px solid var(--border); color: var(--text-main); }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
     .btn-outline:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
 
-    .btn-danger { background: #fff1f2; color: var(--danger); border: 1px solid #ffe4e6; }
-    .btn-danger:hover { background: var(--danger); color: white; box-shadow: 0 4px 12px rgba(244, 63, 94, 0.2); }
+    .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
 
-    .btn-ghost { 
-      background: transparent; 
-      color: var(--text-muted); 
-      border: none; 
-      padding: 0.4rem; 
-      border-radius: 8px;
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 0.4rem;
+      border-radius: 4px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
-    .btn-ghost:hover { background: #f1f5f9; color: var(--text-main); }
+    .btn-ghost:hover { background: var(--surface-alt); color: var(--text-main); }
 
     .nav-btn {
-      background: #f1f5f9;
+      background: var(--surface-alt);
       color: var(--text-muted);
       border: none;
       width: 40px; height: 40px;
-      border-radius: 12px;
+      border-radius: 4px;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
     .nav-btn:hover { background: var(--primary-light); color: var(--primary); }
 
@@ -103,18 +110,18 @@
 
     /* Search Results */
     .search-results-container { margin-top: 1rem; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.3rem; }
-    .search-result-item { background: #f8fafc; border: 1px solid var(--border); padding: 0.4rem 0.6rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
-    .search-result-item:hover { border-color: var(--primary); transform: translateX(4px); background: #fff; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .search-result-item { background: var(--surface-alt); border: 1px solid var(--border); padding: 0.4rem 0.6rem; border-radius: 4px; cursor: pointer; transition: all 0.15s ease; }
+    .search-result-item:hover { border-color: var(--primary); background: var(--primary-light); }
     .search-result-date { font-size: 0.65rem; font-weight: 800; color: var(--primary); margin-bottom: 0.1rem; }
     .search-result-text { font-size: 0.8rem; line-height: 1.2; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
     /* --- Tabs --- */
-    .view-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: #f1f5f9; padding: 0.4rem; border-radius: 16px; align-self: flex-start; }
-    .view-tab { padding: 0.6rem 1.4rem; border-radius: 12px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; color: #64748b; }
-    .view-tab.active { background: white; color: var(--primary); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .view-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--surface-alt); padding: 0.4rem; border-radius: 4px; align-self: flex-start; }
+    .view-tab { padding: 0.6rem 1.4rem; border-radius: 4px; font-weight: 800; font-size: 0.9rem; cursor: pointer; transition: all 0.15s ease; color: var(--text-muted); }
+    .view-tab.active { background: var(--card-bg); color: var(--primary); border: 1px solid var(--border); }
 
     .content { flex: 1; display: flex; flex-direction: column; padding: 1.5rem; overflow: hidden; min-height: 0; }
-    .calendar-container, .today-container, .memo-container { flex: 1; background: white; border-radius: 24px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); display: none; flex-direction: column; overflow: hidden; border: 1px solid var(--border); min-height: 0; }
+    .calendar-container, .today-container, .memo-container { flex: 1; background: var(--card-bg); border-radius: 4px; display: none; flex-direction: column; overflow: hidden; border: 1px solid var(--border); min-height: 0; }
     .active-view { display: flex; }
 
     /* --- Memo Board Styles --- */
@@ -124,23 +131,22 @@
         gap: 1.5rem;
         padding: 2rem;
         overflow-y: auto;
-        background: #f8fafc;
+        background: var(--bg);
         flex: 1;
     }
     .memo-card {
-        background: #fff;
+        background: var(--card-bg);
         border: 1px solid var(--border);
-        border-radius: 20px;
+        border-radius: 4px;
         padding: 1.5rem;
         display: flex;
         flex-direction: column;
         gap: 0.75rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03);
-        transition: all 0.2s;
+        transition: all 0.15s ease;
         height: 400px; /* Fixed height for consistency */
         position: relative;
     }
-    .memo-card:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.08); border-color: var(--primary-light); }
+    .memo-card:hover { border-color: var(--primary); background: var(--primary-light); }
     .memo-card-date { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; }
 
     /* Limit content height in memo card */
@@ -162,14 +168,15 @@
         font-size: 0.9rem;
         scrollbar-width: thin;
         margin: 0;
-        background: #fffbeb;
-        border: 1px solid #fef3c7;
-        color: #92400e;
+        background: var(--surface-alt);
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--warning);
+        color: var(--text-main);
         padding: 1rem;
-        border-radius: 12px;
+        border-radius: 4px;
     }
     .memo-card .todo-text::-webkit-scrollbar { width: 4px; }
-    .memo-card .todo-text::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
+    .memo-card .todo-text::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
     .memo-card .todo-card-actions {
         flex: 0 0 auto !important;
@@ -178,46 +185,46 @@
         gap: 0.3rem;
         padding-top: 0.75rem;
         margin-top: auto;
-        border-top: 1px solid #f1f5f9;
+        border-top: 1px solid var(--border);
     }
 
 
     /* Calendar Grid */
-    .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); background: #fcfcfd; border-bottom: 1px solid var(--border); }
-    .weekday { padding: 1rem; text-align: center; font-weight: 800; font-size: 0.8rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+    .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--surface-alt); border-bottom: 1px solid var(--border); }
+    .weekday { padding: 1rem; text-align: center; font-weight: 800; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
     .weekday:first-child { color: var(--sunday); }
     .weekday:last-child { color: var(--saturday); }
 
     .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); grid-template-rows: repeat(6, 1fr); flex: 1; min-height: 0; }
-    .day-cell { border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; padding: 0.5rem; display: flex; flex-direction: column; gap: 2px; transition: background 0.1s; user-select: none; position: relative; min-height: 0; overflow: hidden; }
+    .day-cell { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 0.5rem; display: flex; flex-direction: column; gap: 2px; transition: background 0.1s; user-select: none; position: relative; min-height: 0; overflow: hidden; }
     .day-cell:nth-child(7n) { border-right: none; }
-    .day-cell:hover { background: #fcfcfd; }
-    .day-cell.other-month { background: #fafafa; opacity: 0.3; pointer-events: none; }
-    .day-cell.today { background: #f5f3ff; }
+    .day-cell:hover { background: var(--surface-alt); }
+    .day-cell.other-month { background: var(--surface-alt); opacity: 0.3; pointer-events: none; }
+    .day-cell.today { background: var(--primary-light); }
     .day-cell.today::after { content: ''; position: absolute; top: 0.5rem; right: 0.5rem; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; }
-    .day-cell.selected { background: #eef2ff; }
-    .day-cell.selection-active { box-shadow: inset 0 0 0 2px var(--primary); z-index: 10; border-radius: 8px; }
+    .day-cell.selected { background: var(--primary-light); }
+    .day-cell.selection-active { box-shadow: inset 0 0 0 2px var(--primary); z-index: 10; border-radius: 4px; }
 
-    .day-num { font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 2px; flex-shrink: 0; }
+    .day-num { font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 2px; flex-shrink: 0; }
     .day-cell:nth-child(7n+1) .day-num { color: var(--sunday); }
     .day-cell:nth-child(7n) .day-num { color: var(--saturday); }
 
-    .todo-item-mini { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #fff; border: 1px solid #e2e8f0; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 1px 2px rgba(0,0,0,0.02); cursor: grab; flex-shrink: 0; line-height: 1.2; }
+    .todo-item-mini { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--card-bg); border: 1px solid var(--border); color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: grab; flex-shrink: 0; line-height: 1.2; }
     .todo-item-mini:active { cursor: grabbing; }
-    .todo-item-mini.completed { opacity: 0.5; text-decoration: line-through; background: #f1f5f9; }
+    .todo-item-mini.completed { opacity: 0.5; text-decoration: line-through; background: var(--surface-alt); }
     .todo-item-mini.span { border-left: 3px solid var(--primary); padding-left: 4px; }
-    .day-cell.drop-target { box-shadow: inset 0 0 0 2px var(--primary); background: var(--primary-light); border-radius: 8px; }
+    .day-cell.drop-target { box-shadow: inset 0 0 0 2px var(--primary); background: var(--primary-light); border-radius: 4px; }
 
     /* --- Drawer Styles --- */
     .daily-drawer { 
       position: absolute; 
       right: 0; 
       top: 0; 
-      width: 520px; 
-      height: 100%; 
-      background: white; 
-      box-shadow: -20px 0 25px -5px rgba(0,0,0,0.1); 
-      z-index: 500; 
+      width: 520px;
+      height: 100%;
+      background: var(--card-bg);
+      box-shadow: -8px 0 16px -12px rgba(0,0,0,0.25);
+      z-index: 500;
       transform: translateX(100%); 
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
       display: flex; 
@@ -225,31 +232,31 @@
       border-left: 1px solid var(--border); 
     }
     .daily-drawer.open { transform: translateX(0); }
-    .drawer-header { padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
-    .drawer-content { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; background: #f8fafc; }
+    .drawer-header { padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); }
+    .drawer-content { flex: 1; overflow-y: auto; padding: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; background: var(--bg); }
 
     /* Card Component */
-    .todo-card-big { background: #fff; border: 1px solid var(--border); border-radius: 20px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.03); position: relative; }
-    .todo-card-big:hover { transform: translateY(-3px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); border-color: var(--primary-light); }
-    .todo-card-big.editing { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+    .todo-card-big { background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; transition: all 0.15s ease; position: relative; }
+    .todo-card-big:hover { border-color: var(--primary); background: var(--primary-light); }
+    .todo-card-big.editing { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
     
     .todo-card-header { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     /* 우측 컨트롤(수정·완료 토글)은 항상 한 묶음으로 오른쪽 끝에 고정 */
     .card-header-right { margin-left: auto; display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
     /* 제목은 헤더 아래 독립 줄 → 길어도 컨트롤을 밀지 않고 깔끔히 줄바꿈 */
-    .todo-card-title { font-weight: 800; font-size: 1.15rem; color: #1e293b; word-break: break-word; margin-top: 0.2rem; }
-    .todo-text { font-weight: 500; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: #475569; background: #fcfcfd; padding: 1rem; border-radius: 12px; border: 1px solid #f1f5f9; }
+    .todo-card-title { font-weight: 800; font-size: 1.15rem; color: var(--text-main); word-break: break-word; margin-top: 0.2rem; }
+    .todo-text { font-weight: 500; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: var(--text-main); background: var(--surface-alt); padding: 1rem; border-radius: 4px; border: 1px solid var(--border); }
 
-    .status-badge { font-size: 0.65rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 20px; text-transform: uppercase; }
-    .status-pending { background: #fffbeb; color: #92400e; border: 1px solid #fef3c7; }
-    .status-done { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
+    .status-badge { font-size: 0.65rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 4px; text-transform: uppercase; }
+    .status-pending { background: rgba(154,103,0,0.10); color: var(--warning); border: 1px solid rgba(154,103,0,0.30); }
+    .status-done { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); }
 
     /* 완료/진행 전용 Pill 토글 버튼 (선택 체크박스와 명확히 구분) */
-    .status-pill { font-size: 0.72rem; font-weight: 800; padding: 0.32rem 0.75rem; border-radius: 20px; cursor: pointer; border: 1px solid transparent; white-space: nowrap; transition: all 0.15s; line-height: 1; }
-    .status-pill.is-todo { background: #fffbeb; color: #92400e; border-color: #fef3c7; }
-    .status-pill.is-todo:hover { background: #fef3c7; }
-    .status-pill.is-done { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
-    .status-pill.is-done:hover { background: #dcfce7; }
+    .status-pill { font-size: 0.72rem; font-weight: 800; padding: 0.32rem 0.75rem; border-radius: 4px; cursor: pointer; border: 1px solid transparent; white-space: nowrap; transition: all 0.15s; line-height: 1; }
+    .status-pill.is-todo { background: rgba(154,103,0,0.10); color: var(--warning); border-color: rgba(154,103,0,0.30); }
+    .status-pill.is-todo:hover { background: rgba(154,103,0,0.18); }
+    .status-pill.is-done { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+    .status-pill.is-done:hover { background: rgba(26,127,55,0.18); }
 
     /* 주간 일정: 컴팩트 한 줄 목록 (한 주를 한눈에) */
     .week-list { flex: 1; min-height: 0; overflow-y: auto; padding: 1rem 1.5rem 1.5rem; }
@@ -257,63 +264,63 @@
     .week-day:first-child { margin-top: 0; }
     .week-day-label { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; font-weight: 800; color: var(--text-muted); padding: 0.45rem 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 0.15rem; }
     .week-day.is-today .week-day-label { color: var(--primary); }
-    .week-today-tag { font-size: 0.62rem; font-weight: 800; background: var(--primary); color: #fff; padding: 0.05rem 0.4rem; border-radius: 20px; }
-    .week-day-count { margin-left: auto; font-size: 0.72rem; color: #94a3b8; font-weight: 700; }
-    .week-empty { font-size: 0.8rem; color: #cbd5e1; padding: 0.35rem 0.5rem; }
-    .week-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.5rem; border-radius: 10px; cursor: pointer; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; user-select: none; }
-    .week-row:hover { background: #f8fafc; border-color: var(--border); }
+    .week-today-tag { font-size: 0.62rem; font-weight: 800; background: var(--primary); color: #fff; padding: 0.05rem 0.4rem; border-radius: 4px; }
+    .week-day-count { margin-left: auto; font-size: 0.72rem; color: var(--text-muted); font-weight: 700; }
+    .week-empty { font-size: 0.8rem; color: var(--text-muted); padding: 0.35rem 0.5rem; }
+    .week-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.45rem 0.5rem; border-radius: 4px; cursor: pointer; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; user-select: none; }
+    .week-row:hover { background: var(--surface-alt); border-color: var(--border); }
     /* 완료 체크 서클 (◯ → ✅) — 주간·오늘 컴팩트 목록 공용 */
-    .check-circle { width: 20px; height: 20px; flex-shrink: 0; padding: 0; border-radius: 50%; border: 2px solid #cbd5e1; background: transparent; cursor: pointer; position: relative; transition: background 0.15s, border-color 0.15s; }
-    .check-circle:hover { border-color: #16a34a; }
-    .check-circle.done { background: #16a34a; border-color: #16a34a; }
+    .check-circle { width: 20px; height: 20px; flex-shrink: 0; padding: 0; border-radius: 50%; border: 2px solid var(--border); background: transparent; cursor: pointer; position: relative; transition: background 0.15s, border-color 0.15s; }
+    .check-circle:hover { border-color: var(--primary); }
+    .check-circle.done { background: var(--primary); border-color: var(--primary); }
     .check-circle.done::after { content: ''; position: absolute; left: 5px; top: 1px; width: 5px; height: 10px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
-    body.dark .check-circle { border-color: #44505c; }
-    .week-time { font-size: 0.78rem; font-weight: 700; color: #0284c7; min-width: 44px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    body.dark .check-circle { border-color: var(--border); }
+    .week-time { font-size: 0.78rem; font-weight: 700; color: var(--info); min-width: 44px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
     .week-span { flex-shrink: 0; font-size: 0.8rem; }
     .week-title { flex: 1; min-width: 0; font-weight: 700; font-size: 0.95rem; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .week-cat { font-size: 0.72rem; font-weight: 800; white-space: nowrap; flex-shrink: 0; }
-    .week-row.done .week-title { text-decoration: line-through; color: #94a3b8; }
-    .week-row.done .week-time { color: #94a3b8; }
-    body.dark .week-row:hover { background: #161b22; }
+    .week-row.done .week-title { text-decoration: line-through; color: var(--text-muted); }
+    .week-row.done .week-time { color: var(--text-muted); }
+    body.dark .week-row:hover { background: var(--surface-alt); }
 
     /* 오늘 할 일: 체크리스트 + 내용 미리보기 */
     .today-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0.75rem 1.5rem 1.5rem; }
-    .today-row { display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.6rem 0.5rem; border-radius: 12px; cursor: pointer; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; user-select: none; }
-    .today-row:hover { background: #f8fafc; border-color: var(--border); }
+    .today-row { display: flex; align-items: flex-start; gap: 0.65rem; padding: 0.6rem 0.5rem; border-radius: 4px; cursor: pointer; border: 1px solid transparent; transition: background 0.12s, border-color 0.12s; user-select: none; }
+    .today-row:hover { background: var(--surface-alt); border-color: var(--border); }
     .today-row .check-circle { margin-top: 0.1rem; }
     .today-body { flex: 1; min-width: 0; }
     .today-head { display: flex; align-items: center; gap: 0.55rem; }
     .today-row .week-title { font-size: 1rem; }
-    .today-sub { font-size: 0.82rem; color: #94a3b8; margin-top: 0.15rem; padding-left: calc(44px + 0.55rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .today-del { flex-shrink: 0; background: transparent; border: none; cursor: pointer; font-size: 0.85rem; padding: 0.15rem 0.3rem; border-radius: 6px; opacity: 0; transition: opacity 0.12s, background 0.12s; }
+    .today-sub { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem; padding-left: calc(44px + 0.55rem); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .today-del { flex-shrink: 0; background: transparent; border: none; cursor: pointer; font-size: 0.85rem; padding: 0.15rem 0.3rem; border-radius: 4px; opacity: 0; transition: opacity 0.12s, background 0.12s; }
     .today-row:hover .today-del { opacity: 0.6; }
-    .today-del:hover { opacity: 1 !important; background: #fee2e2; }
+    .today-del:hover { opacity: 1 !important; background: rgba(207,34,46,0.12); }
     /* 터치 기기: hover가 없으므로 삭제 버튼을 항상 보이게 */
     @media (hover: none) { .today-del { opacity: 0.55; } }
-    .today-row.done .week-title { text-decoration: line-through; color: #94a3b8; }
-    .today-row.done .week-time { color: #94a3b8; }
-    .today-row.done .today-sub { color: #cbd5e1; }
-    body.dark .today-row:hover { background: #161b22; }
-    body.dark .today-del:hover { background: #3b1d1d; }
+    .today-row.done .week-title { text-decoration: line-through; color: var(--text-muted); }
+    .today-row.done .week-time { color: var(--text-muted); }
+    .today-row.done .today-sub { color: var(--text-muted); }
+    body.dark .today-row:hover { background: var(--surface-alt); }
+    body.dark .today-del:hover { background: rgba(248,81,73,0.18); }
 
     /* --- Modal Styles --- */
-    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); align-items: center; justify-content: center; backdrop-filter: blur(8px); }
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(10, 13, 19, 0.6); align-items: center; justify-content: center; backdrop-filter: blur(8px); }
     /* 표시 시 부드러운 fade-in (display:none↔flex 전환에서도 동작하도록 transition 대신 keyframe 사용) */
     @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
     .modal[style*="flex"] { animation: modalFadeIn .16s ease-out; }
-    .modal-content { background: white; padding: 2.5rem; border-radius: 32px; width: 750px; max-width: 90vw; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 1.5rem; }
+    .modal-content { background: var(--card-bg); padding: 2.5rem; border-radius: 4px; width: 750px; max-width: 90vw; border: 1px solid var(--border); box-shadow: 0 12px 32px -16px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 1.5rem; }
 
     /* Form Elements */
     input[type="text"], input[type="date"], textarea {
       padding: 0.8rem 1.2rem;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
       font-family: inherit;
       font-size: 1rem;
       outline: none;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
     }
-    input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+    input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
 
     /* Drag & Drop Feedback */
     .drag-hover {
@@ -323,20 +330,20 @@
 
     /* --- Header Search --- */
     .header-search { position: relative; flex: 1; max-width: 380px; margin: 0 1.5rem; }
-    .header-search > input { width: 100%; box-sizing: border-box; padding: 0.65rem 1rem; border: 1px solid var(--border); border-radius: 12px; font-size: 0.9rem; font-family: inherit; outline: none; transition: all 0.2s; background: var(--card-bg); color: var(--text-main); }
-    .header-search > input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99,102,241,0.1); }
-    .search-panel { display: none; position: absolute; top: calc(100% + 10px); left: 0; right: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 20px 30px -8px rgba(0,0,0,0.18); z-index: 300; max-height: 65vh; flex-direction: column; overflow: hidden; }
+    .header-search > input { width: 100%; box-sizing: border-box; padding: 0.65rem 1rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.9rem; font-family: inherit; outline: none; transition: all 0.15s ease; background: var(--card-bg); color: var(--text-main); }
+    .header-search > input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+    .search-panel { display: none; position: absolute; top: calc(100% + 10px); left: 0; right: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 12px 24px -12px rgba(0,0,0,0.3); z-index: 300; max-height: 65vh; flex-direction: column; overflow: hidden; }
     .search-panel.open { display: flex; }
-    .search-batch-bar { align-items: center; justify-content: space-between; padding: 0.6rem 0.9rem; background: #f1f5f9; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .search-batch-bar { align-items: center; justify-content: space-between; padding: 0.6rem 0.9rem; background: var(--surface-alt); border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .search-panel .search-results-container { margin: 0; padding: 0.6rem; overflow-y: auto; }
 
     /* --- Floating Action Button --- */
-    .fab-btn { position: fixed; right: 2rem; bottom: 2rem; width: 60px; height: 60px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 1.9rem; line-height: 1; cursor: pointer; box-shadow: 0 10px 24px rgba(99,102,241,0.45); z-index: 600; transition: transform 0.15s, background 0.2s; }
-    .fab-btn:hover { transform: scale(1.06); background: var(--primary-hover); }
+    .fab-btn { position: fixed; right: 2rem; bottom: 2rem; width: 60px; height: 60px; border-radius: 50%; border: none; background: var(--primary); color: #fff; font-size: 1.9rem; line-height: 1; cursor: pointer; box-shadow: 0 6px 16px -8px rgba(0,0,0,0.5); z-index: 600; transition: background 0.15s ease; }
+    .fab-btn:hover { background: var(--primary-hover); }
     .fab-menu { position: fixed; right: 2rem; bottom: 5.5rem; display: none; flex-direction: column; gap: 0.6rem; align-items: flex-end; z-index: 600; }
     .fab-menu.open { display: flex; }
-    .fab-action { box-shadow: 0 6px 16px rgba(0,0,0,0.18); white-space: nowrap; }
-    .quick-memo-pop { position: fixed; right: 2rem; bottom: 5.5rem; width: 320px; max-width: 88vw; background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 20px 30px -8px rgba(0,0,0,0.2); padding: 1.25rem; z-index: 600; display: none; flex-direction: column; gap: 0.8rem; }
+    .fab-action { box-shadow: 0 4px 12px -8px rgba(0,0,0,0.4); white-space: nowrap; }
+    .quick-memo-pop { position: fixed; right: 2rem; bottom: 5.5rem; width: 320px; max-width: 88vw; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 12px 24px -12px rgba(0,0,0,0.3); padding: 1.25rem; z-index: 600; display: none; flex-direction: column; gap: 0.8rem; }
     .quick-memo-pop.open { display: flex; }
 
     /* ===== Responsive: 태블릿 / 모바일 ===== */
@@ -345,20 +352,20 @@
       header { flex-wrap: wrap; padding: 0.6rem 0.8rem; gap: 0.5rem; }
       .month-nav { order: 1; gap: 0.5rem; }
       .month-display { font-size: 1.15rem; min-width: 110px; }
-      .nav-btn { width: 34px; height: 34px; border-radius: 10px; }
+      .nav-btn { width: 34px; height: 34px; border-radius: 4px; }
       /* 내보내기/백업 버튼 묶음을 월 이동줄 아래 전용 행으로 내려 한 줄 정렬 */
       header > div:last-child { order: 2; flex-basis: 100%; gap: 0.5rem !important; flex-wrap: wrap; justify-content: flex-start; }
       .header-search { order: 3; flex-basis: 100%; max-width: none; margin: 0.2rem 0 0; }
       .progress-info { display: none; } /* 모바일에선 진행률 바 숨겨 공간 확보 */
 
       /* 모든 버튼 컴팩트 + 버튼 안 텍스트 줄바꿈 금지 */
-      .btn { padding: 0.5rem 0.7rem; font-size: 0.78rem; border-radius: 10px; white-space: nowrap; }
+      .btn { padding: 0.5rem 0.7rem; font-size: 0.78rem; border-radius: 4px; white-space: nowrap; }
 
       /* 콘텐츠 영역 */
       .content { padding: 0.6rem; }
-      .view-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 0.3rem; padding: 0.3rem; margin-bottom: 0.8rem; border-radius: 12px; }
+      .view-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 0.3rem; padding: 0.3rem; margin-bottom: 0.8rem; border-radius: 4px; }
       .view-tab { padding: 0.5rem 0.85rem; font-size: 0.8rem; white-space: nowrap; }
-      .calendar-container, .today-container, .memo-container { border-radius: 14px; }
+      .calendar-container, .today-container, .memo-container { border-radius: 4px; }
 
       /* 달력: 7열 유지하되 셀/글자 축소 */
       .weekday { padding: 0.45rem 0; font-size: 0.62rem; }
@@ -372,7 +379,7 @@
       .drawer-header, .drawer-content { padding: 1rem; }
 
       /* 모달: 패딩/모서리 축소 */
-      .modal-content { padding: 1.5rem; border-radius: 20px; gap: 1rem; }
+      .modal-content { padding: 1.5rem; border-radius: 4px; gap: 1rem; }
 
       /* 인라인 스타일 뷰 헤더(오늘/다가오는/메모) 패딩·제목 축소 */
       .today-container > div:first-child,
@@ -403,59 +410,71 @@
     /* ===== Dark Mode ===== */
     body.dark {
       color-scheme: dark;
-      --primary: #818cf8;
-      --primary-hover: #a5b4fc;
-      --primary-light: #312e81;
-      --bg: #0d1117;
-      --card-bg: #161b22;
-      --text-main: #c9d1d9;
-      --text-muted: #8b949e;
-      --border: #30363d;
+      --primary: #3fb950;
+      --primary-hover: #4cc861;
+      --primary-light: rgba(63,185,80,0.12);
+      --bg: #0a0d13;
+      --card-bg: #121722;
+      --surface-alt: #0d1119;
+      --text-main: #c8d0de;
+      --text-muted: #6b7789;
+      --border: #212836;
+      --sunday: #f85149;
+      --saturday: #58a6ff;
+      --danger: #f85149;
+      --danger-hover: #ff6b63;
+      --success: #3fb950;
+      --warning: #d29922;
+      --info: #58a6ff;
     }
+    /* 다크: primary(초록) 배경 위 텍스트는 짙게 */
+    body.dark .btn-primary,
+    body.dark .week-today-tag,
+    body.dark .fab-btn { color: #0a0d13; }
     body.dark header { background: var(--card-bg); }
-    body.dark .nav-btn { background: #21262d; color: var(--text-muted); }
-    body.dark .nav-btn:hover { background: var(--primary-light); color: #fff; }
-    body.dark .btn-outline { background: var(--card-bg); }
-    body.dark .btn-ghost:hover { background: #21262d; color: var(--text-main); }
-    body.dark .btn-danger { background: #2d1417; border-color: #4c1d24; }
-    body.dark .search-result-item { background: #0d1117; }
-    body.dark .search-result-item:hover { background: #21262d; }
-    body.dark .view-tabs { background: #21262d; }
+    body.dark .nav-btn { background: var(--surface-alt); color: var(--text-muted); }
+    body.dark .nav-btn:hover { background: var(--primary-light); color: var(--primary); }
+    body.dark .btn-outline { background: transparent; }
+    body.dark .btn-ghost:hover { background: var(--surface-alt); color: var(--text-main); }
+    body.dark .btn-danger { background: transparent; border-color: var(--danger); }
+    body.dark .search-result-item { background: var(--surface-alt); }
+    body.dark .search-result-item:hover { background: var(--primary-light); }
+    body.dark .view-tabs { background: var(--surface-alt); }
     body.dark .view-tab { color: var(--text-muted); }
-    body.dark .view-tab.active { background: #0d1117; color: var(--primary); }
+    body.dark .view-tab.active { background: var(--card-bg); color: var(--primary); }
     body.dark .calendar-container,
     body.dark .today-container,
     body.dark .memo-container { background: var(--card-bg); }
-    body.dark .memo-grid { background: #0d1117; }
+    body.dark .memo-grid { background: var(--bg); }
     body.dark .memo-card { background: var(--card-bg); }
-    body.dark .calendar-header { background: #1c2128; }
-    body.dark .weekday { color: #6e7681; }
-    body.dark .day-cell { border-color: #21262d; }
-    body.dark .day-cell:hover { background: #1c2128; }
-    body.dark .day-cell.other-month { background: #0d1117; }
-    body.dark .day-cell.today { background: #1f1d2e; }
-    body.dark .day-cell.selected { background: #20243a; }
-    body.dark .day-num { color: #adbac7; }
-    body.dark .todo-item-mini { background: #21262d; border-color: var(--border); color: #adbac7; }
-    body.dark .todo-item-mini.completed { background: #161b22; }
+    body.dark .calendar-header { background: var(--surface-alt); }
+    body.dark .weekday { color: var(--text-muted); }
+    body.dark .day-cell { border-color: var(--border); }
+    body.dark .day-cell:hover { background: var(--surface-alt); }
+    body.dark .day-cell.other-month { background: var(--surface-alt); }
+    body.dark .day-cell.today { background: var(--primary-light); }
+    body.dark .day-cell.selected { background: var(--primary-light); }
+    body.dark .day-num { color: var(--text-main); }
+    body.dark .todo-item-mini { background: var(--surface-alt); border-color: var(--border); color: var(--text-main); }
+    body.dark .todo-item-mini.completed { background: var(--card-bg); }
     body.dark .daily-drawer,
     body.dark .drawer-header { background: var(--card-bg); }
-    body.dark .drawer-content { background: #0d1117; }
+    body.dark .drawer-content { background: var(--bg); }
     body.dark .daily-drawer > div:last-child { background: var(--card-bg) !important; }
     body.dark .todo-card-big { background: var(--card-bg); }
     body.dark .todo-card-title { color: var(--text-main); }
-    body.dark .todo-text { color: #adbac7; background: #0d1117; border-color: #21262d; }
+    body.dark .todo-text { color: var(--text-main); background: var(--surface-alt); border-color: var(--border); }
     body.dark .modal-content { background: var(--card-bg); }
     body.dark input[type="text"],
     body.dark input[type="date"],
-    body.dark textarea { background: #0d1117; color: var(--text-main); border-color: var(--border); }
+    body.dark textarea { background: var(--surface-alt); color: var(--text-main); border-color: var(--border); }
     /* 인라인 스타일 보정 (배치바 / 진행바 / 상세 텍스트) */
     body.dark #searchBatchBar,
     body.dark #drawerBatchBar,
-    body.dark #rangeBatchBar { background: #21262d !important; border-color: var(--border) !important; }
-    body.dark .progress-info > div:last-child { background: #21262d !important; }
+    body.dark #rangeBatchBar { background: var(--surface-alt) !important; border-color: var(--border) !important; }
+    body.dark .progress-info > div:last-child { background: var(--surface-alt) !important; }
     body.dark #detailMemoContent,
-    body.dark #detailTaskContent { color: #adbac7 !important; }
+    body.dark #detailTaskContent { color: var(--text-main) !important; }
   </style>
 </head>
 <body>
@@ -490,7 +509,7 @@
           <span>MONTHLY PROGRESS</span>
           <span id="progressPercent">0%</span>
         </div>
-        <div style="height:8px; background:#f1f5f9; border-radius:10px; overflow:hidden;">
+        <div style="height:8px; background:var(--surface-alt); border-radius:4px; overflow:hidden;">
             <div id="progressFill" style="height:100%; background:var(--primary); width:0%; transition:width 0.3s;"></div>
         </div>
       </div>
@@ -566,7 +585,7 @@
         <h2 id="drawerTitle" style="margin:0; font-size:1.3rem; font-weight:800;">상세 정보</h2>
         <button class="btn btn-ghost" onclick="closeDrawer()" style="font-size: 1.2rem;">✕</button>
       </div>
-      <div id="drawerBatchBar" style="display:none; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; background:#fff; border-bottom:1px solid var(--border);">
+      <div id="drawerBatchBar" style="display:none; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; background:var(--card-bg); border-bottom:1px solid var(--border);">
           <label style="font-size:0.8rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
               <input type="checkbox" id="drawerSelectAll" onchange="toggleSelectAll('drawerContent', this.checked)"> 전체 선택
           </label>
@@ -621,14 +640,14 @@
         
         <!-- Tab Toggles -->
         <div style="display:flex; align-items: center; gap:0.2rem; margin-top:1.5rem;">
-            <button id="viewTabPlain" class="btn btn-outline active" onclick="switchDetailView('plain')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">텍스트</button>
-            <button id="viewTabMD" class="btn btn-outline" onclick="switchDetailView('md')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">마크다운 미리보기</button>
+            <button id="viewTabPlain" class="btn btn-outline active" onclick="switchDetailView('plain')" style="border-radius: 4px 4px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">텍스트</button>
+            <button id="viewTabMD" class="btn btn-outline" onclick="switchDetailView('md')" style="border-radius: 4px 4px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">마크다운 미리보기</button>
             <button id="themeToggle" class="btn btn-ghost" onclick="mdRenderer.toggleTheme()" title="테마 전환" style="margin-left: auto; display: none;">🌙</button>
         </div>
 
         <!-- Content Area -->
-        <div style="border: 1px solid var(--border); border-radius: 0 12px 12px 12px; background: var(--card-bg); overflow: hidden; position: relative;">
-            <div id="detailMemoContent" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: #334155; display: block;"></div>
+        <div style="border: 1px solid var(--border); border-radius: 0 4px 4px 4px; background: var(--card-bg); overflow: hidden; position: relative;">
+            <div id="detailMemoContent" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: var(--text-main); display: block;"></div>
             <div id="detailMemoMD" class="markdown-body" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; display: none;"></div>
         </div>
 
@@ -673,7 +692,7 @@
           </div>
           <div id="exportCustomRange" style="display:flex; gap:0.75rem; align-items:center; margin-top:0.25rem;">
             <input type="date" id="exportStart" style="flex:1;">
-            <span style="font-weight:800; color:#94a3b8;">~</span>
+            <span style="font-weight:800; color:var(--text-muted);">~</span>
             <input type="date" id="exportEnd" style="flex:1;">
           </div>
         </div>
@@ -689,7 +708,7 @@
           </div>
           <div style="display:flex; flex-direction:column; gap:0.5rem; min-width:130px;">
             <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">카테고리</label>
-            <select id="exportCategory" style="padding:0.5rem 0.6rem; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); color:var(--text-main); font-weight:700;"></select>
+            <select id="exportCategory" style="padding:0.5rem 0.6rem; border:1px solid var(--border); border-radius:4px; background:var(--card-bg); color:var(--text-main); font-weight:700;"></select>
           </div>
         </div>
 
@@ -720,14 +739,14 @@
 
           <!-- Tab Toggles -->
           <div style="display:flex; align-items: center; gap:0.2rem; margin-top:1.5rem;">
-              <button id="viewTaskTabPlain" class="btn btn-outline active" onclick="switchTaskDetailView('plain')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">텍스트</button>
-              <button id="viewTaskTabMD" class="btn btn-outline" onclick="switchTaskDetailView('md')" style="border-radius: 12px 12px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">마크다운 미리보기</button>
+              <button id="viewTaskTabPlain" class="btn btn-outline active" onclick="switchTaskDetailView('plain')" style="border-radius: 4px 4px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">텍스트</button>
+              <button id="viewTaskTabMD" class="btn btn-outline" onclick="switchTaskDetailView('md')" style="border-radius: 4px 4px 0 0; border-bottom: none; padding: 0.5rem 1.2rem; font-size: 0.85rem;">마크다운 미리보기</button>
               <button id="taskThemeToggle" class="btn btn-ghost" onclick="mdRenderer.toggleTheme()" title="테마 전환" style="margin-left: auto; display: none;">🌙</button>
           </div>
 
           <!-- Content Area -->
-          <div style="border: 1px solid var(--border); border-radius: 0 12px 12px 12px; background: var(--card-bg); overflow: hidden; position: relative;">
-              <div id="detailTaskContent" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: #334155; display: block;"></div>
+          <div style="border: 1px solid var(--border); border-radius: 0 4px 4px 4px; background: var(--card-bg); overflow: hidden; position: relative;">
+              <div id="detailTaskContent" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 1.05rem; color: var(--text-main); display: block;"></div>
               <div id="detailTaskMD" class="markdown-body" style="padding: 2rem; min-height: 300px; max-height: 60vh; overflow-y: auto; display: none;"></div>
           </div>
         </div>
@@ -749,7 +768,7 @@
                 </div>
                 <div style="display:flex; flex-direction:column; gap:0.4rem; min-width:150px;">
                     <label style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">카테고리</label>
-                    <select id="etCategory" style="padding:0.6rem 0.7rem; border:1px solid var(--border); border-radius:12px; background:var(--card-bg); color:var(--text-main); font-weight:700;"></select>
+                    <select id="etCategory" style="padding:0.6rem 0.7rem; border:1px solid var(--border); border-radius:4px; background:var(--card-bg); color:var(--text-main); font-weight:700;"></select>
                 </div>
             </div>
             <div style="display:flex; flex-direction:column; gap:0.4rem;">
@@ -788,21 +807,21 @@
             <button class="btn btn-ghost" onclick="closeRangeModal()" style="font-size: 1.5rem;">✕</button>
         </div>
 
-        <div style="display:flex; gap:1rem; border-bottom: 2px solid #f1f5f9; padding-bottom:0.5rem;">
+        <div style="display:flex; gap:1rem; border-bottom: 2px solid var(--border); padding-bottom:0.5rem;">
             <div id="mTabAdd" class="view-tab active" onclick="switchModalTab('add')">➕ 신규 등록</div>
             <div id="mTabManage" class="view-tab" onclick="switchModalTab('manage')">🔍 기간 내 일정</div>
         </div>
         
-        <div style="background:var(--bg); padding:1.5rem; border-radius:24px; display:flex; gap:1rem; align-items:center;">
+        <div style="background:var(--bg); padding:1.5rem; border-radius:4px; display:flex; gap:1rem; align-items:center;">
             <input type="date" id="mStart" style="flex:1;">
-            <span style="font-weight:800; color:#94a3b8;">~</span>
+            <span style="font-weight:800; color:var(--text-muted);">~</span>
             <input type="date" id="mEnd" style="flex:1;">
         </div>
 
         <div id="mContentAdd" style="display:flex; flex-direction:column; gap:1rem;">
             <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:700; color:var(--text-muted); padding:0 0.25rem;">
                 <span>🔁 반복</span>
-                <select id="repeatSelect" onchange="onRepeatChange()" style="padding:0.45rem 0.6rem; border:1px solid var(--border); border-radius:10px; background:var(--card-bg); color:var(--text-main); font-weight:700;">
+                <select id="repeatSelect" onchange="onRepeatChange()" style="padding:0.45rem 0.6rem; border:1px solid var(--border); border-radius:4px; background:var(--card-bg); color:var(--text-main); font-weight:700;">
                     <option value="">없음</option>
                     <option value="daily">매일</option>
                     <option value="weekly">매주</option>
@@ -823,7 +842,7 @@
         </div>
 
         <div id="mContentManage" style="display:none; flex-direction:column; gap:1rem;">
-            <div id="rangeBatchBar" style="display:none; align-items:center; justify-content:space-between; padding:0.6rem 1.2rem; background:#f8fafc; border-radius:15px; border:1px solid var(--border);">
+            <div id="rangeBatchBar" style="display:none; align-items:center; justify-content:space-between; padding:0.6rem 1.2rem; background:var(--surface-alt); border-radius:4px; border:1px solid var(--border);">
                 <label style="font-size:0.8rem; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:0.5rem;">
                     <input type="checkbox" id="rangeSelectAll" onchange="toggleSelectAll('rangeTasksList', this.checked)"> 전체 선택
                 </label>
@@ -832,7 +851,7 @@
                     <button class="btn btn-danger" style="padding:0.3rem 0.7rem; font-size:0.75rem;" onclick="batchDelete('rangeTasksList')">선택 삭제</button>
                 </div>
             </div>
-            <div id="rangeTasksList" class="drawer-content" style="border-radius:20px; max-height:450px;"></div>
+            <div id="rangeTasksList" class="drawer-content" style="border-radius:4px; max-height:450px;"></div>
         </div>
       </div>
     </div>

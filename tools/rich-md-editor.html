@@ -11,19 +11,19 @@
   <script src="lib/portal-theme.js"></script>
   <style>
     :root {
-      --bg: #ffffff; --panel: #f9fafb; --panel2: #f3f4f6; --text: #111827; --muted: #6b7280;
-      --border: #e5e7eb; --primary: #2563eb; --primary-soft: #eff6ff; --danger: #dc2626;
-      --code-bg: #f3f4f6; --sel: #b3d4fc;
+      --bg: #f5f7f4; --panel: #ffffff; --panel2: #eef1ee; --text: #1b2430; --muted: #5c6775;
+      --border: #d9dfd9; --primary: #1a7f37; --primary-soft: rgba(26,127,55,0.10); --danger: #cf222e;
+      --code-bg: #eef1ee; --sel: rgba(26,127,55,0.18);
     }
     body.dark {
-      --bg: #0d1117; --panel: #161b22; --panel2: #1c2128; --text: #c9d1d9; --muted: #8b949e;
-      --border: #30363d; --primary: #58a6ff; --primary-soft: #16304f; --danger: #f85149;
-      --code-bg: #161b22; --sel: #1f4b78;
+      --bg: #0a0d13; --panel: #121722; --panel2: #0d1119; --text: #c8d0de; --muted: #6b7789;
+      --border: #212836; --primary: #3fb950; --primary-soft: rgba(63,185,80,0.12); --danger: #f85149;
+      --code-bg: #0d1119; --sel: rgba(63,185,80,0.28);
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       background: var(--bg); color: var(--text); display: flex; flex-direction: column;
       transition: background 0.2s, color 0.2s;
     }
@@ -84,6 +84,7 @@
       color: #fff; border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-weight: 700; white-space: nowrap;
     }
     .new-btn:hover { filter: brightness(1.08); }
+    body.dark .new-btn { color: #0a0d13; }
     .side-search { padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border); }
     .side-search input {
       width: 100%; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 6px;
@@ -92,7 +93,7 @@
     .side-search input:focus { border-color: var(--primary); }
     .note-list { flex: 1; overflow-y: auto; padding: 0.4rem; }
     .note-item {
-      padding: 0.5rem 0.6rem; border-radius: 8px; cursor: pointer; margin-bottom: 0.25rem;
+      padding: 0.5rem 0.6rem; border-radius: 4px; cursor: pointer; margin-bottom: 0.25rem;
       border: 1px solid transparent; position: relative;
     }
     .note-item:hover { background: var(--panel2); }
@@ -105,13 +106,15 @@
       opacity: 0; transition: opacity 0.12s;
     }
     .note-item:hover .n-del { opacity: 0.75; }
-    .note-item .n-del:hover { opacity: 1; background: #fee2e2; color: var(--danger); }
-    body.dark .note-item .n-del:hover { background: #3b1d1d; }
+    .note-item .n-del:hover { opacity: 1; background: rgba(207,34,46,0.10); color: var(--danger); }
+    body.dark .note-item .n-del:hover { background: rgba(248,81,73,0.15); }
     .side-empty { padding: 2rem 1rem; text-align: center; color: var(--muted); font-size: 0.82rem; line-height: 1.6; }
     /* 편집 영역 */
     .editor-area { flex: 1; display: flex; min-width: 0; }
     .editor-scroll { flex: 1; overflow: auto; display: flex; justify-content: center; }
     .ProseMirror {
+      /* 사용자 문서 영역: UI 크롬과 달리 읽기 편한 기존 산세리프 폰트를 유지한다(모노 상속 차단). */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif;
       width: 100%; max-width: 820px; padding: 2rem 1.5rem 6rem; outline: none; line-height: 1.7; font-size: 1rem;
     }
     .ProseMirror:focus { outline: none; }
@@ -144,10 +147,10 @@
     .ProseMirror th { background: var(--panel); font-weight: 700; }
     /* 드래그로 다중 선택된 셀 하이라이트 (병합 전 어떤 셀이 선택됐는지 인지) */
     .ProseMirror .selectedCell::after {
-      content: ""; position: absolute; inset: 0; background: rgba(37, 99, 235, 0.30);
+      content: ""; position: absolute; inset: 0; background: rgba(26, 127, 55, 0.28);
       pointer-events: none; z-index: 2;
     }
-    body.dark .ProseMirror .selectedCell::after { background: rgba(88, 166, 255, 0.40); }
+    body.dark .ProseMirror .selectedCell::after { background: rgba(63, 185, 80, 0.35); }
     /* 열 너비 조절 핸들 (마우스 올리면 파란 세로선) */
     .ProseMirror .column-resize-handle {
       position: absolute; right: -2px; top: 0; bottom: -2px; width: 4px;
@@ -162,7 +165,7 @@
     /* 파일 열기/저장 액션 버튼 (아이콘 버튼과 달리 테두리·배경으로 '버튼'답게) */
     .tb-action {
       height: 30px; padding: 0 0.75rem; border: 1px solid var(--border); background: var(--bg);
-      color: var(--text); border-radius: 7px; cursor: pointer; font-size: 0.8rem; font-weight: 700;
+      color: var(--text); border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 700;
       display: inline-flex; align-items: center; gap: 0.35rem; white-space: nowrap;
       transition: background 0.12s, border-color 0.12s, color 0.12s;
     }
@@ -174,9 +177,9 @@
     }
     .mdimp-overlay.open { display: flex; }
     .mdimp-box {
-      background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 12px;
+      background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px;
       width: min(680px, 92vw); max-height: 82vh; display: flex; flex-direction: column;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.3); overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25); overflow: hidden;
     }
     .mdimp-head { padding: 0.9rem 1.1rem; font-weight: 800; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: 0.6rem; }
     .mdimp-head span { font-size: 0.78rem; font-weight: 500; color: var(--muted); }
@@ -189,18 +192,19 @@
     .mdimp-actions { padding: 0.75rem 1.1rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 0.5rem; }
     .dlg-btn {
       padding: 0.5rem 1rem; border: 1px solid var(--border); background: var(--bg); color: var(--text);
-      border-radius: 7px; cursor: pointer; font-weight: 700; font-size: 0.85rem;
+      border-radius: 4px; cursor: pointer; font-weight: 700; font-size: 0.85rem;
     }
     .dlg-btn:hover { border-color: var(--primary); color: var(--primary); }
     .dlg-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    body.dark .dlg-btn.primary { color: #0a0d13; }
     /* 컨텍스트 툴바(표/코드) */
     .ctxbar { display: none; align-items: center; gap: 0.5rem; padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border); background: var(--panel2); flex-shrink: 0; }
     .ctxbar.show { display: flex; }
     .ctx-group { display: none; align-items: center; gap: 0.2rem; }
     .ctx-group.active { display: inline-flex; }
     .ctx-label { font-size: 0.75rem; font-weight: 800; color: var(--muted); margin-right: 0.3rem; }
-    .tb-btn.danger:hover { background: #fee2e2; color: var(--danger); border-color: var(--danger); }
-    body.dark .tb-btn.danger:hover { background: #3b1d1d; }
+    .tb-btn.danger:hover { background: rgba(207,34,46,0.10); color: var(--danger); border-color: var(--danger); }
+    body.dark .tb-btn.danger:hover { background: rgba(248,81,73,0.15); }
     #codeLang { padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.8rem; font-weight: 600; }
     /* 코드 구문 강조(highlight.js 토큰) — 라이트/다크 겸용 */
     .ProseMirror pre code .hljs-comment, .ProseMirror pre code .hljs-quote { color: #6a737d; font-style: italic; }

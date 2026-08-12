@@ -6,31 +6,38 @@
     <title>개발 도구 포털</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
     <style>
+        /* ===== Terminal 테마 (라이트 기본 + body.dark 스왑) ===== */
         :root {
-            --primary: #111827;
-            --primary-hover: #1f2937;
-            --bg: #f9fafb;
+            --primary: #1b2430;      /* 제목/본문 텍스트 */
+            --accent: #1a7f37;       /* 액센트(green) */
+            --accent-hover: #166b2e;
+            --accent-soft: rgba(26,127,55,0.10);
+            --bg: #f5f7f4;
             --card-bg: #ffffff;
-            --text-main: #111827;
-            --text-muted: #6b7280;
-            --border: #e5e7eb;
+            --text-main: #1b2430;
+            --text-muted: #5c6775;
+            --border: #d9dfd9;
         }
         body.dark {
-            --primary: #e5e7eb;
-            --primary-hover: #f9fafb;
-            --bg: #0d1117;
-            --card-bg: #161b22;
-            --text-main: #c9d1d9;
-            --text-muted: #8b949e;
-            --border: #30363d;
+            --primary: #c8d0de;
+            --accent: #3fb950;
+            --accent-hover: #4cc861;
+            --accent-soft: rgba(63,185,80,0.12);
+            --bg: #0a0d13;
+            --card-bg: #121722;
+            --text-main: #c8d0de;
+            --text-muted: #6b7789;
+            --border: #212836;
         }
-        body.dark header, body.dark footer { background-color: #161b22; }
 
+        /* 미세 도트 그리드로 터미널 느낌 */
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
             margin: 0;
             padding: 0;
             background-color: var(--bg);
+            background-image: radial-gradient(var(--accent-soft) 1px, transparent 1px);
+            background-size: 22px 22px;
             color: var(--text-main);
             display: flex;
             flex-direction: column;
@@ -42,21 +49,22 @@
             border-bottom: 1px solid var(--border);
             padding: 2rem 1rem;
             text-align: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
             position: relative;
         }
 
         header h1 {
             margin: 0;
-            font-size: 2.25rem;
-            font-weight: 800;
+            font-size: 1.9rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
             color: var(--primary);
         }
+        header h1 .pr { color: var(--accent); }
 
         header p {
             margin: 0.5rem 0 0;
             color: var(--text-muted);
-            font-size: 1.1rem;
+            font-size: 0.95rem;
         }
 
         main {
@@ -71,56 +79,64 @@
         .tool-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1.5rem;
+            gap: 1rem;
         }
         /* 계열 구분 섹션 라벨 (그리드 전체 폭) */
         .grid-section {
             grid-column: 1 / -1;
-            font-size: 0.85rem;
+            font-size: 0.78rem;
             font-weight: 700;
             color: var(--text-muted);
-            letter-spacing: 0.03em;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
             margin: 0.6rem 0 -0.4rem;
             padding-bottom: 0.45rem;
             border-bottom: 1px solid var(--border);
         }
+        .grid-section::before { content: "# "; color: var(--accent); }
         .grid-section:first-child { margin-top: 0; }
 
         .tool-card {
             background-color: var(--card-bg);
             border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 1.5rem;
+            border-radius: 4px;
+            padding: 1.35rem;
             text-decoration: none;
             color: inherit;
-            transition: all 0.2s ease-in-out;
+            transition: border-color 0.15s ease, background-color 0.15s ease;
             display: flex;
             flex-direction: column;
             cursor: pointer;
         }
 
         .tool-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            border-color: #d1d5db;
+            border-color: var(--accent);
+            background-color: var(--accent-soft);
         }
 
         .tool-icon {
-            font-size: 2.5rem;
+            display: inline-block;
+            align-self: flex-start;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            border: 1px solid currentColor;
+            border-radius: 3px;
+            padding: 0.1rem 0.5rem;
             margin-bottom: 1rem;
         }
 
         .tool-name {
-            font-size: 1.25rem;
+            font-size: 1.05rem;
             font-weight: 700;
             margin: 0 0 0.5rem;
             color: var(--primary);
         }
 
         .tool-desc {
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
-            line-height: 1.5;
+            line-height: 1.55;
             margin: 0;
         }
 
@@ -128,13 +144,16 @@
             text-align: center;
             padding: 2rem;
             color: var(--text-muted);
-            font-size: 0.875rem;
+            font-size: 0.8rem;
             border-top: 1px solid var(--border);
-            background-color: #fff;
+            background-color: var(--card-bg);
         }
 
+        @media (prefers-reduced-motion: reduce) {
+            .tool-card { transition: none; }
+        }
         @media (max-width: 640px) {
-            header h1 { font-size: 1.75rem; }
+            header h1 { font-size: 1.5rem; }
             .tool-grid { grid-template-columns: 1fr; }
         }
     </style>
@@ -143,8 +162,8 @@
     <header>
         <button id="themeToggle" onclick="portalTheme.toggle()" title="다크/라이트 모드 전환"
             style="position:absolute; top:1.5rem; right:1.5rem; padding:0.5rem 0.9rem; border-radius:0.5rem; border:1px solid var(--border); background:var(--card-bg); color:var(--text-main); font-weight:700; cursor:pointer; font-size:0.85rem;">🌙</button>
-        <h1>🛠️ 개발 보조 도구 포털</h1>
-        <p>효율적인 개발을 위한 유용한 도구 모음</p>
+        <h1><span class="pr">~/</span>dev-tools</h1>
+        <p>// 로컬에서 도는 개발 유틸리티 모음 · offline first</p>
     </header>
 
     <main>
@@ -152,25 +171,25 @@
             <div class="grid-section">문서 · 작성</div>
 
             <a href="tool.html?tool=md-viewer" class="tool-card">
-                <div class="tool-icon">📝</div>
+                <div class="tool-icon">[md]</div>
                 <h3 class="tool-name">마크다운</h3>
                 <p class="tool-desc">마크다운 편집·실시간 미리보기와 순수 텍스트 추출(글자수)을 한 곳에서.</p>
             </a>
 
             <a href="tool.html?tool=rich-md" class="tool-card">
-                <div class="tool-icon">✍️</div>
+                <div class="tool-icon">[ed]</div>
                 <h3 class="tool-name">노트 편집기</h3>
                 <p class="tool-desc">여러 노트를 목록으로 관리하며 위지윅으로 편집. 글씨색·배경색·글자 크기·글꼴까지 지정하고, 마크다운 원고를 가져와 강조한 뒤 PDF로 저장합니다.</p>
             </a>
 
             <a href="tool.html?tool=pdf" class="tool-card">
-                <div class="tool-icon">📄</div>
+                <div class="tool-icon">[pdf]</div>
                 <h3 class="tool-name">PDF 뷰어</h3>
                 <p class="tool-desc">여러 PDF를 문서 목록으로 전환하며 한 화면에서 보고, 마지막 본 페이지까지 기억합니다.</p>
             </a>
 
             <a href="tool.html?tool=todo" class="tool-card">
-                <div class="tool-icon">✅</div>
+                <div class="tool-icon">[x]</div>
                 <h3 class="tool-name">TODO 관리</h3>
                 <p class="tool-desc">할 일 목록을 효율적으로 관리하고 진행 상황을 추적합니다.</p>
             </a>
@@ -178,61 +197,61 @@
             <div class="grid-section">개발 유틸</div>
 
             <a href="tool.html?tool=json" class="tool-card">
-                <div class="tool-icon">🧩</div>
+                <div class="tool-icon">{ }</div>
                 <h3 class="tool-name">JSON / XML 도구</h3>
                 <p class="tool-desc">JSON 포맷·압축·트리(검색)·키정렬과 XML 정렬·검증·escape, JSON↔XML·CSV 변환을 한 곳에서.</p>
             </a>
 
             <a href="tool.html?tool=uri" class="tool-card">
-                <div class="tool-icon">🔗</div>
+                <div class="tool-icon">://</div>
                 <h3 class="tool-name">URI 도구</h3>
                 <p class="tool-desc">URL 인코딩, 디코딩 및 쿼리 파라미터를 분석합니다.</p>
             </a>
 
             <a href="tool.html?tool=diff" class="tool-card">
-                <div class="tool-icon">🔍</div>
+                <div class="tool-icon">+/-</div>
                 <h3 class="tool-name">텍스트 비교</h3>
                 <p class="tool-desc">두 텍스트/코드를 줄 단위로 비교하여 추가·삭제를 강조합니다.</p>
             </a>
 
             <a href="tool.html?tool=sql" class="tool-card">
-                <div class="tool-icon">🗃️</div>
+                <div class="tool-icon">sql</div>
                 <h3 class="tool-name">SQL 로그 변환</h3>
                 <p class="tool-desc">MyBatis 로그(Preparing/Parameters)를 실행 가능한 쿼리로 자동 변환·포맷합니다.</p>
             </a>
 
             <a href="tool.html?tool=time" class="tool-card">
-                <div class="tool-icon">⏱️</div>
+                <div class="tool-icon">cron</div>
                 <h3 class="tool-name">타임스탬프 / Cron</h3>
                 <p class="tool-desc">Epoch↔날짜 변환과 Cron 표현식 해석·다음 실행 시각을 확인합니다.</p>
             </a>
 
             <!-- <a href="tool.html?tool=svn-log" class="tool-card">
-                <div class="tool-icon">📋</div>
+                <div class="tool-icon">[log]</div>
                 <h3 class="tool-name">패치 내역 생성</h3>
                 <p class="tool-desc">SVN 로그를 바탕으로 배포용 패치 파일 목록을 생성합니다.</p>
             </a> -->
-            
+
             <!-- <a href="tool.html?tool=svn-merge" class="tool-card">
-                <div class="tool-icon">🔄</div>
+                <div class="tool-icon">[svn]</div>
                 <h3 class="tool-name">SVN 머지 도구</h3>
                 <p class="tool-desc">브랜치 간 코드 머지 작업을 시각적으로 보조합니다.</p>
             </a>
-            
+
             <a href="tool.html?tool=config" class="tool-card">
-                <div class="tool-icon">⚙️</div>
+                <div class="tool-icon">[cfg]</div>
                 <h3 class="tool-name">Config 설정</h3>
                 <p class="tool-desc">프로젝트 환경 설정 파일을 시각적으로 편집하고 관리합니다.</p>
             </a>
 
             <a href="tool.html?tool=classpath" class="tool-card">
-                <div class="tool-icon">📂</div>
+                <div class="tool-icon">[cp]</div>
                 <h3 class="tool-name">Classpath 설정</h3>
                 <p class="tool-desc">Eclipse .classpath 파일의 라이브러리 경로를 쉽게 수정합니다.</p>
             </a>
 
             <a href="tool.html?tool=maven" class="tool-card">
-                <div class="tool-icon">📦</div>
+                <div class="tool-icon">[mvn]</div>
                 <h3 class="tool-name">Maven 설정</h3>
                 <p class="tool-desc">pom.xml 파일의 의존성 및 설정을 효율적으로 관리합니다.</p>
             </a> -->

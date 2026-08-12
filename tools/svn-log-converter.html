@@ -6,34 +6,36 @@
   <title>SVN Log Converter</title>
   <style>
     :root {
-      --background-color: #ffffff;
-      --text-color: #111827;
-      --muted-text-color: #6b7280;
-      --card-background-color: #f9fafb;
-      --border-color: #e5e7eb;
-      --button-background-color: #111827;
+      --background-color: #f5f7f4;
+      --text-color: #1b2430;
+      --muted-text-color: #5c6775;
+      --card-background-color: #ffffff;
+      --surface-alt: #eef1ee;
+      --border-color: #d9dfd9;
+      --button-background-color: #1a7f37;
       --button-text-color: #ffffff;
-      --button-hover-background-color: #374151;
-      --outline-button-border-color: #d1d5db;
-      --outline-button-text-color: #111827;
-      --outline-button-hover-background-color: #f3f4f6;
+      --button-hover-background-color: #166b2e;
+      --outline-button-border-color: #d9dfd9;
+      --outline-button-text-color: #1b2430;
+      --outline-button-hover-background-color: rgba(26,127,55,0.10);
     }
     body.dark {
-      --background-color: #0d1117;
-      --text-color: #c9d1d9;
-      --muted-text-color: #8b949e;
-      --card-background-color: #161b22;
-      --border-color: #30363d;
-      --button-background-color: #e5e7eb;
-      --button-text-color: #0d1117;
-      --button-hover-background-color: #c9d1d9;
-      --outline-button-border-color: #30363d;
-      --outline-button-text-color: #c9d1d9;
-      --outline-button-hover-background-color: #21262d;
+      --background-color: #0a0d13;
+      --text-color: #c8d0de;
+      --muted-text-color: #6b7789;
+      --card-background-color: #121722;
+      --surface-alt: #0d1119;
+      --border-color: #212836;
+      --button-background-color: #3fb950;
+      --button-text-color: #0a0d13;
+      --button-hover-background-color: #4cc861;
+      --outline-button-border-color: #212836;
+      --outline-button-text-color: #c8d0de;
+      --outline-button-hover-background-color: rgba(63,185,80,0.12);
     }
-    body.dark textarea { background-color: #0d1117 !important; color: #c9d1d9; }
+    body.dark textarea { background-color: #0d1119 !important; color: #c8d0de; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       margin: 0;
       background-color: var(--background-color);
       color: var(--text-color);
@@ -47,7 +49,7 @@
     .card {
       background-color: var(--card-background-color);
       border: 1px solid var(--border-color);
-      border-radius: 0.5rem;
+      border-radius: 4px;
       padding: 1.5rem;
       margin-bottom: 1.5rem;
     }
@@ -71,11 +73,13 @@
       min-height: 400px;
       padding: 0.75rem;
       border: 1px solid var(--border-color);
-      border-radius: 0.375rem;
-      font-family: monospace;
+      border-radius: 4px;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       font-size: 0.9rem;
       resize: vertical;
       box-sizing: border-box;
+      background-color: var(--surface-alt);
+      color: var(--text-color);
     }
     .button-group {
       display: flex;
@@ -105,6 +109,7 @@
     }
     .outline-button:hover {
       background-color: var(--outline-button-hover-background-color);
+      border-color: var(--button-background-color);
     }
     .output-container {
         position: relative;

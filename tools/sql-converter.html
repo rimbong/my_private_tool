@@ -6,37 +6,41 @@
   <title>SQL 로그 변환기</title>
   <style>
     :root {
-      --primary: #059669;
-      --primary-hover: #047857;
-      --bg: #f8fafc;
+      --primary: #1a7f37;
+      --primary-hover: #166b2e;
+      --bg: #f5f7f4;
       --card-bg: #ffffff;
-      --text: #1e293b;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --code-bg: #f1f5f9;
-      --warn: #f59e0b;
-      --danger: #ef4444;
+      --text: #1b2430;
+      --text-muted: #5c6775;
+      --border: #d9dfd9;
+      --code-bg: #eef1ee;
+      --warn: #9a6700;
+      --danger: #cf222e;
+      --accent-soft: rgba(26,127,55,0.10);
     }
     body.dark {
-      --primary: #34d399;
-      --primary-hover: #6ee7b7;
-      --bg: #0d1117;
-      --card-bg: #161b22;
-      --text: #c9d1d9;
-      --text-muted: #8b949e;
-      --border: #30363d;
-      --code-bg: #0d1117;
+      --primary: #3fb950;
+      --primary-hover: #4cc861;
+      --bg: #0a0d13;
+      --card-bg: #121722;
+      --text: #c8d0de;
+      --text-muted: #6b7789;
+      --border: #212836;
+      --code-bg: #0d1119;
       --warn: #d29922;
       --danger: #f85149;
+      --accent-soft: rgba(63,185,80,0.12);
     }
-    body.dark textarea, body.dark input[type="text"] { background: #0d1117; color: var(--text); }
-    body.dark .btn { background: #161b22; color: #c9d1d9; }
-    body.dark .btn:hover { background: #21262d; }
-    body.dark .hint code { background: #21262d; }
+    body.dark textarea, body.dark input[type="text"] { background: #0d1119; color: var(--text); }
+    body.dark .btn { background: #121722; color: var(--text); }
+    body.dark .btn:hover { background: var(--accent-soft); }
+    body.dark .hint code { background: #0d1119; }
+    ::selection { background: rgba(26,127,55,0.18); }
+    body.dark ::selection { background: rgba(63,185,80,0.28); }
 
     * { box-sizing: border-box; }
     body {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       margin: 0;
       background-color: var(--bg);
       color: var(--text);
@@ -49,13 +53,13 @@
     .card {
       background-color: var(--card-bg);
       border: 1px solid var(--border);
-      border-radius: 1rem;
+      border-radius: 4px;
       padding: 2rem;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
     }
     header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
     h1 { margin: 0; font-size: 1.5rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
     .badge { font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 4px; background: var(--primary); color: #fff; font-weight: 800; }
+    body.dark .badge { color: #0a0d13; }
 
     .field-group { margin-bottom: 1.25rem; }
     .label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; gap: 0.5rem; flex-wrap: wrap; }
@@ -65,22 +69,22 @@
     .count.ok { color: var(--primary); }
 
     .hint { font-size: 0.78rem; color: var(--text-muted); margin: 0.35rem 0 0; line-height: 1.5; }
-    .hint code { background: var(--code-bg); padding: 0.1rem 0.35rem; border-radius: 4px; font-family: 'Fira Code', monospace; font-size: 0.92em; }
+    .hint code { background: var(--code-bg); padding: 0.1rem 0.35rem; border-radius: 4px; font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace; font-size: 0.92em; }
 
     input[type="text"], textarea {
       width: 100%;
       padding: 0.85rem;
       border: 1px solid var(--border);
-      border-radius: 0.6rem;
-      font-family: 'Fira Code', 'Cascadia Code', monospace;
+      border-radius: 4px;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       font-size: 0.9rem;
       resize: vertical;
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
-      background: #fff;
+      background: var(--code-bg);
       color: var(--text);
     }
-    input[type="text"]:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(5,150,105,0.12); }
+    input[type="text"]:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); }
     textarea#inputSql { min-height: 340px; }
     textarea#completedSql { min-height: 340px; background: var(--code-bg); }
     /* 입력/결과 좌우 2단 (전체 폭 활용) */
@@ -101,14 +105,17 @@
     .controls { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
     .controls .btn { flex: 0 0 auto; padding: 0.55rem 1.6rem; }
     .btn {
-      padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid var(--border);
+      padding: 0.75rem 1rem; border-radius: 4px; border: 1px solid var(--border);
       font-weight: 700; cursor: pointer; transition: all 0.2s;
       display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-      background: #fff; color: var(--text); font-size: 0.9rem;
+      background: var(--card-bg); color: var(--text); font-size: 0.9rem;
+      font-family: inherit;
     }
-    .btn:hover { background: #f1f5f9; border-color: var(--text-muted); }
+    .btn:hover { background: var(--accent-soft); border-color: var(--primary); }
     .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
     .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    body.dark .btn-primary { background: var(--primary); color: #0a0d13; }
+    body.dark .btn-primary:hover { background: var(--primary-hover); color: #0a0d13; }
     .btn-sm { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
 
     .result-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; gap: 0.5rem; flex-wrap: wrap; }
@@ -125,7 +132,7 @@
     table.bind-table th, table.bind-table td { padding: 0.55rem 0.7rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
     table.bind-table th { color: var(--text-muted); font-weight: 800; text-transform: none; letter-spacing: 0; }
     table.bind-table td.idx { width: 3rem; color: var(--text-muted); font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    table.bind-table td.val { font-family: 'Fira Code', Consolas, monospace; word-break: break-all; color: var(--primary); font-weight: 700; }
+    table.bind-table td.val { font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace; word-break: break-all; color: var(--primary); font-weight: 700; }
     table.bind-table td.typ { width: 9rem; white-space: nowrap; }
     table.bind-table td.typ .tg { font-size: 0.72rem; padding: 0.12rem 0.45rem; border-radius: 4px; background: var(--border); color: var(--text-muted); font-weight: 800; }
     table.bind-table tr.bad td { color: var(--warn); }
@@ -133,7 +140,7 @@
     /* ===== Responsive: 모바일 ===== */
     @media (max-width: 600px) {
       body { padding: 0.75rem; overflow-x: hidden; }
-      .card { padding: 1.1rem; border-radius: 0.75rem; }
+      .card { padding: 1.1rem; border-radius: 4px; }
       h1 { font-size: 1.25rem; }
       .controls .btn { flex: 1; min-width: 0; }
     }

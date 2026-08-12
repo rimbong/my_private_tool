@@ -6,51 +6,56 @@
   <title>타임스탬프 / Cron 도구</title>
   <style>
     :root {
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --bg: #f8fafc;
+      --primary: #1a7f37;
+      --primary-hover: #166b2e;
+      --accent-soft: rgba(26,127,55,0.10);
+      --bg: #f5f7f4;
       --card-bg: #ffffff;
-      --text: #1e293b;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --success: #10b981;
-      --danger: #f43f5e;
-      --code-bg: #f1f5f9;
+      --text: #1b2430;
+      --text-muted: #5c6775;
+      --border: #d9dfd9;
+      --success: #1a7f37;
+      --danger: #cf222e;
+      --code-bg: #eef1ee;
     }
     body.dark {
-      --primary: #818cf8;
-      --primary-hover: #a5b4fc;
-      --bg: #0d1117;
-      --card-bg: #161b22;
-      --text: #c9d1d9;
-      --text-muted: #8b949e;
-      --border: #30363d;
+      --primary: #3fb950;
+      --primary-hover: #4cc861;
+      --accent-soft: rgba(63,185,80,0.12);
+      --bg: #0a0d13;
+      --card-bg: #121722;
+      --text: #c8d0de;
+      --text-muted: #6b7789;
+      --border: #212836;
       --success: #3fb950;
-      --danger: #ff7b72;
-      --code-bg: #0d1117;
+      --danger: #f85149;
+      --code-bg: #0d1119;
     }
+    /* 다크에서 accent(green) 위 글씨는 짙은색으로 */
+    body.dark .btn-primary,
+    body.dark .tab-btn.active { color: #0a0d13; }
     * { box-sizing: border-box; }
     body {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       margin: 0; background: var(--bg); color: var(--text); line-height: 1.6;
       padding: 1.5rem; transition: background 0.2s, color 0.2s;
     }
     .container { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 1rem; padding: 1.5rem 1.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1.5rem 1.75rem; }
     h1 { margin: 0; font-size: 1.4rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
     h2 { margin: 0 0 1rem; font-size: 1.05rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
     label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
     .row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
     input[type="text"], input[type="datetime-local"], input[type="date"], input[type="number"] {
-      padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-radius: 0.5rem; font-family: inherit;
+      padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-radius: 4px; font-family: inherit;
       font-size: 0.95rem; outline: none; background: var(--card-bg); color: var(--text); transition: all 0.15s;
     }
-    input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.12); }
+    input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--accent-soft); }
     /* 날짜/시간 입력은 표시 내용이 고정폭이므로 과하게 늘어나지 않도록 상한 지정(flex:1 이어도 이 폭에서 멈춤) */
     input[type="datetime-local"], input[type="date"] { max-width: 260px; }
     .mono { font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; }
     .btn {
-      padding: 0.55rem 0.9rem; border-radius: 0.5rem; border: 1px solid var(--border); font-weight: 700;
+      padding: 0.55rem 0.9rem; border-radius: 4px; border: 1px solid var(--border); font-weight: 700;
       font-size: 0.85rem; cursor: pointer; background: var(--card-bg); color: var(--text); transition: all 0.15s; white-space: nowrap;
     }
     .btn:hover { border-color: var(--primary); color: var(--primary); }
@@ -67,7 +72,7 @@
     .cron-fields .cf { text-align: center; }
     .cron-fields .cf small { display: block; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; margin-bottom: 0.2rem; }
     .cron-fields .cf .box { font-family: 'Fira Code', monospace; font-weight: 800; background: var(--code-bg); border: 1px solid var(--border); border-radius: 0.4rem; padding: 0.4rem; }
-    .cron-desc { margin-top: 1rem; padding: 0.9rem 1.1rem; background: var(--code-bg); border-radius: 0.6rem; font-weight: 600; }
+    .cron-desc { margin-top: 1rem; padding: 0.9rem 1.1rem; background: var(--code-bg); border-radius: 4px; font-weight: 600; }
     .cron-next { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.35rem; }
     .cron-next .item { font-family: 'Fira Code', monospace; font-size: 0.9rem; padding: 0.4rem 0.6rem; border-bottom: 1px dashed var(--border); display: flex; justify-content: space-between; gap: 1rem; }
     .cron-next .rel { color: var(--text-muted); font-family: inherit; }
@@ -76,8 +81,8 @@
     .presets { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.75rem; }
 
     /* 미니 탭 */
-    .tabs { display: flex; gap: 0.4rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.4rem; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-    .tab-btn { flex: 1; padding: 0.65rem 1rem; border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.92rem; border-radius: 0.5rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
+    .tabs { display: flex; gap: 0.4rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.4rem; }
+    .tab-btn { flex: 1; padding: 0.65rem 1rem; border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.92rem; border-radius: 4px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
     .tab-btn:hover { background: var(--code-bg); color: var(--text); }
     .tab-btn.active { background: var(--primary); color: #fff; }
     @media (max-width: 560px) {

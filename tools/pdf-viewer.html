@@ -7,24 +7,24 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
   <style>
     :root {
-      --primary: #2563eb;
-      --bg: #f9fafb;
+      --primary: #1a7f37;
+      --bg: #f5f7f4;
       --card-bg: #ffffff;
       --header-bg: #ffffff;
-      --text: #111827;
-      --text-muted: #6b7280;
-      --border: #e5e7eb;
-      --danger: #dc2626;
+      --text: #1b2430;
+      --text-muted: #5c6775;
+      --border: #d9dfd9;
+      --danger: #cf222e;
       --viewer-bg: #525659;
     }
     body.dark {
-      --primary: #58a6ff;
-      --bg: #0d1117;
-      --card-bg: #161b22;
-      --header-bg: #161b22;
-      --text: #c9d1d9;
-      --text-muted: #8b949e;
-      --border: #30363d;
+      --primary: #3fb950;
+      --bg: #0a0d13;
+      --card-bg: #121722;
+      --header-bg: #121722;
+      --text: #c8d0de;
+      --text-muted: #6b7789;
+      --border: #212836;
       --danger: #f85149;
       --viewer-bg: #1c2128;
     }
@@ -32,7 +32,7 @@
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Pretendard", sans-serif;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       background: var(--bg);
       color: var(--text);
       display: flex;
@@ -107,7 +107,7 @@
     .pdf-empty { color: var(--text-muted); font-size: 0.82rem; text-align: center; padding: 2rem 0.5rem; line-height: 1.6; }
     .pdf-item {
       display: flex; align-items: flex-start; gap: 0.5rem; padding: 0.55rem 0.6rem;
-      border: 1px solid var(--border); border-radius: 0.5rem; cursor: pointer; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 4px; cursor: pointer; background: var(--bg);
       transition: border-color 0.12s, background 0.12s;
     }
     .pdf-item:hover { border-color: var(--primary); }
@@ -115,15 +115,15 @@
     .pdf-item .pi-body { flex: 1; min-width: 0; }
     .pdf-item .pi-name { font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pdf-item .pi-meta { font-size: 0.68rem; color: var(--text-muted); margin-top: 0.15rem; display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; }
-    .pi-badge { font-size: 0.6rem; font-weight: 800; padding: 0.04rem 0.35rem; border-radius: 20px; }
-    .pi-badge.saved { background: #dbeafe; color: #1d4ed8; }
-    .pi-badge.session { background: #fef3c7; color: #92400e; }
-    body.dark .pi-badge.saved { background: #16304f; color: #79b8ff; }
-    body.dark .pi-badge.session { background: #3a2f1a; color: #e3b341; }
+    .pi-badge { font-size: 0.6rem; font-weight: 800; padding: 0.04rem 0.35rem; border-radius: 4px; }
+    .pi-badge.saved { background: rgba(9,105,218,0.12); color: #0969da; }
+    .pi-badge.session { background: rgba(154,103,0,0.12); color: #9a6700; }
+    body.dark .pi-badge.saved { background: rgba(88,166,255,0.15); color: #58a6ff; }
+    body.dark .pi-badge.session { background: rgba(210,153,34,0.15); color: #d29922; }
     .pi-del { flex-shrink: 0; background: transparent; border: none; cursor: pointer; color: var(--text-muted); font-size: 0.8rem; padding: 0.1rem 0.25rem; border-radius: 6px; opacity: 0; transition: opacity 0.12s; }
     .pdf-item:hover .pi-del { opacity: 0.7; }
-    .pi-del:hover { opacity: 1; background: #fee2e2; color: var(--danger); }
-    body.dark .pi-del:hover { background: #3b1d1d; }
+    .pi-del:hover { opacity: 1; background: rgba(207,34,46,0.10); color: var(--danger); }
+    body.dark .pi-del:hover { background: rgba(248,81,73,0.15); }
 
     .viewer { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
     .group { display: inline-flex; align-items: center; gap: 0.3rem; }
@@ -152,7 +152,7 @@
       overflow: hidden; opacity: 0.25; line-height: 1.0;
     }
     .textLayer > span { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; }
-    .textLayer ::selection { background: rgba(37, 99, 235, 0.4); }
+    .textLayer ::selection { background: rgba(26, 127, 55, 0.35); }
     .textLayer .hl { background: #ffd400; border-radius: 2px; }
 
     .viewer-empty {

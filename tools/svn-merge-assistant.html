@@ -6,18 +6,42 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔀</text></svg>">
   <style>
     :root {
-      --bg: #f3f4f6;
+      --bg: #f5f7f4;
       --card-bg: #ffffff;
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --success: #10b981;
-      --border: #d1d5db;
-      --text-main: #111827;
-      --text-muted: #6b7280;
+      --surface-alt: #eef1ee;
+      --primary: #1a7f37;
+      --primary-hover: #166b2e;
+      --accent-soft: rgba(26,127,55,0.10);
+      --success: #1a7f37;
+      --border: #d9dfd9;
+      --text-main: #1b2430;
+      --text-muted: #5c6775;
+      --info: #0969da;
+      --warn: #9a6700;
+      --danger: #cf222e;
       --sidebar-width: 380px;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text-main); overflow: hidden; }
-    header { background: #111827; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 100; flex-shrink: 0; }
+    body.dark {
+      --bg: #0a0d13;
+      --card-bg: #121722;
+      --surface-alt: #0d1119;
+      --primary: #3fb950;
+      --primary-hover: #4cc861;
+      --accent-soft: rgba(63,185,80,0.12);
+      --success: #3fb950;
+      --border: #212836;
+      --text-main: #c8d0de;
+      --text-muted: #6b7789;
+      --info: #58a6ff;
+      --warn: #d29922;
+      --danger: #f85149;
+    }
+    /* 다크에서 accent(green) 위 글씨는 짙은색으로 */
+    body.dark .btn-primary,
+    body.dark .ext-tag.active,
+    body.dark .toggle-sidebar-btn { color: #0a0d13; }
+    body { font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace; background: var(--bg); margin: 0; display: flex; flex-direction: column; height: 100vh; color: var(--text-main); overflow: hidden; }
+    header { background: var(--card-bg); color: var(--text-main); padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); z-index: 100; flex-shrink: 0; }
     main { display: flex; flex: 1; overflow: hidden; position: relative; }
     
     /* Sidebar */
@@ -54,28 +78,28 @@
 
     /* Toggle Button */
     .toggle-sidebar-btn {
-      position: absolute; right: -24px; top: 50%; transform: translateY(-50%); width: 24px; height: 60px; background: var(--primary); color: white; border: 1px solid var(--primary-hover); border-radius: 0 8px 8px 0; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000; box-shadow: 2px 0 5px rgba(0,0,0,0.1); font-size: 14px;
+      position: absolute; right: -24px; top: 50%; transform: translateY(-50%); width: 24px; height: 60px; background: var(--primary); color: #fff; border: 1px solid var(--primary-hover); border-radius: 0 4px 4px 0; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 1000; font-size: 14px;
     }
 
     .sidebar h3 { margin: 0; font-size: 1.1rem; white-space: nowrap; }
-    textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; font-family: 'Cascadia Code', 'Courier New', monospace; font-size: 12px; resize: none; box-sizing: border-box; }
+    textarea { width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 4px; font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace; font-size: 12px; resize: none; box-sizing: border-box; background: var(--surface-alt); color: var(--text-main); }
     textarea#logInput { flex: 1; font-size: 7px; min-height: 100px; }
-    
+
     .input-group { display: flex; flex-direction: column; gap: 0.5rem; }
     .input-group label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); }
-    input[type="text"] { padding: 0.6rem; border: 1px solid var(--border); border-radius: 4px; }
-    
-    .search-group { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 0.5rem; }
-    .search-input { width: 95%; border: none; background: transparent; font-size: 0.9rem; outline: none; padding: 2px 4px; }
+    input[type="text"] { padding: 0.6rem; border: 1px solid var(--border); border-radius: 4px; font-family: inherit; background: var(--surface-alt); color: var(--text-main); }
+
+    .search-group { background: var(--surface-alt); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; }
+    .search-input { width: 95%; border: none; background: transparent; font-size: 0.9rem; outline: none; padding: 2px 4px; font-family: inherit; color: var(--text-main); }
     .filter-item { margin-top: 5px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; color: var(--text-muted); cursor: pointer; }
     .ext-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
-    .ext-tag { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #e2e8f0; color: #475569; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
-    .ext-tag.active { background: var(--primary); color: white; }
+    .ext-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--surface-alt); color: var(--text-muted); cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+    .ext-tag.active { background: var(--primary); color: #fff; }
 
     .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; background: var(--bg); }
     .tabs { display: flex; gap: 0.5rem; border-bottom: 1px solid var(--border); background: var(--bg); padding: 1.5rem 1.5rem 0 1.5rem; z-index: 20; flex-shrink: 0; }
-    .tab { cursor: pointer; padding: 0.75rem 1.25rem; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all 0.2s; white-space: nowrap; background: white; border-radius: 6px 6px 0 0; border: 1px solid transparent; border-bottom: none; margin-bottom: -1px; }
-    .tab.active { border-color: var(--border); border-bottom-color: white; font-weight: bold; color: var(--primary); background: white; }
+    .tab { cursor: pointer; padding: 0.75rem 1.25rem; border-bottom: 2px solid transparent; color: var(--text-muted); transition: all 0.2s; white-space: nowrap; background: var(--card-bg); border-radius: 4px 4px 0 0; border: 1px solid transparent; border-bottom: none; margin-bottom: -1px; }
+    .tab.active { border-color: var(--border); border-bottom-color: var(--card-bg); font-weight: bold; color: var(--primary); background: var(--card-bg); }
     
     .tab-container { flex: 1; overflow-y: auto; padding: 1.5rem; display: none; flex-direction: column; position: relative; }
     .tab-container.active { display: flex; }
@@ -84,56 +108,56 @@
     .virtual-content { position: absolute; top: 0; left: 0; width: 100%; }
 
     /* [성능 최적화] content-visibility 적용 */
-    .rev-card { 
-      background: white; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    .rev-card {
+      background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1.25rem; margin-bottom: 1.25rem;
       /* content-visibility: auto; contain-intrinsic-size: 1px 200px; */ /* 가상스크롤 도입으로 제거 */
     }
-    .rev-header { display: flex; justify-content: space-between; align-items: flex-start; font-weight: bold; border-bottom: 1px solid #f3f4f6; padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
-    .rev-id { background: #eff6ff; color: #1e40af; padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
-    .rev-msg { font-weight: normal; font-size: 0.9rem; color: #374151; flex: 1; margin-left: 1rem; }
+    .rev-header { display: flex; justify-content: space-between; align-items: flex-start; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 0.75rem; margin-bottom: 0.75rem; }
+    .rev-id { background: var(--accent-soft); color: var(--primary); padding: 2px 8px; border-radius: 4px; font-size: 0.9rem; }
+    .rev-msg { font-weight: normal; font-size: 0.9rem; color: var(--text-main); flex: 1; margin-left: 1rem; }
     
     .file-list { display: flex; flex-direction: column; gap: 0.4rem; }
     .file-item { 
       display: flex; align-items: center; padding: 0.2rem 0.5rem; border-radius: 6px; transition: background 0.1s; border: 1px solid transparent;
       content-visibility: auto; contain-intrinsic-size: 1px 40px;
     }
-    .file-item:hover { background: #f1f5f9; border-color: #e2e8f0; }
-    .file-item.merged { background: #f0fdf4 !important; opacity: 0.8; }
-    .file-item.merged .file-path { text-decoration: line-through; color: #94a3b8; }
+    .file-item:hover { background: var(--accent-soft); border-color: var(--border); }
+    .file-item.merged { background: var(--accent-soft) !important; opacity: 0.8; }
+    .file-item.merged .file-path { text-decoration: line-through; color: var(--text-muted); }
     
     .toggle-label { display: flex; align-items: center; flex: 1; cursor: pointer; padding: 0.4rem 0; overflow: hidden; }
     input[type="checkbox"].main-check { width: 18px; height: 18px; cursor: pointer; margin-right: 12px; accent-color: var(--primary); flex-shrink: 0; }
     .file-path { font-family: monospace; font-size: 0.85rem; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     
     .action-group { display: flex; gap: 4px; align-items: center; padding-left: 8px; }
-    .btn { padding: 0.6rem 1rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-outline { background: white; border: 1px solid var(--border); font-size: 0.75rem; padding: 0.3rem 0.6rem; }
-    .btn-danger { background: #fee2e2; color: #991b1b; font-size: 0.75rem; }
+    .btn { padding: 0.6rem 1rem; border-radius: 4px; border: none; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-outline { background: var(--card-bg); border: 1px solid var(--border); font-size: 0.75rem; padding: 0.3rem 0.6rem; color: var(--text-main); }
+    .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); font-size: 0.75rem; }
 
-    .icon-btn { background: none; border: 1px solid transparent; cursor: pointer; font-size: 1.1rem; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
-    .icon-btn:hover { background: #e2e8f0; border-color: #cbd5e1; transform: scale(1.1); }
+    .icon-btn { background: none; border: 1px solid transparent; cursor: pointer; font-size: 1.1rem; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; display: flex; align-items: center; justify-content: center; color: var(--text-main); }
+    .icon-btn:hover { background: var(--surface-alt); border-color: var(--border); }
     .sort-badge {
-      display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: #fff; border: 1px solid var(--border); border-radius: 4px; font-size: 0.72rem; font-weight: 600; color: #4b5563; cursor: pointer; transition: all 0.2s; white-space: nowrap; height: 37px; box-sizing: border-box; margin-left: 4px;
+      display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; font-size: 0.72rem; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.2s; white-space: nowrap; height: 37px; box-sizing: border-box; margin-left: 4px; font-family: inherit;
     }
-    .sort-badge:hover { background: #f8fafc; border-color: var(--primary); color: var(--primary); }
+    .sort-badge:hover { background: var(--surface-alt); border-color: var(--primary); color: var(--primary); }
 
     .badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; display: inline-flex; align-items: center; }
-    .badge-latest { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
-    .badge-history { background: #f3f4f6; color: #4b5563; border: 1px solid #e5e7eb; font-weight: normal; margin-right: 2px; }
-    
-    #progress-bar-container { width: 200px; height: 8px; background: #374151; border-radius: 4px; overflow: hidden; margin-left: 1rem; }
-    #progress-bar { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
-    #progressLabel { margin-left: 10px; font-size: 0.8rem; color: #9ca3af; font-weight: 600; min-width: 70px; }
+    .badge-latest { background: var(--accent-soft); color: var(--primary); border: 1px solid transparent; }
+    .badge-history { background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border); font-weight: normal; margin-right: 2px; }
 
-    .sync-btn { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; transition: color 0.2s; padding: 5px; }
+    #progress-bar-container { width: 200px; height: 8px; background: var(--surface-alt); border-radius: 4px; overflow: hidden; margin-left: 1rem; }
+    #progress-bar { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
+    #progressLabel { margin-left: 10px; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; min-width: 70px; }
+
+    .sync-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; transition: color 0.2s; padding: 5px; }
     .sync-btn.syncing { animation: rotate 1s infinite linear; color: var(--success); }
     @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
     .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
-    .modal-content { background-color: #fff; padding: 1.5rem; border-radius: 8px; width: 600px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 1rem; max-height: 90vh; }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid #eee; padding-top: 0.5rem; }
+    .modal-content { background-color: var(--card-bg); padding: 1.5rem; border-radius: 4px; width: 600px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 1rem; max-height: 90vh; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.5rem; }
     
     .loading-overlay { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); flex-direction: column; align-items: center; justify-content: center; }
     .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
@@ -142,12 +166,12 @@
     .memo-indicator { cursor: pointer; font-size: 16px; opacity: 0.3; transition: all 0.2s; padding: 2px 6px; border-radius: 4px; }
     .memo-indicator.active { opacity: 1; color: var(--primary); }
 
-    .memo-summary-item { background: white; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
-    .memo-content-box { background: #fffbeb; border-left: 4px solid #fbbf24; padding: 0.75rem; margin-top: 0.5rem; font-size: 0.9rem; color: #92400e; white-space: pre-wrap; }
-    
+    .memo-summary-item { background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; padding: 1rem; margin-bottom: 1rem; }
+    .memo-content-box { background: var(--surface-alt); border-left: 4px solid var(--warn); padding: 0.75rem; margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-main); white-space: pre-wrap; }
+
     .highlight { background-color: #fef08a; color: #111827; font-weight: bold; border-radius: 2px; padding: 0 2px; }
-    .file-item.focused { outline: 2px solid var(--primary); outline-offset: -2px; background: #eff6ff; }
-    .rev-card.focused { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
+    .file-item.focused { outline: 2px solid var(--primary); outline-offset: -2px; background: var(--accent-soft); }
+    .rev-card.focused { border-color: var(--primary); box-shadow: 0 0 0 2px var(--accent-soft); }
 
     /* 모바일: 고정 380px 사이드바가 좁은 화면을 잠식하므로, 사이드바를 오버레이로 전환해 콘텐츠가 전체 폭을 쓰게 함 */
     @media (max-width: 768px) {
@@ -157,6 +181,7 @@
       .tabs { padding: 1rem 1rem 0 1rem; }
     }
   </style>
+  <script src="lib/portal-theme.js"></script>
 </head>
 <body>
   <div id="loadingOverlay" class="loading-overlay">
@@ -170,7 +195,7 @@
       <span style="font-size: 1.25rem; font-weight: bold; display: flex; align-items: center; gap: 8px;">🔀 SVN Merge Assistant</span>
       <div id="progress-bar-container"><div id="progress-bar"></div></div>
       <span id="progressLabel">진척도</span>
-      <span id="progressInfo" style="margin-left: 5px; font-size: 0.85rem; color: #d1d5db;">0% (0/0)</span>
+      <span id="progressInfo" style="margin-left: 5px; font-size: 0.85rem; color: var(--text-muted);">0% (0/0)</span>
       <button class="sync-btn" id="syncBtn" onclick="syncData(true)" title="다른 창과 동기화">🔄</button>
     </div>
   </header>
@@ -203,7 +228,7 @@
           <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importData(this)">
         </div>
         <div style="display: flex; gap: 0.5rem;">
-          <button class="btn btn-primary" style="flex: 2; background: #4f46e5;" onclick="generateMergeReport()">머지 보고서 생성 📋</button>
+          <button class="btn btn-primary" style="flex: 2;" onclick="generateMergeReport()">머지 보고서 생성 📋</button>
           <button class="btn btn-danger" style="flex: 1;" onclick="clearStatus()">초기화</button>
         </div>
         <div class="sidebar-info">
@@ -227,7 +252,7 @@
   <div id="memoModal" class="modal">
     <div class="modal-content">
       <div class="modal-header"><span id="memoTitle">파일 메모</span><span style="cursor:pointer; font-size: 20px;" onclick="closeMemo()">&times;</span></div>
-      <textarea id="memoText" style="min-height: 200px; font-family: inherit; font-size: 14px; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" placeholder="메모를 입력하세요..."></textarea>
+      <textarea id="memoText" style="min-height: 200px; font-family: inherit; font-size: 14px; padding: 10px; border: 1px solid var(--border); border-radius: 4px;" placeholder="메모를 입력하세요..."></textarea>
       <div class="modal-footer"><button class="btn btn-outline" onclick="closeMemo()">취소</button><button class="btn btn-primary" onclick="saveMemo()">저장</button></div>
     </div>
   </div>
@@ -235,8 +260,8 @@
   <div id="reportModal" class="modal">
     <div class="modal-content">
       <div class="modal-header"><span>머지 완료 보고서 (Merge Report)</span><span style="cursor:pointer; font-size: 20px;" onclick="document.getElementById('reportModal').style.display='none'">&times;</span></div>
-      <p style="font-size: 0.8rem; color: #666; margin: 0;">복사하여 메모장이나 보고서에 활용하세요.</p>
-      <textarea id="reportArea" style="flex: 1; font-family: monospace; font-size: 11px; padding: 10px; background: #f9fafb; border: 1px solid #ddd; border-radius: 4px; line-height: 1.5;" readonly></textarea>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">복사하여 메모장이나 보고서에 활용하세요.</p>
+      <textarea id="reportArea" style="flex: 1; font-family: monospace; font-size: 11px; padding: 10px; background: var(--surface-alt); color: var(--text-main); border: 1px solid var(--border); border-radius: 4px; line-height: 1.5;" readonly></textarea>
       <div class="modal-footer"><button class="btn btn-outline" onclick="copyReport()">보고서 복사</button><button class="btn btn-primary" onclick="document.getElementById('reportModal').style.display='none'">닫기</button></div>
     </div>
   </div>

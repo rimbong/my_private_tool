@@ -15,34 +15,34 @@
   <script src="lib/portal-theme.js"></script>
   <style>
     :root {
-      --primary: #111827;
-      --bg: #f9fafb;
+      --primary: #1a7f37;
+      --bg: #f5f7f4;
       --header-bg: #ffffff;
-      --border: #e5e7eb;
-      --editor-bg: #f8fafc;
-      --text: #111827;
-      --text-muted: #6b7280;
-      --danger: #dc2626;
+      --border: #d9dfd9;
+      --editor-bg: #eef1ee;
+      --text: #1b2430;
+      --text-muted: #5c6775;
+      --danger: #cf222e;
       --sidebar-width: 50%;
-      --accent: #3b82f6;       /* 탭 활성/호버 강조색 */
-      --tab-border: #cbd5e1;   /* 탭 윤곽선(기본보다 진하게) */
+      --accent: #1a7f37;       /* 탭 활성/호버 강조색 */
+      --tab-border: #d9dfd9;   /* 탭 윤곽선 */
     }
 
     body.dark-mode {
-      --primary: #f9fafb;
-      --bg: #0d1117;
-      --header-bg: #161b22;
-      --border: #30363d;
-      --editor-bg: #0d1117;
-      --text: #c9d1d9;
-      --text-muted: #8b949e;
+      --primary: #3fb950;
+      --bg: #0a0d13;
+      --header-bg: #121722;
+      --border: #212836;
+      --editor-bg: #0d1119;
+      --text: #c8d0de;
+      --text-muted: #6b7789;
       --danger: #f85149;
-      --accent: #58a6ff;
-      --tab-border: #4b5563;
+      --accent: #3fb950;
+      --tab-border: #212836;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       margin: 0;
       padding: 0;
       height: 100vh;
@@ -195,10 +195,10 @@
       margin: 2vh auto;
       width: 90%;
       height: 96vh;
-      border-radius: 12px;
+      border-radius: 4px;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
       overflow: hidden;
     }
 
@@ -248,7 +248,7 @@
       padding: 0.28rem 0.34rem 0;
       border: 1.5px solid var(--gc);
       border-bottom: none;
-      border-radius: 0.75rem 0.75rem 0 0;
+      border-radius: 4px 4px 0 0;
       background: var(--gcbg);
     }
     /* 그룹 라벨(알약) — 트레이 안 왼쪽에 색으로 채운 태그 */
@@ -308,7 +308,7 @@
       padding: 0.45rem 0.5rem 0.5rem 0.8rem;
       border: 1.5px solid var(--tab-border);
       border-bottom: none;
-      border-radius: 0.6rem 0.6rem 0 0;
+      border-radius: 4px 4px 0 0;
       background: var(--header-bg);
       color: var(--text);
       font-size: 0.82rem;
@@ -366,7 +366,7 @@
       background: var(--header-bg);
       color: var(--text);
       width: 30px; height: 30px;
-      border-radius: 0.45rem;
+      border-radius: 4px;
       cursor: pointer;
       font-size: 1.1rem;
       line-height: 1;
@@ -387,7 +387,7 @@
       color: var(--text);
       height: 30px;
       padding: 0 0.7rem;
-      border-radius: 0.45rem;
+      border-radius: 4px;
       cursor: pointer;
       font-size: 0.8rem;
       font-weight: 600;
@@ -418,12 +418,12 @@
     }
     .dm-side-item {
       display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.5rem 0.6rem; border-radius: 0.5rem; cursor: pointer;
+      padding: 0.5rem 0.6rem; border-radius: 4px; cursor: pointer;
       font-size: 0.86rem; font-weight: 600; color: var(--text); user-select: none;
       border: 1px solid transparent;
     }
     .dm-side-item:hover { background: var(--editor-bg); }
-    .dm-side-item.active { background: var(--accent); color: #fff; }
+    .dm-side-item.active { background: var(--accent); color: var(--bg); }
     .dm-side-item.dm-drop-target, .dm-side-newgroup.dm-drop-target { box-shadow: inset 0 0 0 2px var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent); }
     .dm-side-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
     .dm-side-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -437,7 +437,7 @@
     .dm-side-rename:hover { opacity: 1 !important; background: rgba(127,127,127,0.2); }
     .dm-side-sep { height: 1px; background: var(--border); margin: 0.35rem 0.25rem; }
     .dm-side-newgroup {
-      margin-top: 0.5rem; padding: 0.5rem 0.6rem; border-radius: 0.5rem;
+      margin-top: 0.5rem; padding: 0.5rem 0.6rem; border-radius: 4px;
       border: 1px dashed var(--border); background: transparent; color: var(--text-muted);
       font-size: 0.83rem; font-weight: 700; cursor: pointer; text-align: left; width: 100%;
     }
@@ -452,7 +452,7 @@
     .dm-toolbar input {
       flex: 1; min-width: 160px;
       padding: 0.5rem 0.75rem;
-      border: 1px solid var(--border); border-radius: 0.45rem;
+      border: 1px solid var(--border); border-radius: 4px;
       background: var(--editor-bg); color: var(--text);
       font-size: 0.9rem; outline: none;
     }
@@ -468,7 +468,7 @@
     .dm-group-select {
       flex-shrink: 0; max-width: 200px;
       font-size: 0.76rem; padding: 0.28rem 0.35rem;
-      border: 1px solid var(--border); border-radius: 0.4rem;
+      border: 1px solid var(--border); border-radius: 4px;
       background: var(--editor-bg); color: var(--text); cursor: pointer;
       text-overflow: ellipsis;   /* 긴 그룹명은 …으로 잘리게(전체는 title 툴팁) */
     }
@@ -477,13 +477,13 @@
     .dm-folder-tag .fdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .dm-bulk-group {
       font-size: 0.8rem; padding: 0.32rem 0.45rem;
-      border: 1px solid var(--border); border-radius: 0.4rem;
+      border: 1px solid var(--border); border-radius: 4px;
       background: var(--editor-bg); color: var(--text); cursor: pointer;
     }
     .dm-item {
       display: flex; align-items: center; gap: 0.6rem;
       padding: 0.55rem 0.65rem;
-      border: 1px solid var(--border); border-radius: 0.55rem;
+      border: 1px solid var(--border); border-radius: 4px;
       background: var(--card-bg, var(--header-bg));
       transition: border-color 0.15s, background 0.15s;
     }
@@ -505,7 +505,7 @@
       flex-shrink: 0;
       width: 30px; height: 30px;
       display: inline-flex; align-items: center; justify-content: center;
-      border: 1px solid transparent; border-radius: 0.4rem;
+      border: 1px solid transparent; border-radius: 4px;
       background: transparent; cursor: pointer; color: var(--text-muted);
       font-size: 0.85rem;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -572,10 +572,10 @@
       padding: 0.4rem 0.8rem; border-radius: 999px;
       border: 1px solid var(--accent); background: var(--header-bg); color: var(--accent);
       font-size: 0.78rem; font-weight: 700; cursor: pointer;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.12);
       animation: syncPop 0.2s ease-out;
     }
-    .sync-banner:hover { background: var(--accent); color: #fff; }
+    .sync-banner:hover { background: var(--accent); color: var(--bg); }
     .sync-banner .sync-ico { display: inline-block; animation: syncSpin 2.4s linear infinite; }
     .sync-banner:hover .sync-ico { animation-duration: 0.8s; }
     @keyframes syncSpin { to { transform: rotate(360deg); } }
@@ -585,7 +585,7 @@
       flex: 1;
       border: none;
       padding: 1.5rem;
-      font-family: 'Fira Code', 'Cascadia Code', source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       font-size: 14px;
       line-height: 1.6;
       resize: none;
@@ -673,7 +673,7 @@
       text-align: center;
       padding: 2.6rem 2rem;
       border: 2px dashed var(--border);
-      border-radius: 14px;
+      border-radius: 4px;
       background: var(--editor-bg);
       color: var(--text-muted);
       transition: border-color 0.15s, color 0.15s;
@@ -692,7 +692,7 @@
     .view-seg {
       display: inline-flex;
       border: 1px solid var(--border);
-      border-radius: 0.5rem;
+      border-radius: 4px;
       overflow: hidden;
     }
     .seg-btn {
@@ -720,7 +720,7 @@
       padding: 1.5rem;
       background: transparent;
       color: inherit;
-      font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       font-size: 0.9rem;
       line-height: 1.7;
     }
@@ -781,7 +781,7 @@
     }
 
     .resizer:hover::after, .resizer.active::after {
-      background: #3b82f6;
+      background: var(--accent);
       width: 4px;
       left: 2px;
     }
@@ -797,8 +797,8 @@
 
     /* Drag & Drop Feedback */
     #editor.drag-hover {
-      background: var(--primary-light, #f0f7ff);
-      box-shadow: inset 0 0 0 3px #3b82f6;
+      background: var(--primary-light, rgba(26, 127, 55, 0.10));
+      box-shadow: inset 0 0 0 3px var(--accent);
       border-radius: 4px;
     }
 

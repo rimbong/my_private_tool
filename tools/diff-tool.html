@@ -6,48 +6,59 @@
   <title>텍스트 비교 (Diff)</title>
   <style>
     :root {
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --bg: #f8fafc;
+      --primary: #1a7f37;
+      --primary-hover: #166b2e;
+      --bg: #f5f7f4;
       --card-bg: #ffffff;
-      --text: #1e293b;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --editor-bg: #ffffff;
-      --add-bg: #e6ffed;
-      --add-text: #046c4e;
-      --del-bg: #ffebe9;
-      --del-text: #b91c1c;
-      --gutter-bg: #f8fafc;
-      --gutter-text: #94a3b8;
-      --accent: #4f46e5;       /* 탭 활성/호버 강조색 */
-      --tab-border: #cbd5e1;   /* 탭 윤곽선(기본보다 진하게) */
+      --text: #1b2430;
+      --text-muted: #5c6775;
+      --border: #d9dfd9;
+      --editor-bg: #eef1ee;
+      --accent-soft: rgba(26,127,55,0.10);
+      --sel: rgba(26,127,55,0.18);
+      --add-bg: #e3f3e9;
+      --add-text: #116329;
+      --add-wd: rgba(26,127,55,0.25);
+      --del-bg: #ffe9e6;
+      --del-text: #b3212f;
+      --del-wd: rgba(207,34,46,0.22);
+      --gutter-bg: #eef1ee;
+      --gutter-text: #5c6775;
+      --accent: #1a7f37;       /* 탭 활성/호버 강조색 */
+      --tab-border: #c2cbc2;   /* 탭 윤곽선(기본보다 진하게) */
     }
     body.dark {
-      --primary: #818cf8;
-      --primary-hover: #a5b4fc;
-      --bg: #0d1117;
-      --card-bg: #161b22;
-      --text: #c9d1d9;
-      --text-muted: #8b949e;
-      --border: #30363d;
-      --editor-bg: #0d1117;
+      --primary: #3fb950;
+      --primary-hover: #4cc861;
+      --bg: #0a0d13;
+      --card-bg: #121722;
+      --text: #c8d0de;
+      --text-muted: #6b7789;
+      --border: #212836;
+      --editor-bg: #0d1119;
+      --accent-soft: rgba(63,185,80,0.12);
+      --sel: rgba(63,185,80,0.28);
       --add-bg: #12261e;
       --add-text: #7ee787;
+      --add-wd: rgba(126,231,135,0.30);
       --del-bg: #25171c;
       --del-text: #ff7b72;
-      --gutter-bg: #161b22;
-      --gutter-text: #6e7681;
-      --accent: #818cf8;
-      --tab-border: #4b5563;
+      --del-wd: rgba(255,123,114,0.38);
+      --gutter-bg: #0d1119;
+      --gutter-text: #6b7789;
+      --accent: #3fb950;
+      --tab-border: #30384a;
     }
     * { box-sizing: border-box; }
     body {
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace;
       margin: 0; background: var(--bg); color: var(--text);
       height: 100vh; display: flex; flex-direction: column; overflow: hidden;
       transition: background 0.2s, color 0.2s;
     }
+    /* UI 크롬(버튼·입력)도 모노 스택을 상속받게 */
+    button, input, textarea { font-family: inherit; }
+    ::selection { background: var(--sel); }
     header {
       display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
       padding: 1rem 1.5rem; background: var(--card-bg); border-bottom: 1px solid var(--border);
@@ -55,12 +66,13 @@
     h1 { margin: 0; font-size: 1.25rem; font-weight: 800; display: flex; align-items: center; gap: 0.5rem; }
     .toolbar { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
     .btn {
-      padding: 0.5rem 0.9rem; border-radius: 0.5rem; border: 1px solid var(--border);
+      padding: 0.5rem 0.9rem; border-radius: 4px; border: 1px solid var(--border);
       font-weight: 700; font-size: 0.85rem; cursor: pointer; background: var(--card-bg); color: var(--text); transition: all 0.15s; white-space: nowrap;
     }
-    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn:hover { border-color: var(--primary); color: var(--primary); background: var(--accent-soft); }
     .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
     .btn-primary:hover { background: var(--primary-hover); color: #fff; }
+    body.dark .btn-primary, body.dark .btn-primary:hover { color: #0a0d13; }
     label.opt { font-size: 0.8rem; color: var(--text-muted); font-weight: 700; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
 
     .inputs { display: flex; gap: 0; min-height: 38%; border-bottom: 1px solid var(--border); }
@@ -69,7 +81,7 @@
     .pane-head { padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); background: var(--card-bg); border-bottom: 1px solid var(--border); }
     textarea {
       flex: 1; border: none; outline: none; resize: none; padding: 0.75rem 1rem;
-      font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.85rem; line-height: 1.5;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace; font-size: 0.85rem; line-height: 1.5;
       background: var(--editor-bg); color: var(--text); tab-size: 2;
     }
 
@@ -78,12 +90,12 @@
       padding: 0.5rem 1rem; font-size: 0.8rem; font-weight: 800; color: var(--text-muted);
       background: var(--card-bg); border-bottom: 1px solid var(--border); display: flex; gap: 1rem; align-items: center;
     }
-    .pill { font-size: 0.75rem; padding: 0.15rem 0.6rem; border-radius: 999px; font-weight: 800; }
+    .pill { font-size: 0.75rem; padding: 0.15rem 0.6rem; border-radius: 4px; font-weight: 800; }
     .pill.add { background: var(--add-bg); color: var(--add-text); }
     .pill.del { background: var(--del-bg); color: var(--del-text); }
     .diff-view {
       flex: 1; overflow: auto; background: var(--editor-bg);
-      font-family: 'Fira Code', 'Cascadia Code', Consolas, monospace; font-size: 0.85rem; line-height: 1.55;
+      font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", Consolas, "Liberation Mono", monospace; font-size: 0.85rem; line-height: 1.55;
     }
     table.diff { border-collapse: collapse; width: 100%; }
     table.diff td { padding: 0 0.5rem; vertical-align: top; white-space: pre-wrap; word-break: break-word; }
@@ -99,10 +111,8 @@
     .empty-msg { padding: 3rem; text-align: center; color: var(--text-muted); }
     /* 줄 내 변경 강조 (word diff) */
     .diff td.content .wd { border-radius: 2px; padding: 0 1px; }
-    tr.del td.content .wd { background: rgba(244,63,94,0.40); }
-    tr.add td.content .wd { background: rgba(16,185,129,0.40); }
-    body.dark tr.del td.content .wd { background: rgba(255,123,114,0.38); }
-    body.dark tr.add td.content .wd { background: rgba(126,231,135,0.30); }
+    tr.del td.content .wd { background: var(--del-wd); }
+    tr.add td.content .wd { background: var(--add-wd); }
     textarea.drag-hover { box-shadow: inset 0 0 0 3px var(--primary); }
 
     /* --- 비교 탭 바 (여러 비교를 띄워놓고 전환) --- */
@@ -125,7 +135,7 @@
       padding: 0.4rem 0.5rem 0.45rem 0.8rem;
       border: 1.5px solid var(--tab-border);
       border-bottom: none;
-      border-radius: 0.6rem 0.6rem 0 0;
+      border-radius: 4px 4px 0 0;
       background: var(--card-bg);
       color: var(--text);
       font-size: 0.82rem;
@@ -134,7 +144,6 @@
       max-width: 220px;
       position: relative;
       bottom: -2px;                 /* 바 하단선과 살짝 겹쳐 탭처럼 보이게 */
-      box-shadow: 0 -1px 2px rgba(0,0,0,0.04);
       transition: background 0.15s, border-color 0.15s, color 0.15s;
     }
     .doc-tab:hover { border-color: var(--accent); color: var(--accent); }
@@ -170,7 +179,7 @@
       background: var(--card-bg);
       color: var(--text);
       width: 30px; height: 30px;
-      border-radius: 0.45rem;
+      border-radius: 4px;
       cursor: pointer;
       font-size: 1.1rem;
       line-height: 1;
@@ -181,11 +190,12 @@
     .doc-tab-add:hover { background: var(--bg); border-color: var(--accent); color: var(--accent); }
 
     /* 결과 헤더 컨트롤 (세그/네비) */
-    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; }
+    .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
     .seg button { border: none; background: var(--card-bg); color: var(--text-muted); padding: 0.35rem 0.75rem; font-weight: 800; font-size: 0.78rem; cursor: pointer; }
     .seg button.active { background: var(--primary); color: #fff; }
-    .nav-btn-sm { padding: 0.3rem 0.55rem; border-radius: 0.4rem; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); cursor: pointer; font-weight: 800; }
-    .nav-btn-sm:hover { border-color: var(--primary); color: var(--primary); }
+    body.dark .seg button.active { color: #0a0d13; }
+    .nav-btn-sm { padding: 0.3rem 0.55rem; border-radius: 4px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); cursor: pointer; font-weight: 800; }
+    .nav-btn-sm:hover { border-color: var(--primary); color: var(--primary); background: var(--accent-soft); }
 
     /* 같은 줄 접기 마커 */
     .collapse-cell { text-align: center; color: var(--text-muted); background: var(--gutter-bg); cursor: pointer; padding: 0.35rem; font-size: 0.78rem; font-weight: 700; user-select: none; }
@@ -193,7 +203,7 @@
 
     /* 변경 이동 강조 */
     tr.flash td { animation: diffflash 0.8s ease-out; }
-    @keyframes diffflash { from { background: rgba(99,102,241,0.35); } to { background: transparent; } }
+    @keyframes diffflash { from { background: var(--accent-soft); } to { background: transparent; } }
 
     /* 줄 번호 칸: 자릿수에 맞춰 자동 너비 + 줄바꿈 금지 (1000+ 4자리 대응) */
     table.diff td.gutter { word-break: normal; white-space: nowrap; }
@@ -208,10 +218,8 @@
     td.content.cell-del { background: var(--del-bg); color: var(--del-text); }
     td.content.cell-add { background: var(--add-bg); color: var(--add-text); }
     td.content.cell-empty { background: var(--gutter-bg); }
-    td.content.cell-del .wd { background: rgba(244,63,94,0.40); border-radius: 2px; }
-    td.content.cell-add .wd { background: rgba(16,185,129,0.40); border-radius: 2px; }
-    body.dark td.content.cell-del .wd { background: rgba(255,123,114,0.38); }
-    body.dark td.content.cell-add .wd { background: rgba(126,231,135,0.30); }
+    td.content.cell-del .wd { background: var(--del-wd); border-radius: 2px; }
+    td.content.cell-add .wd { background: var(--add-wd); border-radius: 2px; }
 
     /* ===== Responsive: 모바일 ===== */
     @media (max-width: 768px) {
