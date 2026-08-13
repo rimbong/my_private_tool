@@ -67,6 +67,14 @@
       max-width: 96px;
     }
     .tb-select:hover { border-color: var(--primary); }
+    /* 글자 크기 숫자 입력칸: 현재 크기를 그대로 보여주고 직접 입력도 가능 */
+    .tb-size-input {
+      width: 48px; height: 30px; padding: 0 0.35rem; border: 1px solid var(--border); border-radius: 6px;
+      background: var(--bg); color: var(--text); font-size: 0.8rem; font-weight: 600; text-align: center;
+    }
+    .tb-size-input:hover, .tb-size-input:focus { border-color: var(--primary); outline: none; }
+    .tb-size-input::-webkit-outer-spin-button,
+    .tb-size-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     .save-state { font-size: 0.75rem; color: var(--muted); white-space: nowrap; margin-right: 0.3rem; }
     /* ===== 본문 3열 ===== */
     .body { flex: 1; display: flex; min-height: 0; }
@@ -206,6 +214,13 @@
     .tb-btn.danger:hover { background: rgba(207,34,46,0.10); color: var(--danger); border-color: var(--danger); }
     body.dark .tb-btn.danger:hover { background: rgba(248,81,73,0.15); }
     #codeLang { padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font-size: 0.8rem; font-weight: 600; }
+    /* 셀 배경 프리셋 스와치 */
+    .cellbg-swatches { display: inline-flex; align-items: center; gap: 0.2rem; }
+    .cellbg-swatch {
+      width: 20px; height: 20px; padding: 0; border: 1px solid var(--border); border-radius: 4px;
+      cursor: pointer; display: inline-block; transition: transform 0.1s, border-color 0.12s;
+    }
+    .cellbg-swatch:hover { transform: scale(1.12); border-color: var(--primary); }
     /* 코드 구문 강조(highlight.js 토큰) — 라이트/다크 겸용 */
     .ProseMirror pre code .hljs-comment, .ProseMirror pre code .hljs-quote { color: #6a737d; font-style: italic; }
     .ProseMirror pre code .hljs-keyword, .ProseMirror pre code .hljs-selector-tag, .ProseMirror pre code .hljs-literal, .ProseMirror pre code .hljs-type { color: #d73a49; }
@@ -328,7 +343,10 @@
     </div>
     <span class="tb-sep"></span>
     <div class="tb-group">
-      <select id="fontSizeSel" class="tb-select" title="글자 크기"></select>
+      <button class="tb-btn" data-act="fontSizeDown" title="글자 1px 작게">A-</button>
+      <input type="number" id="fontSizeInput" class="tb-size-input" title="글자 크기(px) — 직접 입력 가능" min="8" max="96" step="1" placeholder="16" list="fontSizePresets">
+      <datalist id="fontSizePresets"></datalist>
+      <button class="tb-btn" data-act="fontSizeUp" title="글자 1px 크게">A+</button>
       <select id="fontFamilySel" class="tb-select" title="글꼴"></select>
     </div>
     <span class="tb-sep"></span>
@@ -378,6 +396,16 @@
       <span class="tb-sep"></span>
       <button class="tb-btn wide" data-tbl="toggleHeaderRow" title="첫 행을 헤더로/일반으로 전환">헤더행</button>
       <button class="tb-btn wide" data-tbl="mergeOrSplit" title="선택한 셀 병합 / 병합된 셀 분할">셀 병합</button>
+      <span class="tb-sep"></span>
+      <span class="ctx-label">셀 배경</span>
+      <span class="cellbg-swatches" id="cellBgSwatches"></span>
+      <label class="tb-color" title="셀 배경색 직접 선택">
+        <span class="tb-color-ic">▨</span>
+        <span class="tb-color-bar" id="cellBgBar"></span>
+        <input type="color" id="cellBgColor" value="#fff3b0">
+      </label>
+      <button class="tb-btn wide" data-cellbg-clear="1" title="선택한 셀의 배경색 지우기">배경 지움</button>
+      <span class="tb-sep"></span>
       <button class="tb-btn wide danger" data-tbl="deleteTable" title="표 전체 삭제">표 삭제</button>
     </div>
     <div class="ctx-group" id="ctxCode">
@@ -429,6 +457,37 @@
       let saveTimer = null;
       let dirty = false;        // 편집기에 아직 저장되지 않은 변경이 있는가
 
+      // 표 셀에 배경색 속성을 추가하는 확장 스펙.
+      // TableCell/TableHeader 에 backgroundColor 를 얹어, 인라인 style 로 렌더/파싱한다.
+      // setCellAttribute('backgroundColor', ...) 로 선택된(드래그 다중 포함) 셀에 일괄 적용된다.
+      function cellBackgroundAttribute() {
+        return {
+          backgroundColor: {
+            default: null,
+            parseHTML: (el) => el.style.backgroundColor || el.getAttribute('data-background-color') || null,
+            renderHTML: (attrs) => {
+              if (!attrs.backgroundColor) {
+                return {};
+              }
+              return {
+                style: 'background-color: ' + attrs.backgroundColor,
+                'data-background-color': attrs.backgroundColor
+              };
+            }
+          }
+        };
+      }
+      function withCellBackground(cellExt) {
+        return cellExt.extend({
+          addAttributes() {
+            return {
+              ...this.parent(),
+              ...cellBackgroundAttribute()
+            };
+          }
+        });
+      }
+
       // ===== 에디터 =====
       const editor = new TT.Editor({
         element: document.getElementById('editor'),
@@ -441,8 +500,8 @@
           TT.TaskItem.configure({ nested: true }),
           TT.Table.configure({ resizable: true }),
           TT.TableRow,
-          TT.TableHeader,
-          TT.TableCell,
+          withCellBackground(TT.TableHeader),
+          withCellBackground(TT.TableCell),
           TT.Image,
           TT.TextAlign.configure({ types: ['heading', 'paragraph'] }),
           TT.TextStyle,                                      // 색/크기/글꼴 마크의 토대
@@ -749,6 +808,8 @@
         blockquote: () => chain().toggleBlockquote().run(),
         codeBlock: () => chain().toggleCodeBlock().run(),
         hr: () => chain().setHorizontalRule().run(),
+        fontSizeUp: () => stepFontSize(1),
+        fontSizeDown: () => stepFontSize(-1),
         table: async () => {
           const input = await promptModal('표 크기 (행 x 열)', '3 x 3');
           if (input === null) {
@@ -798,10 +859,12 @@
       const bgColorInput = document.getElementById('bgColor');
       const textColorBar = document.getElementById('textColorBar');
       const bgColorBar = document.getElementById('bgColorBar');
-      const fontSizeSel = document.getElementById('fontSizeSel');
+      const fontSizeInput = document.getElementById('fontSizeInput');
+      const fontSizePresets = document.getElementById('fontSizePresets');
       const fontFamilySel = document.getElementById('fontFamilySel');
 
-      const FONT_SIZES = ['', '12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '40px'];
+      // 자주 쓰는 크기(px). 숫자 입력칸의 datalist 제안으로만 쓰이고, 임의 값 입력도 허용된다.
+      const FONT_SIZE_PRESETS = [12, 14, 16, 18, 20, 24, 28, 32, 40];
       const FONT_FAMILIES = [
         { label: '글꼴', value: '' },
         { label: '맑은 고딕', value: "'Malgun Gothic', sans-serif" },
@@ -813,12 +876,24 @@
         { label: 'Georgia', value: "Georgia, serif" },
         { label: '고정폭', value: "Consolas, 'Fira Code', monospace" }
       ];
-      fontSizeSel.innerHTML = FONT_SIZES
-        .map(s => '<option value="' + s + '">' + (s ? s.replace('px', '') : '크기') + '</option>')
+      fontSizePresets.innerHTML = FONT_SIZE_PRESETS
+        .map(n => '<option value="' + n + '"></option>')
         .join('');
       fontFamilySel.innerHTML = FONT_FAMILIES
         .map(f => '<option value="' + esc(f.value) + '">' + esc(f.label) + '</option>')
         .join('');
+
+      // 글자 크기 한 단계씩 조절(A- / A+). 본문 기본 크기는 16px(=1rem), 1px 단위로 증감한다.
+      const BASE_FONT_PX = 16;
+      const MIN_FONT_PX = 8;
+      const MAX_FONT_PX = 96;
+      // 현재 선택 서식의 글자 크기(px)를 dir(-1/+1)만큼 1px 증감해 적용한다.
+      function stepFontSize(dir) {
+        const raw = editor.getAttributes('textStyle').fontSize || '';
+        const cur = parseInt(raw, 10) || BASE_FONT_PX;
+        const next = Math.max(MIN_FONT_PX, Math.min(MAX_FONT_PX, cur + dir));
+        chain().setFontSize(next + 'px').run();
+      }
 
       // 네이티브 색 선택기/드롭다운을 열면 편집기 포커스와 선택이 그쪽으로 넘어간다.
       // 값이 확정될 때쯤엔 선택이 어긋나 색이 엉뚱한 곳에 먹는다. 그래서 컨트롤을 누르는
@@ -837,7 +912,7 @@
         build(c);
         c.run();
       }
-      [textColorInput, bgColorInput, fontSizeSel, fontFamilySel].forEach((el) => {
+      [textColorInput, bgColorInput, fontSizeInput, fontFamilySel].forEach((el) => {
         el.addEventListener('pointerdown', rememberSelection);
         el.addEventListener('focus', rememberSelection);
       });
@@ -846,9 +921,20 @@
       // 트랜잭션(=undo 단계·자동저장)을 폭주시키므로 쓰지 않는다.
       textColorInput.addEventListener('change', () => applyToSaved(c => c.setColor(textColorInput.value)));
       bgColorInput.addEventListener('change', () => applyToSaved(c => c.setHighlight({ color: bgColorInput.value })));
-      fontSizeSel.addEventListener('change', () => {
-        const v = fontSizeSel.value;
-        applyToSaved(c => (v ? c.setFontSize(v) : c.unsetFontSize()));
+      // 숫자 입력칸: 값이 비면 크기 해제, 있으면 8~96px 로 눌러 담아 적용한다.
+      fontSizeInput.addEventListener('change', () => {
+        const raw = fontSizeInput.value.trim();
+        if (!raw) {
+          applyToSaved(c => c.unsetFontSize());
+          return;
+        }
+        let v = parseInt(raw, 10);
+        if (!v) {
+          return;
+        }
+        v = Math.max(MIN_FONT_PX, Math.min(MAX_FONT_PX, v));
+        fontSizeInput.value = v;
+        applyToSaved(c => c.setFontSize(v + 'px'));
       });
       fontFamilySel.addEventListener('change', () => {
         const v = fontFamilySel.value;
@@ -878,7 +964,12 @@
         } else {
           bgColorBar.style.background = 'transparent';
         }
-        fontSizeSel.value = FONT_SIZES.includes(styleAttrs.fontSize) ? styleAttrs.fontSize : '';
+        // 현재 크기를 숫자로 그대로 표시(예: 17). 미지정이면 빈칸(placeholder 16 노출).
+        // 입력칸에 포커스가 있는 동안엔 사용자가 타이핑 중일 수 있으므로 덮어쓰지 않는다.
+        if (document.activeElement !== fontSizeInput) {
+          const sizeNum = parseInt(styleAttrs.fontSize, 10);
+          fontSizeInput.value = sizeNum ? sizeNum : '';
+        }
         const fam = styleAttrs.fontFamily || '';
         fontFamilySel.value = FONT_FAMILIES.some(f => f.value === fam) ? fam : '';
       }
@@ -940,6 +1031,9 @@
             codeLang.value = lang;
           }
         }
+        if (inTable) {
+          syncCellBgControl();
+        }
       }
       // 표 명령
       ctxTable.addEventListener('click', (e) => {
@@ -968,6 +1062,76 @@
       codeLang.addEventListener('change', () => {
         editor.chain().focus().updateAttributes('codeBlock', { language: codeLang.value || null }).run();
       });
+
+      // ===== 표 셀 배경색 =====
+      // 프리셋 스와치(연한 색)로 빠르게 칠하고, 커스텀 색선택기로 임의 색도 지정한다.
+      // setCellAttribute 는 현재 셀 또는 드래그로 다중 선택된 셀 전체에 일괄 적용된다.
+      const CELL_BG_PRESETS = [
+        { color: '#ffd6d6', label: '연빨강' },
+        { color: '#ffe4c4', label: '연주황' },
+        { color: '#fff3b0', label: '연노랑' },
+        { color: '#d7f0d1', label: '연초록' },
+        { color: '#d6e4ff', label: '연파랑' },
+        { color: '#e6dbff', label: '연보라' },
+        { color: '#e9edf2', label: '연회색' },
+        { color: '#cfd8e3', label: '진회색' }
+      ];
+      const cellBgSwatches = document.getElementById('cellBgSwatches');
+      const cellBgColor = document.getElementById('cellBgColor');
+      const cellBgBar = document.getElementById('cellBgBar');
+      cellBgSwatches.innerHTML = CELL_BG_PRESETS
+        .map(p => '<button type="button" class="cellbg-swatch" data-cellbg="' + p.color + '" title="' + esc(p.label) + '" style="background:' + p.color + '"></button>')
+        .join('');
+      // 선택된 셀(들)에 배경색을 적용한다. color 가 null 이면 배경을 지운다.
+      function applyCellBg(color) {
+        editor.chain().focus().setCellAttribute('backgroundColor', color).run();
+      }
+      cellBgSwatches.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-cellbg]');
+        if (!b) {
+          return;
+        }
+        applyCellBg(b.dataset.cellbg);
+      });
+      document.querySelector('[data-cellbg-clear]').addEventListener('click', () => applyCellBg(null));
+
+      // 커스텀 색선택기: 네이티브 다이얼로그가 열리면 셀 선택이 흐트러질 수 있어,
+      // 누르는 순간의 선택(단일/다중 셀)을 저장했다가 적용 직전 복원한다.
+      let savedCellSelection = null;
+      function rememberCellSelection() {
+        savedCellSelection = editor.state.selection;
+      }
+      cellBgColor.addEventListener('pointerdown', rememberCellSelection);
+      cellBgColor.addEventListener('focus', rememberCellSelection);
+      cellBgColor.addEventListener('change', () => {
+        const color = cellBgColor.value;
+        const sel = savedCellSelection;
+        editor.chain().focus().command(({ tr }) => {
+          if (sel) {
+            try {
+              tr.setSelection(sel);
+            } catch (err) {
+              console.warn('셀 선택 복원 실패, 현재 선택에 적용:', err);
+            }
+          }
+          return true;
+        }).setCellAttribute('backgroundColor', color).run();
+      });
+      // 현재 셀의 배경색을 커스텀 색선택기/색 띠에 반영한다.
+      function syncCellBgControl() {
+        const bg = editor.getAttributes('tableCell').backgroundColor
+          || editor.getAttributes('tableHeader').backgroundColor
+          || null;
+        if (bg) {
+          cellBgBar.style.background = bg;
+          const hex = colorToHex(bg);
+          if (hex) {
+            cellBgColor.value = hex;
+          }
+        } else {
+          cellBgBar.style.background = 'transparent';
+        }
+      }
 
       // ===== 사이드바 이벤트(위임) =====
       document.getElementById('newNote').addEventListener('click', () => newNote());
