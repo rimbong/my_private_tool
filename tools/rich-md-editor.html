@@ -205,9 +205,12 @@
     .dlg-btn:hover { border-color: var(--primary); color: var(--primary); }
     .dlg-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
     body.dark .dlg-btn.primary { color: #0a0d13; }
-    /* 컨텍스트 툴바(표/코드) */
-    .ctxbar { display: none; align-items: center; gap: 0.5rem; padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border); background: var(--panel2); flex-shrink: 0; }
-    .ctxbar.show { display: flex; }
+    /* 컨텍스트 툴바(표/코드)
+       항상 같은 높이(min-height)로 자리를 차지해, 표/코드 진입 시 편집영역이
+       아래로 밀리지 않게 한다(마우스 좌표 어긋남 방지). 비어있을 땐 안내문만 표시. */
+    .ctxbar { display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.75rem; border-bottom: 1px solid var(--border); background: var(--panel2); flex-shrink: 0; min-height: 2.7rem; }
+    .ctx-idle { font-size: 0.78rem; color: var(--muted); }
+    .ctxbar.show .ctx-idle { display: none; }
     .ctx-group { display: none; align-items: center; gap: 0.2rem; }
     .ctx-group.active { display: inline-flex; }
     .ctx-label { font-size: 0.75rem; font-weight: 800; color: var(--muted); margin-right: 0.3rem; }
@@ -381,8 +384,9 @@
     </div>
   </div>
 
-  <!-- 컨텍스트 툴바: 표/코드블록 안에 커서가 있을 때만 표시 -->
+  <!-- 컨텍스트 툴바: 항상 자리를 차지하고, 표/코드블록 안에서만 편집 메뉴가 채워진다(그 외엔 안내문) -->
   <div class="ctxbar" id="ctxbar">
+    <span class="ctx-idle">표나 코드블록 안에 커서를 두면 편집 메뉴가 여기에 표시됩니다.</span>
     <div class="ctx-group" id="ctxTable">
       <span class="ctx-label">행</span>
       <button class="tb-btn wide" data-tbl="addRowBefore" title="현재 행 위에 새 행 추가">＋위</button>
